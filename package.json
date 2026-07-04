@@ -1,0 +1,25 @@
+{
+  "name": "demo-video-gen-workspace",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -b packages/core/tsconfig.json packages/ai/tsconfig.json packages/playwright/tsconfig.json packages/voicevox/tsconfig.json packages/renderer/tsconfig.json packages/cli/tsconfig.json",
+    "build:watch": "tsc -b --watch packages/*/tsconfig.json",
+    "dev": "tsx packages/cli/src/index.ts",
+    "clean": "find packages -name 'dist' -type d | xargs rm -rf",
+    "lint": "eslint packages/*/src/**/*.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

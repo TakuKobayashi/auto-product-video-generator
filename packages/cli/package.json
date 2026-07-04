@@ -1,0 +1,47 @@
+{
+  "name": "demo-video-gen",
+  "version": "0.1.0",
+  "description": "AI-powered promotional video generator for web apps and CLI tools",
+  "type": "module",
+  "bin": {
+    "demo-video-gen": "./bin/demo-video-gen.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "bin/",
+    "dist/"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx src/index.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@demo-video-gen/ai": "workspace:*",
+    "@demo-video-gen/core": "workspace:*",
+    "@demo-video-gen/playwright": "workspace:*",
+    "@demo-video-gen/renderer": "workspace:*",
+    "@demo-video-gen/voicevox": "workspace:*",
+    "commander": "^12.1.0"
+  },
+  "keywords": [
+    "demo",
+    "video",
+    "ai",
+    "playwright",
+    "ffmpeg",
+    "voicevox",
+    "cli"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,0 +1,8 @@
+name: auto-product-video-generator
+slug: auto-product-video-generator
+description: This is a 動画 video generation tool for web apps and CLI tools。
+description_ja: WebアプリやCLIツール向けの、AIを活用したプロモーション動画生成ツールです。
+translation_locked: false
+status: incubating
+repo: null
+tags: null

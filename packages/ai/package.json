@@ -1,0 +1,23 @@
+{
+  "name": "@demo-video-gen/ai",
+  "version": "0.1.0",
+  "description": "AI/LLM integration for demo-video-gen",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsc -b --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@demo-video-gen/core": "workspace:*",
+    "@google/generative-ai": "^0.21.0"
+  }
+}

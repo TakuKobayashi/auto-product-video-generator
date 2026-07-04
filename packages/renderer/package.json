@@ -1,0 +1,22 @@
+{
+  "name": "@demo-video-gen/renderer",
+  "version": "0.1.0",
+  "description": "ffmpeg-based video rendering for demo-video-gen",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsc -b --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@demo-video-gen/core": "workspace:*"
+  }
+}

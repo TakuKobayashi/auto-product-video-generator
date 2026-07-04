@@ -1,0 +1,23 @@
+{
+  "name": "@demo-video-gen/playwright",
+  "version": "0.1.0",
+  "description": "Playwright-based browser recording for demo-video-gen",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsc -b --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@demo-video-gen/core": "workspace:*",
+    "playwright": "^1.47.0"
+  }
+}

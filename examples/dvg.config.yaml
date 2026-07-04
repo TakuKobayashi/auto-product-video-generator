@@ -1,0 +1,27 @@
+project:
+  name: "My Web App"
+  description: "An awesome web application"
+
+target:
+  url: "http://localhost:3000"
+  type: "web"
+
+video:
+  type: "demo"       # teaser | shorts | demo | tutorial
+  duration: 90       # target seconds
+  resolution: "1920x1080"
+  fps: 30
+  language: "ja"
+
+llm:
+  provider: "gemini"   # gemini | openai | claude | groq | ollama
+  model: "gemini-2.5-pro"
+  # apiKeyEnv: "GEMINI_API_KEY"  # defaults to GEMINI_API_KEY
+
+voicevox:
+  host: "http://localhost:50021"
+  speakerId: 3
+
+output:
+  dir: "./output"
+  workDir: "./.dvg"

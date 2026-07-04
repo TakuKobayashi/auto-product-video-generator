@@ -1,0 +1,46 @@
+meta:
+  title: "{{PROJECT_NAME}} Demo"
+  description: "A demo video showcasing {{PROJECT_NAME}}"
+  type: demo
+  duration: 90
+  language: ja
+  createdAt: "{{CREATED_AT}}"
+
+scenes:
+  - id: intro
+    title: "イントロ"
+    narration: "{{PROJECT_NAME}}をご紹介します。"
+    duration: 8
+    actions:
+      - type: goto
+        url: "{{TARGET_URL}}"
+      - type: wait_visible
+        text: "{{FIRST_VISIBLE_TEXT}}"
+    effects:
+      - type: fade_in
+        duration: 1.0
+
+  - id: main-feature
+    title: "メイン機能"
+    narration: "主要機能をご覧ください。"
+    duration: 30
+    actions:
+      - type: click
+        text: "{{MAIN_CTA_TEXT}}"
+      - type: wait
+        ms: 2000
+    effects:
+      - type: zoom_in
+        factor: 1.3
+        duration: 1.5
+
+  - id: outro
+    title: "アウトロ"
+    narration: "ぜひお試しください。"
+    duration: 6
+    actions:
+      - type: screenshot
+        name: "final-screen"
+    effects:
+      - type: fade_out
+        duration: 1.0

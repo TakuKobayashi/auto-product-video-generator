@@ -1,0 +1,94 @@
+name: Generate Demo Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_type:
+        description: "Video type"
+        required: true
+        default: "demo"
+        type: choice
+        options: [teaser, shorts, demo, tutorial]
+      target_url:
+        description: "Target application URL"
+        required: true
+        default: "http://localhost:3000"
+      preview:
+        description: "Render preview quality (faster)"
+        required: false
+        default: "false"
+        type: boolean
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    services:
+      voicevox:
+        image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+        ports:
+          - 50021:50021
+        options: >-
+          --health-cmd "curl -sf http://localhost:50021/version"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @demo-video-gen/playwright exec playwright install chromium --with-deps
+
+      - name: Install ffmpeg
+        run: sudo apt-get install -y ffmpeg
+
+      - name: Initialize project config
+        run: |
+          pnpm demo-video-gen init \
+            --url "${{ inputs.target_url }}" \
+            --type "${{ inputs.video_type }}"
+
+      - name: Build video
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          PREVIEW_FLAG=""
+          if [ "${{ inputs.preview }}" = "true" ]; then
+            PREVIEW_FLAG="--preview"
+          fi
+          pnpm demo-video-gen build \
+            --url "${{ inputs.target_url }}" \
+            --type "${{ inputs.video_type }}" \
+            $PREVIEW_FLAG
+
+      - name: Upload video artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-video-${{ inputs.video_type }}-${{ github.run_id }}
+          path: output/final.mp4
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload intermediate files
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dvg-workdir-${{ github.run_id }}
+          path: |
+            .dvg/scenario.yaml
+            .dvg/script.yaml
+            .dvg/subtitles.srt
+            .dvg/timeline.json
+            .dvg/project-summary.json
+          retention-days: 7
