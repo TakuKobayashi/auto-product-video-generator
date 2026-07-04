@@ -1,8 +1,16 @@
 name: auto-product-video-generator
 slug: auto-product-video-generator
-description: This is a 動画 video generation tool for web apps and CLI tools。
-description_ja: WebアプリやCLIツール向けの、AIを活用したプロモーション動画生成ツールです。
+description: AI-powered tool that generates promotional videos for web applications and command-line interfaces, automating scenario creation, recording, voiceovers, and rendering.
+description_ja: ウェブアプリケーションやコマンドラインインターフェース向けのプロモーション動画を自動生成するツールです。シナリオ作成、録画、ナレーション、レンダリングを自動化します。
 translation_locked: false
 status: incubating
-repo: null
-tags: null
+repo: git@github.com:TakuKobayashi/auto-product-video-generator.git
+tags:
+  - video
+  - ai
+  - automation
+  - playwright
+  - voicevox
+  - ffmpeg
+  - typescript
+  - cli
