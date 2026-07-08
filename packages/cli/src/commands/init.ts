@@ -7,6 +7,7 @@ export function initCommand(): Command {
     .option('-t, --type <type>', 'video type: teaser|shorts|demo|tutorial', 'demo')
     .option('-u, --url <url>', 'target application URL')
     .option('-n, --name <name>', 'project name')
+    .option('--force', 'overwrite an existing dvg.config.yaml')
     .option('--dry-run', 'preview config without writing files')
     .action(async (directory: string, options: Record<string, string | boolean>) => {
       const { runInit } = await import('../runners/init.js');

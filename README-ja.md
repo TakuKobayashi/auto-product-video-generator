@@ -122,6 +122,12 @@ task serve PROFILE=local WITH_OLLAMA=true
   `provider: ollama` をメインにしている限り `GEMINI_API_KEY` が未設定でもエラーには
   なりません（Ollamaが失敗して初めてGemini側のキーが必要になります）
 
+`demo-video-gen init` は実行時点の環境を見て賢くデフォルトを選びます。`init`実行時に
+`GEMINI_API_KEY` が設定されていれば `provider: gemini` + `fallbackProvider: ollama`、
+設定されていなければ `provider: ollama` + `fallbackProvider: gemini` になります。
+つまり、`dvg.config.yaml` を手で編集しなくても、今すぐ使えるものでそのまま動く状態が
+初期状態から得られます。もちろん後からどちらの設定も自由に変更できます。
+
 ```yaml
 llm:
   provider: "ollama"
@@ -170,6 +176,7 @@ Options:
   -u, --url <url>     対象アプリケーションのURL
   -t, --type <type>   動画タイプ: teaser|shorts|demo|tutorial（デフォルト: demo）
   -n, --name <name>   プロジェクト名
+  --force              既存の dvg.config.yaml を上書き
   --dry-run           ファイルを書き込まずプレビューのみ
 ```
 

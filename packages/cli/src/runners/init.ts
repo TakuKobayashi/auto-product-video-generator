@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { join, resolve, basename } from 'node:path';
 import { existsSync } from 'node:fs';
 import { createDefaultConfig, saveConfig, logger } from '@demo-video-gen/core';
 
@@ -6,6 +6,7 @@ interface InitOptions {
   type?: string;
   url?: string;
   name?: string;
+  force?: boolean;
   dryRun?: boolean;
 }
 
@@ -14,14 +15,14 @@ export async function runInit(directory: string, options: InitOptions): Promise<
 
   const configPath = join(directory, 'dvg.config.yaml');
 
-  if (existsSync(configPath) && !options.dryRun) {
+  if (existsSync(configPath) && !options.dryRun && !options.force) {
     logger.warn(`Config already exists: ${configPath}`);
-    logger.warn('Delete it or use --force to reinitialize.');
+    logger.warn('Delete it, or re-run with --force to overwrite it.');
     process.exit(1);
   }
 
   const url = options.url ?? 'http://localhost:3000';
-  const name = options.name ?? directory.split('/').pop() ?? 'my-project';
+  const name = options.name ?? basename(resolve(directory));
 
   const config = createDefaultConfig(name, url);
   config.video.type = (options.type as 'teaser' | 'shorts' | 'demo' | 'tutorial') ?? 'demo';
@@ -35,6 +36,12 @@ export async function runInit(directory: string, options: InitOptions): Promise<
   await saveConfig(configPath, config);
 
   logger.success(`Created: ${configPath}`);
+  logger.info('');
+  logger.info(
+    `LLM: provider=${config.llm.provider} (${
+      config.llm.provider === 'gemini' ? 'GEMINI_API_KEY was set' : 'GEMINI_API_KEY was not set'
+    }), fallbackProvider=${config.llm.fallbackProvider}`,
+  );
   logger.info('');
   logger.info('Next steps:');
   logger.dim(`  1. Edit dvg.config.yaml to set your target URL and LLM provider`);

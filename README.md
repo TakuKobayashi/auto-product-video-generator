@@ -123,6 +123,14 @@ implementations — `tsc -b`, `tsx`, etc. — since `task build` / `task dev` ca
   e.g. running with `provider: ollama` doesn't require `GEMINI_API_KEY` to be
   set at all unless Ollama actually fails.
 
+`demo-video-gen init` picks a sensible default automatically: if
+`GEMINI_API_KEY` is set when you run `init`, it defaults to
+`provider: gemini` with `fallbackProvider: ollama`; if it's not set, it
+defaults to `provider: ollama` with `fallbackProvider: gemini` instead — so a
+fresh project works out of the box with whatever you actually have available,
+without needing to hand-edit `dvg.config.yaml` first. You can always change
+either provider afterwards.
+
 ```yaml
 llm:
   provider: "ollama"
@@ -157,6 +165,7 @@ Options:
   -u, --url <url>     Target application URL
   -t, --type <type>   Video type: teaser|shorts|demo|tutorial (default: demo)
   -n, --name <name>   Project name
+  --force              Overwrite an existing dvg.config.yaml
   --dry-run           Preview config without writing
 ```
 

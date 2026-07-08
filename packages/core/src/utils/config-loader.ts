@@ -18,11 +18,33 @@ export async function saveConfig(configPath: string, config: DvgConfig): Promise
 }
 
 export function createDefaultConfig(name: string, url: string): DvgConfig {
+  // Pick a sensible default LLM setup based on what's actually available
+  // right now, so a fresh `init` doesn't require GEMINI_API_KEY to be set
+  // just because that happens to be the schema's fallback default. Either
+  // way, both directions are configured (as `provider` + `fallbackProvider`)
+  // so the config keeps working if the situation changes later (e.g. the
+  // person adds a Gemini key, or Ollama isn't running yet at build time).
+  const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+
+  const llm = hasGeminiKey
+    ? {
+        provider: 'gemini' as const,
+        model: 'gemini-2.5-pro',
+        fallbackProvider: 'ollama' as const,
+        fallbackModel: 'qwen2.5:7b-instruct',
+      }
+    : {
+        provider: 'ollama' as const,
+        model: 'qwen2.5:7b-instruct',
+        fallbackProvider: 'gemini' as const,
+        fallbackModel: 'gemini-2.5-pro',
+      };
+
   return DvgConfigSchema.parse({
     project: { name, description: '' },
     target: { url, type: 'web' },
     video: {},
-    llm: {},
+    llm,
     voicevox: {},
     output: {},
   });

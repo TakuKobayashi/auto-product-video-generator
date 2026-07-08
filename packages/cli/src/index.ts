@@ -37,4 +37,14 @@ program.addCommand(voiceCommand());
 program.addCommand(renderCommand());
 program.addCommand(buildCommand());
 
-program.parse();
+// Some pnpm versions forward a literal `--` separator instead of stripping
+// it (e.g. `pnpm dev -- init --url ...`). Commander treats a bare "--" as
+// "end of options", which breaks flag parsing for everything after it. We
+// never use "--" as an intentional CLI convention ourselves, so strip a
+// single leading one defensively.
+const argv = process.argv.slice();
+if (argv[2] === '--') {
+  argv.splice(2, 1);
+}
+
+program.parse(argv);
