@@ -1,0 +1,116 @@
+# Taskfile for demo-video-gen
+# https://taskfile.dev
+#
+# This is a convenience layer: every task here just calls one of the
+# scripts/*.mjs files, which have no dependency on Task itself and can
+# always be run directly (see the "pnpm run ..." scripts in package.json).
+# Use whichever you prefer:
+#
+#   pnpm run setup                        # always works, no Task needed
+#   npx task install                      # nicer names/descriptions, needs Task
+#   task install                          # if Task is installed globally
+#
+# `@go-task/cli` (a devDependency here) installs a `task` binary into
+# node_modules/.bin via a postinstall download from GitHub. If that download
+# is blocked by your network (e.g. a corporate proxy), just use the
+# `pnpm run ...` scripts instead — they do exactly the same thing.
+#
+# Profiles:
+#   PROFILE=local (default) — a dev machine with a GPU, e.g.
+#                              Ryzen 7 5800H / 64GB RAM / RTX 3050 Ti (4GB VRAM)
+#   PROFILE=ci               — GitHub Actions hosted runners (CPU only, ~7GB RAM)
+# The profile controls which local Ollama model is installed/pulled/served
+# (see scripts/lib/model-profiles.mjs for the actual model names).
+#
+# WITH_OLLAMA=true (default) — also install/serve a local LLM via Ollama.
+# WITH_OLLAMA=false          — skip Ollama entirely; use the Gemini API only
+#                               (requires GEMINI_API_KEY).
+
+version: '3'
+
+dotenv: ['.env']
+
+vars:
+  PROFILE: '{{.PROFILE | default "local"}}'
+  WITH_OLLAMA: '{{.WITH_OLLAMA | default "true"}}'
+  VOICEVOX_IMAGE: '{{.VOICEVOX_IMAGE | default "voicevox/voicevox_engine:cpu-latest"}}'
+
+tasks:
+  default:
+    desc: "利用可能なタスクの一覧を表示します"
+    cmds:
+      - task --list
+
+  # ── Install (one command sets up the whole environment) ──────────────────
+
+  install:
+    desc: >
+      環境を一括セットアップします: Node依存関係, ffmpeg/ffprobe(自動バンドル),
+      Playwright(Chromium), そして任意でOllama+ローカルLLMモデル。
+      例: task install PROFILE=local WITH_OLLAMA=true
+          task install PROFILE=ci WITH_OLLAMA=false
+    cmds:
+      - node scripts/install.mjs --profile={{.PROFILE}} --with-ollama={{.WITH_OLLAMA}}
+
+  install:playwright:
+    desc: "Playwright の Chromium ブラウザのみをインストールします"
+    cmds:
+      - node scripts/install-playwright.mjs
+
+  install:ollama:
+    desc: "Ollama 本体と、指定プロファイル用のモデルをインストールします"
+    cmds:
+      - node scripts/install-ollama.mjs --profile={{.PROFILE}}
+
+  # ── Serve (one command starts every local service) ────────────────────────
+
+  serve:
+    desc: >
+      ローカルで必要なサーバーを起動します: VOICEVOX Engine (Docker) と
+      任意で Ollama デーモン。既に起動していれば何もしません。
+      例: task serve PROFILE=local WITH_OLLAMA=true
+    cmds:
+      - node scripts/serve.mjs --profile={{.PROFILE}} --with-ollama={{.WITH_OLLAMA}}
+
+  stop:
+    desc: "task serve で起動したサービスを停止します (VOICEVOXコンテナ)"
+    cmds:
+      - node scripts/stop.mjs
+
+  # ── Diagnostics ────────────────────────────────────────────────────────────
+
+  doctor:
+    desc: "動作に必要な環境が揃っているか診断します"
+    cmds:
+      - node scripts/doctor.mjs
+
+  # ── Build / dev ─────────────────────────────────────────────────────────
+
+  build:
+    desc: "全パッケージを TypeScript でビルドします"
+    cmds:
+      - pnpm build
+
+  dev:
+    desc: >
+      CLIをビルドなしで直接実行します (tsx)。以降の引数はそのままCLIに渡されます。
+      例: task dev -- init --url http://localhost:3000
+    cmds:
+      - pnpm dev -- {{.CLI_ARGS}}
+
+  clean:
+    desc: "全パッケージの dist/ を削除します"
+    cmds:
+      - pnpm clean
+
+  # ── Quickstart ─────────────────────────────────────────────────────────
+
+  quickstart:
+    desc: "install → serve をまとめて実行し、次にやることを表示します"
+    cmds:
+      - task: install
+      - task: serve
+      - 'echo ""'
+      - echo "セットアップ完了。次のコマンドで動画生成を始められます:"
+      - echo "  pnpm dev -- init --url http://localhost:3000"
+      - echo "  pnpm dev -- build"

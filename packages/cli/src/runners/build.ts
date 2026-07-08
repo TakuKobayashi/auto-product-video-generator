@@ -10,6 +10,7 @@ import {
   writeYaml,
   ensureDir,
   logger,
+  resolveFfmpegPath,
   ProjectSummary,
   ScenarioSchema,
   ScriptSchema,
@@ -166,7 +167,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
     noVoice: options.skipVoice ?? false,
     preview: options.preview ?? false,
     dryRun,
-    ffmpegPath: 'ffmpeg',
+    ffmpegPath: resolveFfmpegPath(),
     workDir,
   });
 

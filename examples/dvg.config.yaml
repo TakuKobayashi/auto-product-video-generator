@@ -14,9 +14,26 @@ video:
   language: "ja"
 
 llm:
-  provider: "gemini"   # gemini | openai | claude | groq | ollama
+  # Primary provider: gemini | openai | claude | groq | ollama
+  #
+  # Option A — cloud only (needs GEMINI_API_KEY):
+  provider: "gemini"
   model: "gemini-2.5-pro"
   # apiKeyEnv: "GEMINI_API_KEY"  # defaults to GEMINI_API_KEY
+  #
+  # Option B — fully local via Ollama (no API key, no network needed):
+  #   provider: "ollama"
+  #   model: "qwen2.5:7b-instruct"   # see scripts/lib/model-profiles.mjs
+  #   ollamaHost: "http://localhost:11434"
+  #
+  # Option C — use both together: try Ollama first, fall back to Gemini
+  # automatically if Ollama is unreachable / the model isn't pulled yet /
+  # it returns invalid JSON. (Or swap the two to prefer Gemini with an
+  # offline fallback.)
+  #   provider: "ollama"
+  #   model: "qwen2.5:7b-instruct"
+  #   fallbackProvider: "gemini"
+  #   fallbackModel: "gemini-2.5-pro"
 
 voicevox:
   host: "http://localhost:50021"

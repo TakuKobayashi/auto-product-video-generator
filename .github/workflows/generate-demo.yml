@@ -18,6 +18,12 @@ on:
         required: false
         default: "false"
         type: boolean
+      llm_provider:
+        description: "LLM provider to use"
+        required: true
+        default: "gemini"
+        type: choice
+        options: [gemini, ollama]
 
 jobs:
   generate:
@@ -44,20 +50,39 @@ jobs:
       - name: Enable corepack (pnpm)
         run: corepack enable
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      # Single command sets up Node deps + ffmpeg/ffprobe (bundled) +
+      # Playwright Chromium. Ollama is only installed/pulled when the
+      # workflow was dispatched with llm_provider: ollama, using the "ci"
+      # machine profile (a smaller model sized for CPU-only runners —
+      # see scripts/lib/model-profiles.mjs). This calls scripts/install.mjs
+      # directly (not via the `task` binary) so it doesn't depend on the
+      # @go-task/cli postinstall download succeeding.
+      - name: Install environment
+        run: |
+          node scripts/install.mjs \
+            --profile=ci \
+            --with-ollama=${{ inputs.llm_provider == 'ollama' && 'true' || 'false' }}
 
-      - name: Install Playwright browsers
-        run: pnpm --filter @demo-video-gen/playwright exec playwright install chromium --with-deps
-
-      - name: Install ffmpeg
-        run: sudo apt-get install -y ffmpeg
+      - name: Start local services
+        run: |
+          node scripts/serve.mjs \
+            --profile=ci \
+            --with-ollama=${{ inputs.llm_provider == 'ollama' && 'true' || 'false' }}
+        # Note: the `voicevox` service container above already provides
+        # VOICEVOX on :50021, so this will detect it's healthy and only
+        # start Ollama (if requested) here.
 
       - name: Initialize project config
         run: |
           pnpm demo-video-gen init \
             --url "${{ inputs.target_url }}" \
             --type "${{ inputs.video_type }}"
+
+      - name: Set LLM provider in config
+        if: inputs.llm_provider == 'ollama'
+        run: |
+          sed -i 's/provider: "gemini"/provider: "ollama"/' dvg.config.yaml
+          sed -i 's/model: "gemini-2.5-pro"/model: "qwen2.5:3b-instruct"/' dvg.config.yaml
 
       - name: Build video
         env:

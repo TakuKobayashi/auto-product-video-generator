@@ -18,9 +18,12 @@
   },
   "dependencies": {
     "zod": "^3.23.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9"
+    "@types/js-yaml": "^4.0.9",
+    "@types/ffprobe-static": "^2.0.3"
   }
 }

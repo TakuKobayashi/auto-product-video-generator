@@ -5,3 +5,4 @@ export * from './types/project.js';
 export * from './utils/config-loader.js';
 export * from './utils/file-helpers.js';
 export * from './utils/logger.js';
+export * from './utils/bin-resolver.js';

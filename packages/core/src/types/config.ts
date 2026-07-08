@@ -22,10 +22,29 @@ export const VideoConfigSchema = z.object({
   language: z.string().default('ja'),
 });
 
+// LLM providers. 'ollama' runs fully local via the Ollama daemon (see Taskfile `install`/`serve`).
+export const LlmProviderNameSchema = z.enum(['gemini', 'openai', 'claude', 'groq', 'ollama']);
+export type LlmProviderName = z.infer<typeof LlmProviderNameSchema>;
+
 export const LlmConfigSchema = z.object({
-  provider: z.enum(['gemini', 'openai', 'claude', 'groq', 'ollama']).default('gemini'),
+  // Primary provider used for analyze/scenario generation.
+  provider: LlmProviderNameSchema.default('gemini'),
   model: z.string().default('gemini-2.5-pro'),
   apiKeyEnv: z.string().optional(),
+
+  // Ollama-specific connection settings (used when provider === 'ollama',
+  // or as the fallback target when fallbackProvider === 'ollama').
+  ollamaHost: z.string().url().default('http://localhost:11434'),
+
+  // Optional fallback provider: if the primary provider's call fails
+  // (network error, missing API key, rate limit, model not pulled, etc.)
+  // the fallback provider is transparently used instead. This is how
+  // Gemini and a local Ollama model can be used together: e.g. provider:
+  // ollama (free, offline) with fallbackProvider: gemini (higher quality,
+  // needs network + API key), or the other way around.
+  fallbackProvider: LlmProviderNameSchema.optional(),
+  fallbackModel: z.string().optional(),
+  fallbackApiKeyEnv: z.string().optional(),
 });
 
 export const VoicevoxConfigSchema = z.object({

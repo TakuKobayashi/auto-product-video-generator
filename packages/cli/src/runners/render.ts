@@ -6,6 +6,7 @@ import {
   readYaml,
   writeJson,
   logger,
+  resolveFfmpegPath,
   ScenarioSchema,
   ScriptSchema,
   TimelineSchema,
@@ -59,6 +60,8 @@ export async function runRender(options: RenderOptions): Promise<void> {
   const noSubtitles = options.subtitles === false;
   const noVoice = options.voice === false;
 
+  const ffmpegPath = resolveFfmpegPath(options.ffmpeg);
+  logger.info(`ffmpeg:       ${ffmpegPath}`);
   logger.info(`Output:       ${outputPath}`);
   logger.info(`Subtitles:    ${!noSubtitles}`);
   logger.info(`Voice:        ${!noVoice}`);
@@ -72,7 +75,7 @@ export async function runRender(options: RenderOptions): Promise<void> {
     noVoice,
     preview: options.preview ?? false,
     dryRun: options.dryRun ?? false,
-    ffmpegPath: options.ffmpeg ?? 'ffmpeg',
+    ffmpegPath,
     workDir,
   });
 

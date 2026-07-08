@@ -2,7 +2,7 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { spawn } from 'node:child_process';
-import { Script, VoicevoxConfig, logger } from '@demo-video-gen/core';
+import { Script, VoicevoxConfig, logger, resolveFfprobePath } from '@demo-video-gen/core';
 
 export interface SynthesizeOptions {
   outputDir: string;
@@ -81,7 +81,7 @@ export class VoicevoxClient {
 
   async getWavDuration(wavPath: string): Promise<number> {
     return new Promise((resolve, reject) => {
-      const proc = spawn('ffprobe', [
+      const proc = spawn(resolveFfprobePath(), [
         '-v', 'quiet',
         '-print_format', 'json',
         '-show_format',
