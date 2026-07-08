@@ -12,13 +12,17 @@
     "lint": "eslint packages/*/src/**/*.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "setup": "node scripts/install.mjs",
-    "setup:full": "node scripts/install.mjs --profile=local --with-ollama=true",
-    "setup:cloud-only": "node scripts/install.mjs --profile=local --with-ollama=false",
-    "setup:ci": "node scripts/install.mjs --profile=ci --with-ollama=true",
-    "serve": "node scripts/serve.mjs",
-    "serve:stop": "node scripts/stop.mjs",
-    "doctor": "node scripts/doctor.mjs",
+
+    "setup": "task install",
+    "setup:full": "task install PROFILE=local WITH_OLLAMA=true",
+    "setup:cloud-only": "task install PROFILE=local WITH_OLLAMA=false",
+    "setup:ci": "task install PROFILE=ci WITH_OLLAMA=true",
+
+    "serve": "task serve",
+    "serve:stop": "task stop",
+
+    "doctor": "task doctor",
+
     "task": "task"
   },
   "devDependencies": {

@@ -50,24 +50,29 @@ jobs:
       - name: Enable corepack (pnpm)
         run: corepack enable
 
-      # Single command sets up Node deps + ffmpeg/ffprobe (bundled) +
-      # Playwright Chromium. Ollama is only installed/pulled when the
-      # workflow was dispatched with llm_provider: ollama, using the "ci"
-      # machine profile (a smaller model sized for CPU-only runners —
-      # see scripts/lib/model-profiles.mjs). This calls scripts/install.mjs
-      # directly (not via the `task` binary) so it doesn't depend on the
-      # @go-task/cli postinstall download succeeding.
+      # Installs the `task` binary via the official GitHub Action rather
+      # than relying on @go-task/cli's npm postinstall — more reliable in
+      # CI, and doesn't require pnpm's build-script allowlist for it.
+      - uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      # Single command sets up Node deps + ffmpeg/ffprobe (bundled via
+      # ffmpeg-static/ffprobe-static) + Playwright Chromium. Ollama is only
+      # installed/pulled when the workflow was dispatched with
+      # llm_provider: ollama, using the "ci" machine profile (a smaller
+      # model sized for CPU-only runners — see Taskfile.yml).
       - name: Install environment
         run: |
-          node scripts/install.mjs \
-            --profile=ci \
-            --with-ollama=${{ inputs.llm_provider == 'ollama' && 'true' || 'false' }}
+          task install \
+            PROFILE=ci \
+            WITH_OLLAMA=${{ inputs.llm_provider == 'ollama' && 'true' || 'false' }}
 
       - name: Start local services
         run: |
-          node scripts/serve.mjs \
-            --profile=ci \
-            --with-ollama=${{ inputs.llm_provider == 'ollama' && 'true' || 'false' }}
+          task serve \
+            PROFILE=ci \
+            WITH_OLLAMA=${{ inputs.llm_provider == 'ollama' && 'true' || 'false' }}
         # Note: the `voicevox` service container above already provides
         # VOICEVOX on :50021, so this will detect it's healthy and only
         # start Ollama (if requested) here.

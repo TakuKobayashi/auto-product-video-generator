@@ -6,6 +6,7 @@ dist/
 # 作業ディレクトリ
 .dvg/
 output/
+.dvg-ollama-serve.log
 
 # 環境変数
 .env

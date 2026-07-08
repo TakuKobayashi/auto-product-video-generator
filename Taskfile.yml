@@ -1,30 +1,28 @@
-# Taskfile for demo-video-gen
-# https://taskfile.dev
+# Taskfile for demo-video-gen — https://taskfile.dev
 #
-# This is a convenience layer: every task here just calls one of the
-# scripts/*.mjs files, which have no dependency on Task itself and can
-# always be run directly (see the "pnpm run ..." scripts in package.json).
-# Use whichever you prefer:
-#
-#   pnpm run setup                        # always works, no Task needed
-#   npx task install                      # nicer names/descriptions, needs Task
-#   task install                          # if Task is installed globally
-#
-# `@go-task/cli` (a devDependency here) installs a `task` binary into
-# node_modules/.bin via a postinstall download from GitHub. If that download
-# is blocked by your network (e.g. a corporate proxy), just use the
-# `pnpm run ...` scripts instead — they do exactly the same thing.
+# This file is the single entry point for environment setup and local
+# service orchestration. Sequencing (what runs in what order, per-OS
+# branching, skip-if-already-done checks) lives directly here using Task's
+# built-in features (OS/ARCH vars, `platforms:`, `status:`), not in wrapper
+# scripts. The one exception is scripts/doctor.ts — a genuine diagnostics
+# script (run via tsx) that inspects Node's module resolution, which isn't
+# something a shell one-liner can do reliably.
 #
 # Profiles:
 #   PROFILE=local (default) — a dev machine with a GPU, e.g.
 #                              Ryzen 7 5800H / 64GB RAM / RTX 3050 Ti (4GB VRAM)
 #   PROFILE=ci               — GitHub Actions hosted runners (CPU only, ~7GB RAM)
-# The profile controls which local Ollama model is installed/pulled/served
-# (see scripts/lib/model-profiles.mjs for the actual model names).
 #
 # WITH_OLLAMA=true (default) — also install/serve a local LLM via Ollama.
 # WITH_OLLAMA=false          — skip Ollama entirely; use the Gemini API only
 #                               (requires GEMINI_API_KEY).
+#
+# Examples:
+#   task install                                  # local machine, full local LLM
+#   task install WITH_OLLAMA=false                 # local machine, Gemini only
+#   task install PROFILE=ci                        # CI-sized Ollama model
+#   task serve
+#   task doctor
 
 version: '3'
 
@@ -34,6 +32,19 @@ vars:
   PROFILE: '{{.PROFILE | default "local"}}'
   WITH_OLLAMA: '{{.WITH_OLLAMA | default "true"}}'
   VOICEVOX_IMAGE: '{{.VOICEVOX_IMAGE | default "voicevox/voicevox_engine:cpu-latest"}}'
+  VOICEVOX_CONTAINER: dvg-voicevox
+  OLLAMA_LOG: '.dvg-ollama-serve.log'
+
+  # Both models are Qwen2.5-Instruct (reliable JSON-schema output, which the
+  # `analyze` / `scenario generate` pipelines require), sized per profile:
+  #   local — fits an RTX 3050 Ti's 4GB VRAM with partial GPU offload; 64GB
+  #           system RAM comfortably covers the rest on CPU.
+  #   ci    — CPU-only GitHub Actions runners (~7GB RAM); a 7B model would be
+  #           too slow/heavy to pull and run within a typical job.
+  OLLAMA_MODEL_LOCAL: 'qwen2.5:7b-instruct'
+  OLLAMA_MODEL_CI: 'qwen2.5:3b-instruct'
+  OLLAMA_MODEL: >-
+    {{if eq .PROFILE "ci"}}{{.OLLAMA_MODEL_CI}}{{else}}{{.OLLAMA_MODEL_LOCAL}}{{end}}
 
 tasks:
   default:
@@ -41,50 +52,137 @@ tasks:
     cmds:
       - task --list
 
-  # ── Install (one command sets up the whole environment) ──────────────────
+  # ── Install ────────────────────────────────────────────────────────────
 
   install:
     desc: >
-      環境を一括セットアップします: Node依存関係, ffmpeg/ffprobe(自動バンドル),
+      環境を一括セットアップします: Node依存関係 (ffmpeg/ffprobeも自動ダウンロード),
       Playwright(Chromium), そして任意でOllama+ローカルLLMモデル。
       例: task install PROFILE=local WITH_OLLAMA=true
           task install PROFILE=ci WITH_OLLAMA=false
     cmds:
-      - node scripts/install.mjs --profile={{.PROFILE}} --with-ollama={{.WITH_OLLAMA}}
+      - task: install:node
+      - task: install:playwright
+      - task: install:ollama
+
+  install:node:
+    desc: "Node依存関係をインストールします (ffmpeg-static/ffprobe-staticも自動ダウンロード)"
+    cmds:
+      - pnpm install
 
   install:playwright:
-    desc: "Playwright の Chromium ブラウザのみをインストールします"
+    desc: "Playwright の Chromium ブラウザをインストールします"
     cmds:
-      - node scripts/install-playwright.mjs
+      - npx playwright install chromium
+      - task: install:playwright:linux-deps
+
+  install:playwright:linux-deps:
+    internal: true
+    platforms: [linux]
+    cmds:
+      # Needs root; best-effort locally, always succeeds on GitHub Actions runners.
+      - cmd: npx playwright install-deps chromium
+        ignore_error: true
 
   install:ollama:
-    desc: "Ollama 本体と、指定プロファイル用のモデルをインストールします"
+    desc: >
+      Ollama本体と、指定プロファイル用のモデルをインストールします。
+      WITH_OLLAMA=false の場合は何もせずスキップします。
+    status:
+      - '[ "{{.WITH_OLLAMA}}" != "true" ]'
     cmds:
-      - node scripts/install-ollama.mjs --profile={{.PROFILE}}
+      - task: install:ollama:binary
+      - 'echo "Pulling Ollama model {{.OLLAMA_MODEL}} for profile {{.PROFILE}}..."'
+      - ollama pull {{.OLLAMA_MODEL}}
 
-  # ── Serve (one command starts every local service) ────────────────────────
+  install:ollama:binary:
+    internal: true
+    status:
+      - command -v ollama
+    cmds:
+      - task: 'install:ollama:binary:{{OS}}'
+
+  install:ollama:binary:linux:
+    internal: true
+    cmds:
+      # Official installer; works unmodified on GitHub Actions ubuntu-latest
+      # runners (root, systemd available).
+      - sh -c "curl -fsSL https://ollama.com/install.sh | sh"
+
+  install:ollama:binary:darwin:
+    internal: true
+    cmds:
+      - |
+        if command -v brew >/dev/null 2>&1; then
+          brew install ollama
+        else
+          echo "Homebrew not found. Install Ollama manually: https://ollama.com/download" >&2
+          exit 1
+        fi
+
+  install:ollama:binary:windows:
+    internal: true
+    cmds:
+      - |
+        if command -v winget >/dev/null 2>&1; then
+          winget install --id Ollama.Ollama -e --accept-package-agreements --accept-source-agreements
+        else
+          echo "winget not found. Install Ollama manually: https://ollama.com/download" >&2
+          exit 1
+        fi
+
+  # ── Serve ──────────────────────────────────────────────────────────────
 
   serve:
     desc: >
       ローカルで必要なサーバーを起動します: VOICEVOX Engine (Docker) と
       任意で Ollama デーモン。既に起動していれば何もしません。
-      例: task serve PROFILE=local WITH_OLLAMA=true
     cmds:
-      - node scripts/serve.mjs --profile={{.PROFILE}} --with-ollama={{.WITH_OLLAMA}}
+      - task: serve:voicevox
+      - task: serve:ollama
+
+  serve:voicevox:
+    desc: "VOICEVOX Engine を Docker で起動します (起動済みならスキップ)"
+    status:
+      - curl -fsS http://localhost:50021/version
+    preconditions:
+      - sh: command -v docker
+        msg: "Docker が見つかりません。Docker Desktop をインストールしてください: https://www.docker.com/products/docker-desktop/"
+    cmds:
+      - cmd: docker rm -f {{.VOICEVOX_CONTAINER}}
+        ignore_error: true
+      - docker run -d --rm --name {{.VOICEVOX_CONTAINER}} -p 50021:50021 {{.VOICEVOX_IMAGE}}
+      - 'echo "VOICEVOX starting: http://localhost:50021 (first launch can take up to a minute -- run task doctor to check)"'
+
+  serve:ollama:
+    desc: "Ollama デーモンを起動します (WITH_OLLAMA=false または起動済みならスキップ)"
+    status:
+      - '[ "{{.WITH_OLLAMA}}" != "true" ] || curl -fsS http://localhost:11434/api/tags'
+    preconditions:
+      - sh: command -v ollama
+        msg: "Ollama が見つかりません。先に実行してください: task install:ollama"
+    cmds:
+      - ollama serve > {{.OLLAMA_LOG}} 2>&1 &
+      - 'echo "Ollama starting: http://localhost:11434 (log: {{.OLLAMA_LOG}}, run task doctor to check)"'
+      - 'echo "Ensuring model {{.OLLAMA_MODEL}} is pulled (first time may take a while)..."'
+      - cmd: ollama pull {{.OLLAMA_MODEL}}
+        ignore_error: true
 
   stop:
     desc: "task serve で起動したサービスを停止します (VOICEVOXコンテナ)"
     cmds:
-      - node scripts/stop.mjs
+      - cmd: docker rm -f {{.VOICEVOX_CONTAINER}}
+        ignore_error: true
+      - 'echo "Stopped. (Ollama, if running as an OS service, was left untouched.)"'
 
-  # ── Diagnostics ────────────────────────────────────────────────────────────
+  # ── Diagnostics ────────────────────────────────────────────────────────
 
   doctor:
     desc: "動作に必要な環境が揃っているか診断します"
     cmds:
-      - node scripts/doctor.mjs
+      - npx tsx scripts/doctor.ts
 
-  # ── Build / dev ─────────────────────────────────────────────────────────
+  # ── Build / dev ────────────────────────────────────────────────────────
 
   build:
     desc: "全パッケージを TypeScript でビルドします"
@@ -93,7 +191,7 @@ tasks:
 
   dev:
     desc: >
-      CLIをビルドなしで直接実行します (tsx)。以降の引数はそのままCLIに渡されます。
+      CLIをビルドなしで直接実行します (tsx)。`--` 以降の引数はそのままCLIに渡されます。
       例: task dev -- init --url http://localhost:3000
     cmds:
       - pnpm dev -- {{.CLI_ARGS}}
@@ -111,6 +209,6 @@ tasks:
       - task: install
       - task: serve
       - 'echo ""'
-      - echo "セットアップ完了。次のコマンドで動画生成を始められます:"
-      - echo "  pnpm dev -- init --url http://localhost:3000"
-      - echo "  pnpm dev -- build"
+      - 'echo "セットアップ完了。次のコマンドで動画生成を始められます:"'
+      - 'echo "  pnpm dev -- init --url http://localhost:3000"'
+      - 'echo "  pnpm dev -- build"'
