@@ -25,6 +25,7 @@ import {
 import { SceneRecorder } from '@demo-video-gen/playwright';
 import { VoicevoxClient } from '@demo-video-gen/voicevox';
 import { FfmpegRenderer } from '@demo-video-gen/renderer';
+import { resolveProjectSource, inspectProject } from '@demo-video-gen/source';
 
 interface BuildOptions {
   config?: string;
@@ -54,6 +55,8 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   await ensureDir(workDir);
 
   const summaryPath    = join(workDir, 'project-summary.json');
+  const contextPath    = join(workDir, 'source-context.json');
+  const cloneDir       = join(workDir, 'source-repo');
   const scenarioPath   = join(workDir, 'scenario.yaml');
   const scriptPath     = join(workDir, 'script.yaml');
   const srtPath        = join(workDir, 'subtitles.srt');
@@ -69,14 +72,29 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   // ── Step 1: Analyze ──────────────────────────────────────────────────────
   let summary: ProjectSummary;
   if (!options.skipAnalyze) {
-    logger.step('1/5', 'Analyzing project...');
-    const analyzer = new ProjectAnalyzer(llm);
-    summary = await analyzer.analyze(config.target.url);
+    logger.step('1/5', 'Resolving and analyzing project source...');
     if (!dryRun) {
+      const rootDir = await resolveProjectSource({ source: config.source, cloneDir });
+      const sourceContext = await inspectProject(rootDir);
+      await writeJson(contextPath, sourceContext);
+
+      const analyzer = new ProjectAnalyzer(llm);
+      summary = await analyzer.analyze(sourceContext);
       await writeJson(summaryPath, summary);
       logger.success(`Saved: ${summaryPath}`);
     } else {
+      logger.dryRun(`Would resolve source: ${config.source.repository ?? config.source.localPath}`);
+      logger.dryRun(`Would write: ${contextPath}`);
       logger.dryRun(`Would write: ${summaryPath}`);
+      summary = {
+        name: config.project.name,
+        description: '',
+        features: [],
+        targetAudience: '',
+        keyValueProps: [],
+        suggestedVideoTypes: [],
+        analyzedAt: new Date().toISOString(),
+      };
     }
   } else {
     logger.step('1/5', 'Skipping analyze (--skip-analyze)');
@@ -94,7 +112,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   if (!options.skipScenario) {
     logger.step('2/5', 'Generating scenario...');
     const generator = new ScenarioGenerator(llm);
-    const result = await generator.generate(summary, config.video);
+    const result = await generator.generate(summary, config.video, config.target.url);
     scenario = result.scenario;
     script = result.script;
 

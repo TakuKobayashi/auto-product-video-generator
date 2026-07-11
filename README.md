@@ -2,11 +2,48 @@
 
 AI-powered promotional video generator for web apps and CLI tools.
 
-- **AI generates** the scenario, narration, subtitles, and timeline (YAML/JSON)
-- **Deterministic tools** handle recording (Playwright), voice (VOICEVOX), and rendering (ffmpeg)
+- **`analyze` reads the actual project** — clones a git repo (or reads an existing
+  local checkout), then has AI read its `package.json`, README, and (for supported
+  frameworks) real discovered page routes to build a recording plan. It does not
+  guess based on a URL alone.
+- **AI generates** the scenario, narration, subtitles, and timeline (YAML/JSON) —
+  grounded in that real source, not invented from scratch
+- **Deterministic tools** handle git cloning/route discovery, recording (Playwright),
+  voice (VOICEVOX), and rendering (ffmpeg)
 - Every intermediate file is human-editable before the next step
 - **Local-first LLM**: run fully offline with Ollama, use Gemini, or combine both (automatic fallback)
 - Environment setup and local services are unified into one command each via [`Taskfile.yml`](./Taskfile.yml)
+- Web apps only for now (Playwright-based recording). Android/iOS/Unity are a future direction.
+
+---
+
+## How it works
+
+```
+1. init      --repo <git-url>  OR  --source <local-path>   (must be a git project)
+                    │
+                    ▼
+2. analyze   git clone (or use local checkout) → read package.json/README →
+             discover real page routes (Next.js App/Pages Router; generic
+             file listing fallback for other frameworks) → AI turns this
+             into project-summary.json (features, each anchored to a real route)
+                    │
+                    ▼
+3. scenario generate   AI turns project-summary.json + real routes into
+                        scenario.yaml (a recording plan: which URLs to visit,
+                        what to click) + script.yaml (narration) + subtitles.srt
+                    │
+                    ▼
+4. record    Playwright executes scenario.yaml's plan against `target.url`
+             (your app must actually be running there — this tool doesn't
+             start it for you)
+                    │
+                    ▼
+5. voice / render   VOICEVOX narration + ffmpeg compositing → output/final.mp4
+```
+
+`scenario.yaml` is the actual "recording execution plan" — human-editable between
+steps 3 and 4, same as every other intermediate file.
 
 ---
 
@@ -27,8 +64,16 @@ task serve
 # 4. Not sure everything is set up correctly? Check:
 task doctor
 
-# 5. Generate a video
-pnpm dev -- init --url http://localhost:3000
+# 5. Point it at the project you want a video for (a git repo — remote or local),
+#    and the URL where that app will actually be running (start it yourself,
+#    e.g. `npm run dev` in another terminal, before step 7).
+pnpm dev -- init --repo https://github.com/your-org/your-app.git --url http://localhost:3000
+# or, for a project you already have checked out locally:
+# pnpm dev -- init --source ../your-app --url http://localhost:3000
+
+# 6. Make sure the app is actually running at the --url you gave above.
+
+# 7. Generate the video
 pnpm dev -- build
 ```
 
@@ -52,6 +97,7 @@ The final video lands at `./output/final.mp4`.
 |------|---------|-------|
 | Node.js | ≥ 20 | |
 | pnpm | ≥ 9 | `corepack enable` gives you this for free |
+| git | any recent | required — `analyze` clones/reads real project source with it |
 | [Task](https://taskfile.dev) | ≥ 3 | auto-installed via `pnpm install` (devDependency `@go-task/cli`); can also be installed manually |
 | ffmpeg / ffprobe | — | **bundled automatically** via `ffmpeg-static` / `ffprobe-static`, no manual install needed |
 | Playwright (Chromium) | — | installed by `task install` |
@@ -156,32 +202,47 @@ Qwen2.5-Instruct (chosen for reliable JSON-schema output, which the `analyze`
 ## Commands (CLI)
 
 ### `init`
-Initialize a project config (`dvg.config.yaml`).
+Initialize a project config (`dvg.config.yaml`), pointing at the project source
+to analyze — required, since `analyze` reads real source, not just a URL.
 
 ```bash
 demo-video-gen init [directory] [options]
 
 Options:
-  -u, --url <url>     Target application URL
+  --repo <url>         Git repository URL to clone and analyze
+                        (exactly one of --repo / --source is required)
+  --source <path>       Path to an existing local git project to analyze
+  --ref <ref>            Git branch/tag/commit to check out (only with --repo)
+  -u, --url <url>          URL where the app can be reached once running
+                            (default: http://localhost:3000) — start your dev
+                            server yourself; this tool doesn't do it for you
   -t, --type <type>   Video type: teaser|shorts|demo|tutorial (default: demo)
-  -n, --name <name>   Project name
+  -n, --name <name>   Project name (default: derived from the source directory name)
   --force              Overwrite an existing dvg.config.yaml
   --dry-run           Preview config without writing
 ```
 
 ### `analyze`
-Analyze the target URL with AI and extract features.
+Resolves the project source (clones `source.repository`, or verifies
+`source.localPath` is a git repo) and inspects it deterministically — reads
+`package.json` and `README.md`, and for Next.js projects (App or Pages
+Router) discovers real page routes by walking `app/`/`pages/`. Other
+frameworks fall back to a capped file listing. That context is then handed
+to AI to extract demoable features, each anchored to a real route where
+possible.
 
 ```bash
 demo-video-gen analyze [options]
 
 Options:
   -c, --config <path>   Config file (default: dvg.config.yaml)
-  -u, --url <url>       Override target URL
+  -u, --url <url>       Override target URL (used to build feature URLs, not to fetch from)
   --dry-run
 ```
 
-Produces: `.dvg/project-summary.json`
+Produces: `.dvg/source-context.json` (deterministic — package.json summary,
+README, detected framework, discovered routes), `.dvg/project-summary.json`
+(AI-generated feature list)
 
 ### `scenario generate`
 Generate `scenario.yaml`, `script.yaml`, and `subtitles.srt` with AI.
@@ -276,7 +337,10 @@ All files under `.dvg/` are human-editable. Edit them between steps and re-run f
 
 ```
 .dvg/
-├── project-summary.json   # AI: feature extraction
+├── source-repo/            # git clone of source.repository (skipped for source.localPath)
+├── source-context.json    # deterministic: package.json summary, README, detected
+│                           # framework, discovered routes
+├── project-summary.json   # AI: feature extraction (each anchored to a real route)
 ├── scenario.yaml          # AI: scene definitions + Playwright actions  ← edit freely
 ├── script.yaml            # AI: narration timing                        ← edit freely
 ├── subtitles.srt          # deterministic: generated from script.yaml   ← edit freely
@@ -294,6 +358,15 @@ All files under `.dvg/` are human-editable. Edit them between steps and re-run f
 project:
   name: "My App"
 
+# Where AI reads the actual project from — exactly one of these two:
+source:
+  repository: "https://github.com/your-org/your-app.git"
+  # ref: "main"                        # optional
+  # localPath: "../your-app"           # use this instead of `repository`
+                                        # for an already-checked-out project
+
+# Where the running app can be reached, so Playwright can record it.
+# You still need to start it yourself (e.g. `npm run dev`).
 target:
   url: "http://localhost:3000"
   type: "web"   # web | cli
@@ -322,6 +395,19 @@ output:
 
 See [`examples/dvg.config.yaml`](./examples/dvg.config.yaml) for a fuller
 example with Gemini-only / Ollama-only / combined configurations commented in.
+
+### Route discovery
+
+`analyze` currently discovers real routes automatically for:
+
+| Framework | How |
+|---|---|
+| Next.js App Router | walks `app/` (or `src/app/`) for `page.{tsx,jsx,ts,js}` files, skips `api/` and route groups `(name)` |
+| Next.js Pages Router | walks `pages/` (or `src/pages/`), skips `_app`/`_document`/`_error`/`api/` |
+| anything else | falls back to a capped source file listing; the AI infers likely routes from it — **review `scenario.yaml` carefully in this case**, since goto URLs aren't grounded in a real route |
+
+More frameworks (Vite + a router config, Vue Router, SvelteKit, etc.) are a
+natural place to extend `@demo-video-gen/source`'s `inspector.ts`.
 
 ### LLM Providers
 
@@ -361,10 +447,10 @@ cd demo-video-gen
 task install
 task serve
 
-# Run directly with tsx (no build required)
-pnpm dev -- init --url http://localhost:3000
+# Run directly with tsx (builds automatically first — fast/incremental after the first run)
+pnpm dev -- init --repo https://github.com/your-org/your-app.git --url http://localhost:3000
 # or via task
-task dev -- init --url http://localhost:3000
+task dev -- init --repo https://github.com/your-org/your-app.git --url http://localhost:3000
 ```
 
 ### Project Structure
@@ -373,6 +459,8 @@ task dev -- init --url http://localhost:3000
 packages/
 ├── cli/          Commands (Commander) + runners
 ├── core/         Shared types (Zod), schemas, utils (incl. bundled ffmpeg/ffprobe resolution)
+├── source/       Deterministic project ingestion: git clone/local checkout,
+│                 package.json/README reading, web route discovery
 ├── ai/           LLM providers (Gemini/Ollama/...) + AI pipelines
 ├── playwright/   Browser recording
 ├── voicevox/     Voice synthesis
@@ -398,6 +486,16 @@ Taskfile.yml      The single entry point for environment setup & services
   `task` manually via https://taskfile.dev/installation/ if needed.
 - **`pnpm run build` / `pnpm dev` fails with `ERR_PNPM_IGNORED_BUILDS`** — run
   `pnpm approve-builds` and approve `ffmpeg-static`, `@go-task/cli`, `esbuild`.
+- **`demo-video-gen init` says it needs --repo or --source** — `analyze` reads
+  real project source, so `init` needs to know where that project lives:
+  `demo-video-gen init --repo <git-url> --url http://localhost:3000` or
+  `--source <local-path>` for an existing checkout (must be a git repo).
+- **`scenario.yaml`'s URLs don't match the real app** — route auto-discovery
+  only supports Next.js (App/Pages Router) right now. Check
+  `.dvg/source-context.json`'s `framework`/`routes` fields; if `routes` is
+  empty, the AI was working from a file listing instead and accuracy will be
+  lower — review and fix `goto` actions in `scenario.yaml` by hand before
+  `record`.
 - **Can't reach VOICEVOX** — make sure `task serve` was run and Docker is
   installed; check `docker logs dvg-voicevox`.
 - **Can't reach Ollama / model not found** — `ollama serve`, then

@@ -5,7 +5,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -b packages/core/tsconfig.json packages/ai/tsconfig.json packages/playwright/tsconfig.json packages/voicevox/tsconfig.json packages/renderer/tsconfig.json packages/cli/tsconfig.json",
+    "build": "tsc -b packages/core/tsconfig.json packages/source/tsconfig.json packages/ai/tsconfig.json packages/playwright/tsconfig.json packages/voicevox/tsconfig.json packages/renderer/tsconfig.json packages/cli/tsconfig.json",
     "build:watch": "tsc -b --watch packages/*/tsconfig.json",
     "dev": "pnpm run build && tsx packages/cli/src/index.ts",
     "clean": "find packages -name 'dist' -type d -exec rm -rf {} + ; find packages -name '*.tsbuildinfo' -delete",

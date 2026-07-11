@@ -11,6 +11,7 @@
 // plain sequential commands in Taskfile.yml — see the comments there.
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
 
 const require = createRequire(import.meta.url);
 
@@ -44,6 +45,10 @@ async function main(): Promise<void> {
   // Node
   const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
   check(`Node.js (${process.version})`, nodeMajor >= 20, 'Install Node.js >= 20: https://nodejs.org');
+
+  // git (required for source.repository / source.localPath analysis)
+  const gitOk = spawnSync('git', ['--version'], { stdio: 'ignore' }).status === 0;
+  check('git', gitOk, 'Install git: https://git-scm.com/downloads');
 
   // ffmpeg (bundled via ffmpeg-static, auto-downloaded by `pnpm install`)
   let ffmpegPath: string | null = null;
@@ -113,7 +118,7 @@ async function main(): Promise<void> {
   check(
     'dvg.config.yaml present in current directory',
     existsSync('dvg.config.yaml'),
-    'Run: pnpm dev -- init --url http://localhost:3000',
+    'Run: pnpm dev -- init --repo <git-url> --url http://localhost:3000',
   );
 
   console.log();

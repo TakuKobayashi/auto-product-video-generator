@@ -8,6 +8,32 @@ export const ProjectConfigSchema = z.object({
   description: z.string().optional(),
 });
 
+// Where the AI-facing project *source* comes from — this is what `analyze`
+// reads (package.json, README, route/page files) to understand what the
+// app actually does. Web-only for now (platform is implicitly "web" via
+// the route-discovery heuristics in @demo-video-gen/source); Android/iOS/
+// Unity source analysis is intentionally out of scope for v1.
+//
+// Exactly one of `repository` / `localPath` must be set:
+//   - repository: a git remote (https:// or git@ form). Shallow-cloned into
+//     `<workDir>/source-repo`.
+//   - localPath: a path to a project that's already checked out locally
+//     (must itself be a git repository — this is not "any folder").
+export const SourceConfigSchema = z
+  .object({
+    repository: z.string().optional(),
+    localPath: z.string().optional(),
+    ref: z.string().optional(), // branch / tag / commit; only meaningful with `repository`
+    installDeps: z.boolean().default(false),
+  })
+  .refine((data) => Boolean(data.repository) !== Boolean(data.localPath), {
+    message: 'Specify exactly one of source.repository or source.localPath, not both/neither.',
+  });
+export type SourceConfig = z.infer<typeof SourceConfigSchema>;
+
+// Where the app can actually be reached once it's running, so Playwright can
+// record it. This is NOT the source location — you still need to start the
+// dev server yourself (e.g. `npm run dev`) before `record`/`build` run.
 export const TargetConfigSchema = z.object({
   url: z.string().url(),
   type: z.enum(['web', 'cli']).default('web'),
@@ -59,6 +85,7 @@ export const OutputConfigSchema = z.object({
 
 export const DvgConfigSchema = z.object({
   project: ProjectConfigSchema,
+  source: SourceConfigSchema,
   target: TargetConfigSchema,
   video: VideoConfigSchema.default({}),
   llm: LlmConfigSchema.default({}),

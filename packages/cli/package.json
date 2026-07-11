@@ -28,6 +28,7 @@
     "@demo-video-gen/core": "workspace:*",
     "@demo-video-gen/playwright": "workspace:*",
     "@demo-video-gen/renderer": "workspace:*",
+    "@demo-video-gen/source": "workspace:*",
     "@demo-video-gen/voicevox": "workspace:*",
     "commander": "^12.1.0"
   },

@@ -5,6 +5,11 @@ export const FeatureSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string(),
+  // URL path this feature lives at, e.g. "/dashboard/settings" — discovered
+  // from the project's route/page files where possible (see
+  // @demo-video-gen/source), otherwise inferred by the AI. Combined with
+  // `target.url` at scenario-generation time to produce a real `goto` URL.
+  route: z.string().optional(),
   demoable: z.boolean(),
   priority: z.enum(['high', 'medium', 'low']),
 });

@@ -2,11 +2,48 @@
 
 Webアプリ・CLIツール向けのAIプロモーション動画自動生成ツールです。
 
-- **AIが担当するのは** シナリオ・ナレーション・字幕・タイムラインの生成（YAML/JSON）のみ
-- **録画（Playwright）・音声合成（VOICEVOX）・動画合成（ffmpeg）は決定論的なツールが担当**
+- **`analyze`は実際のプロジェクトを読み込みます** — gitリポジトリをclone（またはローカルの
+  既存チェックアウトを読み込み）し、`package.json`・README・（対応フレームワークの場合）
+  実際のページルートをAIに読ませて録画計画を立てます。URLだけを見て想像で生成することはしません
+- **AIが担当するのは** シナリオ・ナレーション・字幕・タイムラインの生成（YAML/JSON）— しかも
+  実際のソースコードに基づいて生成されます
+- **決定論的な処理が担当**するもの: gitクローン・ルート検出、録画（Playwright）、
+  音声合成（VOICEVOX）、動画合成（ffmpeg）
 - 各ステップの中間ファイルはすべて人間が編集可能
 - **ローカルLLMファースト**: Ollamaで完全オフライン実行、Geminiクラウド、あるいは両方を併用（自動フォールバック）も可能
 - 環境構築・サーバー起動は [`Taskfile.yml`](./Taskfile.yml) にコマンド1つずつで集約
+- 現時点ではWebアプリのみ対応（Playwrightによる録画のため）。Android/iOS/Unity対応は将来の拡張予定です
+
+---
+
+## 全体の流れ
+
+```
+1. init      --repo <git URL>  または  --source <ローカルパス>  （gitプロジェクトである必要あり）
+                    │
+                    ▼
+2. analyze   git clone（またはローカルのチェックアウトをそのまま使用）
+             → package.json / README を読み込み
+             → 実際のページルートを検出（Next.js App Router / Pages Router に対応。
+               それ以外のフレームワークはファイル一覧のフォールバック）
+             → AIがこれを基に project-summary.json を生成（各機能に実在するルートを紐付け）
+                    │
+                    ▼
+3. scenario generate   AIが project-summary.json + 実在するルート一覧から
+                        scenario.yaml（録画計画: どのURLを訪れ、何をクリックするか）
+                        + script.yaml（ナレーション） + subtitles.srt を生成
+                    │
+                    ▼
+4. record    Playwrightが scenario.yaml の計画通りに `target.url` に対して操作を実行
+             （そのURLで実際にアプリが起動している必要があります。起動自体はこのツールでは
+               行いません — 事前に `npm run dev` 等で起動しておいてください）
+                    │
+                    ▼
+5. voice / render   VOICEVOXナレーション + ffmpeg合成 → output/final.mp4
+```
+
+`scenario.yaml`こそが本来の「録画実行計画」です。他の中間ファイルと同様、ステップ3と4の間で
+自由に人間が編集できます。
 
 ---
 
@@ -28,21 +65,29 @@ task serve
 # 4. 環境が整っているか不安なときは診断コマンドを実行
 task doctor
 
-# 5. 動画を生成する
-pnpm dev -- init --url http://localhost:3000
+# 5. 動画化したいプロジェクト（gitリポジトリ。リモートでもローカルでも可）と、
+#    そのアプリが実際に起動するURLを指定します
+#    （URLで実際にアプリが動くようにするのは自分で行ってください。例えば別ターミナルで npm run dev）
+pnpm dev -- init --repo https://github.com/your-org/your-app.git --url http://localhost:3000
+# ローカルに既にチェックアウト済みのプロジェクトの場合:
+# pnpm dev -- init --source ../your-app --url http://localhost:3000
+
+# 6. 上で指定したURLで実際にアプリが起動していることを確認してください
+
+# 7. 動画を生成する
 pnpm dev -- build
 ```
 
 `task` コマンドが手元に無い場合は、まず [Taskのインストール方法](https://taskfile.dev/installation/)
-を参照してください（`pnpm install` で入る `@go-task/cli` からも自動的に使えるようになります）。
-`package.json` にも `pnpm run setup` / `pnpm run serve` / `pnpm run doctor` という
-同じ内容のエイリアスを用意しています（内部では `task install` 等をそのまま呼んでいます）。
+を参照してください（`pnpm install`で入る`@go-task/cli`からも自動的に使えるようになります）。
+`package.json`にも`pnpm run setup` / `pnpm run serve` / `pnpm run doctor`という
+同じ内容のエイリアスを用意しています（内部では`task install`等をそのまま呼んでいます）。
 
-生成された動画は `./output/final.mp4` に出力されます。
+生成された動画は`./output/final.mp4`に出力されます。
 
-> 「そもそもどう動かせばいいかわからない」という場合は、まず `task doctor` を実行してみてください。
+> 「そもそもどう動かせばいいかわからない」という場合は、まず`task doctor`を実行してみてください。
 > 何が足りていないかをチェックリスト形式で表示します。
-> 利用可能な全タスクは `task --list` で確認できます（各タスクの説明は日本語で書かれています）。
+> 利用可能な全タスクは`task --list`で確認できます（各タスクの説明は日本語で書かれています）。
 
 ---
 
@@ -52,6 +97,7 @@ pnpm dev -- build
 |------|---------|-------|
 | Node.js | ≥ 20 | |
 | pnpm | ≥ 9 | `corepack enable` で導入できます |
+| git | 最近のバージョン | 必須 — `analyze`が実際のプロジェクトソースをclone/読み込みするために使用 |
 | [Task](https://taskfile.dev) | ≥ 3 | `pnpm install` で自動導入（devDependency `@go-task/cli`）。手動導入も可 |
 | ffmpeg / ffprobe | — | **`ffmpeg-static` / `ffprobe-static` により自動ダウンロードされるため手動インストール不要** |
 | Playwright（Chromium） | — | `task install` でインストールされます |
@@ -79,7 +125,7 @@ pnpm dev -- build
 | `task stop` | `task serve`で起動したVOICEVOXコンテナを停止 |
 | `task doctor` | 環境診断（`scripts/doctor.ts`をtsxで実行） |
 | `task build` | 全パッケージをビルド |
-| `task dev -- <args>` | CLIをビルドなしで直接実行 |
+| `task dev -- <args>` | CLIを実行（初回・変更後は自動でビルドしてから実行） |
 | `task quickstart` | `install` → `serve` をまとめて実行し、次の手順を表示 |
 
 `PROFILE`（`local`がデフォルト / `ci`）と `WITH_OLLAMA`（`true`がデフォルト / `false`）は
@@ -105,7 +151,9 @@ task serve PROFILE=local WITH_OLLAMA=true
 
 （`pnpm run build` / `pnpm run dev` / `pnpm run clean` は実体そのもの（`tsc -b`・`tsx`・等）で、
 `task build` / `task dev` 側がこれらを呼び出す構造になっています。循環を避けるため
-逆方向には置き換えていません。）
+逆方向には置き換えていません。なお`pnpm run dev`は毎回`pnpm run build`を先に実行してから
+`tsx`を起動します。`tsc -b`は差分ビルドなので2回目以降はほぼ一瞬です — これにより
+「ビルドし忘れて動かない」という状態を防いでいます。）
 
 ---
 
@@ -122,12 +170,6 @@ task serve PROFILE=local WITH_OLLAMA=true
   `provider: ollama` をメインにしている限り `GEMINI_API_KEY` が未設定でもエラーには
   なりません（Ollamaが失敗して初めてGemini側のキーが必要になります）
 
-`demo-video-gen init` は実行時点の環境を見て賢くデフォルトを選びます。`init`実行時に
-`GEMINI_API_KEY` が設定されていれば `provider: gemini` + `fallbackProvider: ollama`、
-設定されていなければ `provider: ollama` + `fallbackProvider: gemini` になります。
-つまり、`dvg.config.yaml` を手で編集しなくても、今すぐ使えるものでそのまま動く状態が
-初期状態から得られます。もちろん後からどちらの設定も自由に変更できます。
-
 ```yaml
 llm:
   provider: "ollama"
@@ -140,6 +182,12 @@ llm:
 という動作になります。優先順位を逆にしたい場合は `provider` と `fallbackProvider` を
 入れ替えてください。
 
+`demo-video-gen init` は実行時点の環境を見て賢くデフォルトを選びます。`init`実行時に
+`GEMINI_API_KEY` が設定されていれば `provider: gemini` + `fallbackProvider: ollama`、
+設定されていなければ `provider: ollama` + `fallbackProvider: gemini` になります。
+つまり、`dvg.config.yaml` を手で編集しなくても、今すぐ使えるものでそのまま動く状態が
+初期状態から得られます。もちろん後からどちらの設定も自由に変更できます。
+
 ### マシンスペックによるモデルの使い分け
 
 `task install` / `task serve` は `PROFILE` 引数によって、実行するマシンに適したモデルを
@@ -151,48 +199,52 @@ llm:
 
 | プロファイル | モデル | 選定理由 |
 |---|---|---|
-| `local`（例: Ryzen 7 5800H / 64GB RAM / RTX 3050 Ti 4GB VRAM） | `qwen2.5:7b-instruct` | 約4.7GB（Q4_K_M量子化）。4GB VRAMでも部分的にGPUオフロードでき、64GBのRAMがあれば残りのレイヤーをCPU側で処理しても十分な速度が出ます。JSON出力の安定性も高く、`AIの役割`を担うのに適したバランス |
-| `ci`（GitHub Actions ホステッドランナー） | `qwen2.5:3b-instruct` | 約1.9GB（Q4_K_M量子化）。GPUのないCPUのみの環境（2コア・RAM 7GB程度）でもジョブの時間制限内に収まる軽量さを優先。同じQwen2.5-Instructファミリーのため、挙動の一貫性はできるだけ保っています |
-
-> **補足:** GitHub Actionsのホステッドランナーは標準でGPUを搭載しておらず、メモリも
-> 限られているため、`local`と全く同じ7Bモデルを使うと、モデルのダウンロード時間・
-> 推論速度の両面でジョブがタイムアウトするリスクが高くなります。そのため
-> `ci` プロファイルではモデルサイズを落としていますが、同一ファミリー・同一の
-> instructionチューニング方針のモデルを選んでいるため、生成されるJSONの構造や
-> 傾向は概ね揃います。もし大きめのセルフホストランナーを使う場合は
-> `task install PROFILE=local` を指定すれば7Bモデルも利用できます。
+| `local`（例: Ryzen 7 5800H / 64GB RAM / RTX 3050 Ti 4GB VRAM） | `qwen2.5:7b-instruct` | 約4.7GB（Q4_K_M量子化）。4GB VRAMでも部分的にGPUオフロードでき、64GBのRAMがあれば残りのレイヤーをCPU側で処理しても十分な速度が出ます |
+| `ci`（GitHub Actions ホステッドランナー） | `qwen2.5:3b-instruct` | 約1.9GB（Q4_K_M量子化）。GPUのないCPUのみの環境でもジョブの時間制限内に収まる軽量さを優先 |
 
 ---
 
 ## コマンド一覧（CLI本体）
 
 ### `init`
-プロジェクト設定ファイル（`dvg.config.yaml`）を初期化します。
+プロジェクト設定ファイル（`dvg.config.yaml`）を初期化します。`analyze`は実際のソースコードを
+読み込むため、解析対象のプロジェクトの場所指定が必須です。
 
 ```bash
 demo-video-gen init [directory] [options]
 
 Options:
-  -u, --url <url>     対象アプリケーションのURL
+  --repo <url>         解析対象のgitリポジトリURL（cloneして使用）
+                        （--repo と --source のどちらか一方が必須）
+  --source <path>       解析対象の、ローカルに既にあるgitプロジェクトへのパス
+  --ref <ref>            チェックアウトするブランチ/タグ/コミット（--repoと併用時のみ）
+  -u, --url <url>          アプリが実際に起動しているURL（デフォルト: http://localhost:3000）
+                            ※起動自体は自分で行ってください（このツールは行いません）
   -t, --type <type>   動画タイプ: teaser|shorts|demo|tutorial（デフォルト: demo）
-  -n, --name <name>   プロジェクト名
+  -n, --name <name>   プロジェクト名（デフォルト: ソースのディレクトリ名から自動生成）
   --force              既存の dvg.config.yaml を上書き
   --dry-run           ファイルを書き込まずプレビューのみ
 ```
 
 ### `analyze`
-対象URLをAIで解析し、機能を抽出します。
+プロジェクトソースを解決（`source.repository`ならclone、`source.localPath`なら
+gitリポジトリであることを検証）し、決定論的に中身を調査します —
+`package.json`とREADMEを読み、Next.js（App Router / Pages Router）の場合は
+`app/`・`pages/`を走査して実在するページルートを検出します。それ以外のフレームワークは
+容量制限付きのファイル一覧にフォールバックします。この情報をAIに渡し、実在するルートに
+紐付けられた形で機能一覧を抽出します。
 
 ```bash
 demo-video-gen analyze [options]
 
 Options:
   -c, --config <path>   設定ファイル（デフォルト: dvg.config.yaml）
-  -u, --url <url>       対象URLを上書き
+  -u, --url <url>       対象URLを上書き（機能ごとのURL組み立てに使用。取得先ではありません）
   --dry-run
 ```
 
-生成物: `.dvg/project-summary.json`
+生成物: `.dvg/source-context.json`（決定論的処理の結果 — package.jsonの要約、README、
+検出されたフレームワーク、発見済みルート）、`.dvg/project-summary.json`（AI生成の機能一覧）
 
 ### `scenario generate`
 AIで `scenario.yaml`・`script.yaml`・`subtitles.srt` を生成します。
@@ -288,7 +340,9 @@ Options:
 
 ```
 .dvg/
-├── project-summary.json   # AI: 機能抽出結果
+├── source-repo/            # source.repository のgit clone先（source.localPathの場合は無し）
+├── source-context.json    # 決定論的処理: package.jsonの要約、README、検出フレームワーク、発見済みルート
+├── project-summary.json   # AI: 機能抽出結果（各機能に実在するルートを紐付け）
 ├── scenario.yaml          # AI: シーン定義 + Playwright操作            ← 自由に編集可
 ├── script.yaml            # AI: ナレーションのタイミング                ← 自由に編集可
 ├── subtitles.srt          # 決定論的処理: script.yamlから自動生成       ← 自由に編集可
@@ -306,6 +360,15 @@ Options:
 project:
   name: "My App"
 
+# AIが実際のプロジェクトを読み込む場所 — 以下の2つのうちどちらか一方
+source:
+  repository: "https://github.com/your-org/your-app.git"
+  # ref: "main"                        # 任意
+  # localPath: "../your-app"           # repository の代わりにこちらを使う場合
+                                        # （既にローカルにチェックアウト済みのプロジェクト向け）
+
+# 実際にアプリが起動しているURL。Playwrightがここに対して録画します。
+# 起動自体は自分で行う必要があります（例: npm run dev）。
 target:
   url: "http://localhost:3000"
   type: "web"   # web | cli
@@ -334,6 +397,19 @@ output:
 
 サンプル設定は [`examples/dvg.config.yaml`](./examples/dvg.config.yaml) を参照してください
 （Gemini単体・Ollama単体・併用の3パターンをコメントで併記しています）。
+
+### ルート検出について
+
+`analyze`は現時点で以下のフレームワークに対応した自動ルート検出を行います。
+
+| フレームワーク | 検出方法 |
+|---|---|
+| Next.js App Router | `app/`（または`src/app/`）を走査し`page.{tsx,jsx,ts,js}`を検出。`api/`とルートグループ`(name)`は除外 |
+| Next.js Pages Router | `pages/`（または`src/pages/`）を走査。`_app`/`_document`/`_error`/`api/`は除外 |
+| それ以外 | 容量制限付きのファイル一覧にフォールバックし、AIがそこから推測します。**この場合`scenario.yaml`は生成後に必ず確認してください**（goto先URLが実在するルートに基づいていないため） |
+
+Vite+ルーター設定、Vue Router、SvelteKitなど他のフレームワーク対応は、
+`@demo-video-gen/source`の`inspector.ts`を拡張することで追加できます。
 
 ### LLMプロバイダー一覧
 
@@ -374,10 +450,10 @@ cd demo-video-gen
 task install
 task serve
 
-# tsxで直接実行（ビルド不要）
-pnpm dev -- init --url http://localhost:3000
+# tsxで実行（初回・変更後は自動でビルドしてから実行されます）
+pnpm dev -- init --repo https://github.com/your-org/your-app.git --url http://localhost:3000
 # もしくは task 経由
-task dev -- init --url http://localhost:3000
+task dev -- init --repo https://github.com/your-org/your-app.git --url http://localhost:3000
 ```
 
 ### プロジェクト構成
@@ -387,6 +463,8 @@ packages/
 ├── cli/          コマンド定義（Commander） + 実行ロジック（runners）
 ├── core/         共通の型定義（Zod）・スキーマ・ユーティリティ
 │                 （バンドルされたffmpeg/ffprobeの自動検出ロジックも含む）
+├── source/       決定論的なプロジェクト取り込み処理: gitクローン/ローカル読み込み、
+│                 package.json・README読み込み、Webルート検出
 ├── ai/           LLMプロバイダー（Gemini / Ollama / ...） + AIパイプライン
 ├── playwright/   ブラウザ録画
 ├── voicevox/     音声合成
@@ -439,6 +517,29 @@ pnpm approve-builds
 を選択してください）。このリポジトリの `pnpm-workspace.yaml` にはすでに
 `allowBuilds` として承認済みの設定が入っていますが、pnpmのバージョンや環境によっては
 再承認が必要になる場合があります。
+
+### `demo-video-gen init` が「--repo か --source が必要」と言ってエラーになる
+
+`analyze`は実際のプロジェクトソースコードを読み込む設計のため、`init`の時点で
+解析対象のgitプロジェクトを指定する必要があります。
+
+```bash
+demo-video-gen init --repo https://github.com/user/repo.git --url http://localhost:3000
+# または
+demo-video-gen init --source ../my-local-project --url http://localhost:3000
+```
+
+`--source`に指定したパスがgitリポジトリでない場合もエラーになります（`git init`されている
+必要があります）。
+
+### `scenario.yaml`のURLが実際のページと合っていない
+
+対象フレームワークで自動ルート検出が効いていない可能性があります。
+`.dvg/source-context.json`を開いて`framework`と`routes`を確認してください。
+`routes`が空の場合、AIはファイル一覧から推測しているため精度が落ちます。
+現時点で自動検出に対応しているのはNext.js（App Router / Pages Router）のみです。
+それ以外のフレームワークの場合は、生成された`scenario.yaml`の`goto`アクションを
+手動で修正してから`record`を実行してください。
 
 ### VOICEVOXに接続できない
 

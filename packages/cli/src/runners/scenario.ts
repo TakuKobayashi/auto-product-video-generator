@@ -61,7 +61,7 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
 
   const llm = createLlmProvider(config.llm);
   const generator = new ScenarioGenerator(llm);
-  const { scenario, script } = await generator.generate(summary, videoConfig);
+  const { scenario, script } = await generator.generate(summary, videoConfig, config.target.url);
 
   await writeYaml(scenarioPath, scenario);
   logger.success(`Saved: ${scenarioPath}`);

@@ -1,8 +1,11 @@
 import { join, resolve, basename } from 'node:path';
 import { existsSync } from 'node:fs';
-import { createDefaultConfig, saveConfig, logger } from '@demo-video-gen/core';
+import { createDefaultConfig, saveConfig, logger, SourceConfig } from '@demo-video-gen/core';
 
 interface InitOptions {
+  repo?: string;
+  source?: string;
+  ref?: string;
   type?: string;
   url?: string;
   name?: string;
@@ -13,6 +16,21 @@ interface InitOptions {
 export async function runInit(directory: string, options: InitOptions): Promise<void> {
   logger.header('demo-video-gen init');
 
+  if (!options.repo && !options.source) {
+    logger.error('You must specify exactly one of --repo <git-url> or --source <local-path>.');
+    logger.error('');
+    logger.error('demo-video-gen analyzes an actual (version-controlled) project to plan the');
+    logger.error('recording, so it needs to know where that project lives:');
+    logger.error('  demo-video-gen init --repo https://github.com/user/repo.git --url http://localhost:3000');
+    logger.error('  demo-video-gen init --source ../my-local-project --url http://localhost:3000');
+    process.exit(1);
+  }
+
+  if (options.repo && options.source) {
+    logger.error('Specify only one of --repo or --source, not both.');
+    process.exit(1);
+  }
+
   const configPath = join(directory, 'dvg.config.yaml');
 
   if (existsSync(configPath) && !options.dryRun && !options.force) {
@@ -22,9 +40,13 @@ export async function runInit(directory: string, options: InitOptions): Promise<
   }
 
   const url = options.url ?? 'http://localhost:3000';
-  const name = options.name ?? basename(resolve(directory));
+  const name = options.name ?? basename(resolve(options.source ?? directory));
 
-  const config = createDefaultConfig(name, url);
+  const source: SourceConfig = options.repo
+    ? { repository: options.repo, ref: options.ref, installDeps: false }
+    : { localPath: options.source, installDeps: false };
+
+  const config = createDefaultConfig(name, url, source);
   config.video.type = (options.type as 'teaser' | 'shorts' | 'demo' | 'tutorial') ?? 'demo';
 
   if (options.dryRun) {
@@ -38,13 +60,17 @@ export async function runInit(directory: string, options: InitOptions): Promise<
   logger.success(`Created: ${configPath}`);
   logger.info('');
   logger.info(
+    `Source: ${options.repo ? `git repository ${options.repo}${options.ref ? ` (ref: ${options.ref})` : ''}` : `local path ${resolve(options.source!)}`}`,
+  );
+  logger.info(`Target: ${url} (make sure the app is actually running here before 'record'/'build')`);
+  logger.info(
     `LLM: provider=${config.llm.provider} (${
       config.llm.provider === 'gemini' ? 'GEMINI_API_KEY was set' : 'GEMINI_API_KEY was not set'
     }), fallbackProvider=${config.llm.fallbackProvider}`,
   );
   logger.info('');
   logger.info('Next steps:');
-  logger.dim(`  1. Edit dvg.config.yaml to set your target URL and LLM provider`);
+  logger.dim(`  1. Make sure the app is running at ${url} (e.g. npm run dev in another terminal)`);
   logger.dim(`  2. Run: demo-video-gen analyze`);
   logger.dim(`  3. Run: demo-video-gen scenario generate`);
   logger.dim(`  4. Run: demo-video-gen build`);

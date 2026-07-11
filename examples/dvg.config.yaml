@@ -2,6 +2,20 @@ project:
   name: "My Web App"
   description: "An awesome web application"
 
+# Where the AI reads the actual project from, to plan the recording.
+# Exactly one of repository / localPath — pick ONE of the two blocks below.
+source:
+  # Option A — a remote git repository (cloned into .dvg/source-repo):
+  repository: "https://github.com/your-org/your-repo.git"
+  # ref: "main"              # optional branch/tag/commit
+  #
+  # Option B — a project you already have checked out locally
+  # (must itself be a git repository):
+  # localPath: "../my-local-project"
+
+# Where the app can actually be reached once it's running, so Playwright can
+# record it. Start your dev server yourself (e.g. `npm run dev`) before
+# running `record` / `build` — this tool does not start it for you.
 target:
   url: "http://localhost:3000"
   type: "web"
@@ -23,7 +37,7 @@ llm:
   #
   # Option B — fully local via Ollama (no API key, no network needed):
   #   provider: "ollama"
-  #   model: "qwen2.5:7b-instruct"   # see scripts/lib/model-profiles.mjs
+  #   model: "qwen2.5:7b-instruct"   # see Taskfile.yml's vars: block
   #   ollamaHost: "http://localhost:11434"
   #
   # Option C — use both together: try Ollama first, fall back to Gemini

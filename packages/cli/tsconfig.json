@@ -10,6 +10,7 @@
     { "path": "../ai" },
     { "path": "../playwright" },
     { "path": "../voicevox" },
-    { "path": "../renderer" }
+    { "path": "../renderer" },
+    { "path": "../source" }
   ]
 }

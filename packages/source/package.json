@@ -1,7 +1,7 @@
 {
-  "name": "@demo-video-gen/ai",
+  "name": "@demo-video-gen/source",
   "version": "0.1.0",
-  "description": "AI/LLM integration for demo-video-gen",
+  "description": "Deterministic project source ingestion for demo-video-gen: git clone/local checkout + web route discovery",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,8 +17,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@demo-video-gen/core": "workspace:*",
-    "@demo-video-gen/source": "workspace:*",
-    "@google/generative-ai": "^0.21.0"
+    "@demo-video-gen/core": "workspace:*"
   }
 }

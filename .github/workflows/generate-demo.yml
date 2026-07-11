@@ -3,16 +3,23 @@ name: Generate Demo Video
 on:
   workflow_dispatch:
     inputs:
+      repo_url:
+        description: "Git repository URL to analyze (the project the video is about)"
+        required: true
+      repo_ref:
+        description: "Branch/tag/commit to check out (optional)"
+        required: false
+        default: ""
+      target_url:
+        description: "URL where the app will be running (started by a step you add below, or a deployed URL)"
+        required: true
+        default: "http://localhost:3000"
       video_type:
         description: "Video type"
         required: true
         default: "demo"
         type: choice
         options: [teaser, shorts, demo, tutorial]
-      target_url:
-        description: "Target application URL"
-        required: true
-        default: "http://localhost:3000"
       preview:
         description: "Render preview quality (faster)"
         required: false
@@ -68,6 +75,11 @@ jobs:
             PROFILE=ci \
             WITH_OLLAMA=${{ inputs.llm_provider == 'ollama' && 'true' || 'false' }}
 
+      # demo-video-gen's bin/ loads packages/cli/dist/index.js — it has to
+      # be built before `pnpm demo-video-gen ...` will work.
+      - name: Build demo-video-gen
+        run: task build
+
       - name: Start local services
         run: |
           task serve \
@@ -77,19 +89,27 @@ jobs:
         # VOICEVOX on :50021, so this will detect it's healthy and only
         # start Ollama (if requested) here.
 
+      # NOTE: this only analyzes and records against `target_url` — it does
+      # NOT start your app for you. If the app being demoed needs to be
+      # running (e.g. a Next.js dev server) add a step here to start it
+      # in the background before "Analyze & build video" runs, and make
+      # sure `target_url` matches wherever it ends up listening.
+
       - name: Initialize project config
         run: |
           pnpm demo-video-gen init \
+            --repo "${{ inputs.repo_url }}" \
+            ${{ inputs.repo_ref != '' && format('--ref "{0}"', inputs.repo_ref) || '' }} \
             --url "${{ inputs.target_url }}" \
             --type "${{ inputs.video_type }}"
 
       - name: Set LLM provider in config
         if: inputs.llm_provider == 'ollama'
         run: |
-          sed -i 's/provider: "gemini"/provider: "ollama"/' dvg.config.yaml
-          sed -i 's/model: "gemini-2.5-pro"/model: "qwen2.5:3b-instruct"/' dvg.config.yaml
+          sed -i 's/provider: ollama/provider: ollama/; s/provider: gemini/provider: ollama/' dvg.config.yaml
+          sed -i 's/model: gemini-2.5-pro/model: qwen2.5:3b-instruct/' dvg.config.yaml
 
-      - name: Build video
+      - name: Analyze & build video
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
@@ -116,9 +136,10 @@ jobs:
         with:
           name: dvg-workdir-${{ github.run_id }}
           path: |
+            .dvg/source-context.json
+            .dvg/project-summary.json
             .dvg/scenario.yaml
             .dvg/script.yaml
             .dvg/subtitles.srt
             .dvg/timeline.json
-            .dvg/project-summary.json
           retention-days: 7
