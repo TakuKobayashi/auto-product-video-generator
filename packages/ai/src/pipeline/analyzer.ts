@@ -1,6 +1,7 @@
-import { ProjectSummary, ProjectSummarySchema, logger } from '@demo-video-gen/core';
+import { ProjectSummary, ProjectSummarySchema, logger, withHeartbeat } from '@demo-video-gen/core';
 import { ProjectSourceContext } from '@demo-video-gen/source';
 import { LlmProvider } from '../llm/provider.js';
+import { generateValidatedJson } from '../utils/validated-json.js';
 
 const SYSTEM_PROMPT = `You are a video production expert analyzing a web application's source code
 to plan a promotional demo video.
@@ -15,7 +16,7 @@ Respond ONLY with a JSON object matching this TypeScript type:
   name: string;
   description: string;
   features: Array<{
-    id: string;
+    id: string;                 // a short slug string, e.g. "dashboard-overview"
     title: string;
     description: string;
     route: string;              // REQUIRED. A real URL path from the provided routes list
@@ -35,10 +36,19 @@ export class ProjectAnalyzer {
 
   async analyze(context: ProjectSourceContext): Promise<ProjectSummary> {
     logger.step('analyze', 'Calling LLM to analyze project source...');
+    logger.info('  This can take a while, especially on local models — progress prints every few seconds.');
 
     const prompt = buildPrompt(context);
-    const raw = await this.llm.generateJson<unknown>(prompt, SYSTEM_PROMPT);
-    return ProjectSummarySchema.parse(raw);
+
+    const summary = await withHeartbeat(
+      'project analysis',
+      generateValidatedJson<ProjectSummary>(this.llm, ProjectSummarySchema, prompt, SYSTEM_PROMPT, {
+        label: 'analyze',
+      }),
+    );
+
+    logger.success(`Analysis complete: ${summary.features.length} feature(s) identified.`);
+    return summary;
   }
 }
 

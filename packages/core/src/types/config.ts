@@ -25,6 +25,15 @@ export const SourceConfigSchema = z
     localPath: z.string().optional(),
     ref: z.string().optional(), // branch / tag / commit; only meaningful with `repository`
     installDeps: z.boolean().default(false),
+    // Command to start the app's dev server, run from the source root
+    // (e.g. "npm run dev", "pnpm dev"). If set, `record`/`build` will
+    // automatically run it (installing deps first if `installDeps` is
+    // true) whenever `target.url` isn't already reachable, instead of
+    // requiring you to start it yourself in another terminal. Left unset
+    // by default — `analyze` will suggest one it detects from
+    // package.json's scripts (prefers "dev", falls back to "start") and
+    // save it into dvg.config.yaml for you to confirm/edit.
+    startCommand: z.string().optional(),
   })
   .refine((data) => Boolean(data.repository) !== Boolean(data.localPath), {
     message: 'Specify exactly one of source.repository or source.localPath, not both/neither.',

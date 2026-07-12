@@ -45,6 +45,12 @@ AI-powered promotional video generator for web apps and CLI tools.
 `scenario.yaml` is the actual "recording execution plan" — human-editable between
 steps 3 and 4, same as every other intermediate file.
 
+LLM calls print a heartbeat ("... still working, Ns elapsed") every few
+seconds so a slow local model doesn't look like the command has frozen. If
+the LLM's JSON response doesn't match the expected schema, the exact
+validation errors are fed back to it automatically (up to 2 retries) before
+giving up with a readable error.
+
 ---
 
 ## Quick Start
@@ -212,15 +218,29 @@ Options:
   --repo <url>         Git repository URL to clone and analyze
                         (exactly one of --repo / --source is required)
   --source <path>       Path to an existing local git project to analyze
-  --ref <ref>            Git branch/tag/commit to check out (only with --repo)
+  --ref <ref>            Git branch/tag/commit to check out with --repo
+                          (default: the repository's default branch)
+  --serve-command <cmd>   Command to auto-start the app's dev server (e.g.
+                           "npm run dev"). If omitted, `analyze` tries to
+                           detect one from package.json and saves it for you.
+  --install-deps           Run `npm install` in the source before starting
+                            the dev server (useful for a fresh clone)
   -u, --url <url>          URL where the app can be reached once running
-                            (default: http://localhost:3000) — start your dev
-                            server yourself; this tool doesn't do it for you
+                            (default: http://localhost:3000). Optional — every
+                            command that uses it (analyze/record/build) also
+                            accepts its own -u/--url, which overrides whatever
+                            is saved in dvg.config.yaml for that one run.
   -t, --type <type>   Video type: teaser|shorts|demo|tutorial (default: demo)
   -n, --name <name>   Project name (default: derived from the source directory name)
   --force              Overwrite an existing dvg.config.yaml
   --dry-run           Preview config without writing
 ```
+
+**Starting the app**: if `source.startCommand` is set (via `--serve-command`,
+or auto-detected by `analyze`), `record`/`build` will run it automatically
+whenever `target.url` isn't already reachable — you don't have to start it
+in another terminal yourself. If it's not set and the URL isn't reachable,
+you'll get a clear warning telling you to start it manually.
 
 ### `analyze`
 Resolves the project source (clones `source.repository`, or verifies
@@ -229,7 +249,13 @@ Resolves the project source (clones `source.repository`, or verifies
 Router) discovers real page routes by walking `app/`/`pages/`. Other
 frameworks fall back to a capped file listing. That context is then handed
 to AI to extract demoable features, each anchored to a real route where
-possible.
+possible. If the LLM's JSON response doesn't match the expected schema, the
+errors are fed back to it and it gets up to 2 retries before failing.
+
+If `dvg.config.yaml` doesn't already have `source.startCommand` set, this
+also detects one from package.json's scripts (`dev` → `start` → `serve` →
+`preview`, in that order) and saves it, so later `record`/`build` runs can
+start the app automatically.
 
 ```bash
 demo-video-gen analyze [options]
@@ -245,7 +271,8 @@ README, detected framework, discovered routes), `.dvg/project-summary.json`
 (AI-generated feature list)
 
 ### `scenario generate`
-Generate `scenario.yaml`, `script.yaml`, and `subtitles.srt` with AI.
+Generate `scenario.yaml`, `script.yaml`, and `subtitles.srt` with AI. Same
+retry-on-validation-failure behavior as `analyze`.
 
 ```bash
 demo-video-gen scenario generate [options]
@@ -267,7 +294,10 @@ demo-video-gen scenario validate [file]
 ```
 
 ### `record`
-Record browser interactions with Playwright.
+Record browser interactions with Playwright. Before recording, checks if
+`target.url` is reachable; if not and `source.startCommand` is set, starts it
+automatically (installing deps first if `source.installDeps` is true) and
+waits up to 60s for it to come up.
 
 ```bash
 demo-video-gen record [options]
@@ -361,12 +391,18 @@ project:
 # Where AI reads the actual project from — exactly one of these two:
 source:
   repository: "https://github.com/your-org/your-app.git"
-  # ref: "main"                        # optional
+  # ref: "main"                        # optional; defaults to the default branch
   # localPath: "../your-app"           # use this instead of `repository`
                                         # for an already-checked-out project
+  # startCommand: "npm run dev"        # auto-detected by `analyze` if unset;
+                                        # run automatically when target.url
+                                        # isn't already reachable
+  # installDeps: false                 # run `npm install` before startCommand
+                                        # (useful for a fresh clone)
 
 # Where the running app can be reached, so Playwright can record it.
-# You still need to start it yourself (e.g. `npm run dev`).
+# If source.startCommand is set, it's started automatically when this isn't
+# reachable yet; otherwise start it yourself (e.g. `npm run dev`).
 target:
   url: "http://localhost:3000"
   type: "web"   # web | cli

@@ -7,15 +7,26 @@ project:
 source:
   # Option A — a remote git repository (cloned into .dvg/source-repo):
   repository: "https://github.com/your-org/your-repo.git"
-  # ref: "main"              # optional branch/tag/commit
+  # ref: "main"              # optional branch/tag/commit; defaults to the
+                              # repository's default branch if omitted
   #
   # Option B — a project you already have checked out locally
   # (must itself be a git repository):
   # localPath: "../my-local-project"
 
+  # Command to start the app's dev server, run from the source root.
+  # If unset, `analyze` tries to detect one from package.json's scripts
+  # (dev -> start -> serve -> preview) and fills this in automatically.
+  # startCommand: "npm run dev"
+
+  # Run `npm install` before startCommand — useful for a fresh clone that
+  # doesn't have node_modules yet.
+  # installDeps: false
+
 # Where the app can actually be reached once it's running, so Playwright can
-# record it. Start your dev server yourself (e.g. `npm run dev`) before
-# running `record` / `build` — this tool does not start it for you.
+# record it. If source.startCommand is set, `record`/`build` start it
+# automatically whenever this isn't already reachable — otherwise start your
+# dev server yourself (e.g. `npm run dev`) first.
 target:
   url: "http://localhost:3000"
   type: "web"

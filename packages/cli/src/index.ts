@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import { formatUnknownError } from '@demo-video-gen/core';
 import { initCommand } from './commands/init.js';
 import { analyzeCommand } from './commands/analyze.js';
 import { scenarioCommand } from './commands/scenario.js';
@@ -12,8 +13,7 @@ import { buildCommand } from './commands/build.js';
 // (network errors, missing files, etc.) would otherwise print a raw Node.js
 // stack trace, which is more confusing than helpful for end users.
 process.on('unhandledRejection', (err) => {
-  const message = err instanceof Error ? err.message : String(err);
-  console.error(`\n✗ ${message}\n`);
+  console.error(`\n✗ ${formatUnknownError(err)}\n`);
   if (process.env.DVG_DEBUG && err instanceof Error && err.stack) {
     console.error(err.stack);
   } else {

@@ -31,3 +31,57 @@ export const logger = {
     console.log();
   },
 };
+
+/**
+ * Runs a (potentially slow — LLM calls, network, etc.) promise while
+ * printing a periodic "still working" heartbeat, so long silent pauses
+ * don't look like the CLI has frozen. Purely cosmetic — doesn't affect the
+ * result or timing of `work`.
+ */
+export async function withHeartbeat<T>(
+  label: string,
+  work: Promise<T>,
+  intervalMs = 8000,
+): Promise<T> {
+  const start = Date.now();
+  const timer = setInterval(() => {
+    const elapsed = Math.round((Date.now() - start) / 1000);
+    logger.dim(`  ... still working on ${label} (${elapsed}s elapsed)`);
+  }, intervalMs);
+
+  try {
+    return await work;
+  } finally {
+    clearInterval(timer);
+  }
+}
+
+/**
+ * Turns an unknown thrown value into a readable single-line-friendly
+ * message. In particular, formats a raw Zod validation error (issues array)
+ * as a short bullet list instead of a giant JSON dump — a safety net for
+ * any zod .parse() call that wasn't already wrapped with a nicer message.
+ */
+export function formatUnknownError(err: unknown): string {
+  if (isZodErrorLike(err)) {
+    return err.issues
+      .map((issue) => `  - ${issue.path.join('.') || '(root)'}: ${issue.message}`)
+      .join('\n');
+  }
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+interface ZodIssueLike {
+  path: (string | number)[];
+  message: string;
+}
+
+function isZodErrorLike(err: unknown): err is { issues: ZodIssueLike[] } {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'issues' in err &&
+    Array.isArray((err as { issues: unknown }).issues)
+  );
+}

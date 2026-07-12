@@ -25,7 +25,7 @@ import {
 import { SceneRecorder } from '@demo-video-gen/playwright';
 import { VoicevoxClient } from '@demo-video-gen/voicevox';
 import { FfmpegRenderer } from '@demo-video-gen/renderer';
-import { resolveProjectSource, inspectProject } from '@demo-video-gen/source';
+import { resolveProjectSource, inspectProject, detectStartCommand, ensureServerRunning } from '@demo-video-gen/source';
 
 interface BuildOptions {
   config?: string;
@@ -54,6 +54,12 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   const workDir = config.output.workDir;
   await ensureDir(workDir);
 
+  logger.info(`Source:  ${config.source.repository ?? config.source.localPath}`);
+  logger.info(`Target:  ${config.target.url}`);
+  logger.info(`Video:   ${config.video.type}, ~${config.video.duration}s`);
+  logger.info(`LLM:     ${config.llm.provider}/${config.llm.model}${config.llm.fallbackProvider ? ` (fallback: ${config.llm.fallbackProvider}/${config.llm.fallbackModel})` : ''}`);
+  logger.info('');
+
   const summaryPath    = join(workDir, 'project-summary.json');
   const contextPath    = join(workDir, 'source-context.json');
   const cloneDir       = join(workDir, 'source-repo');
@@ -69,14 +75,29 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   const llm = createLlmProvider(config.llm);
   const dryRun = options.dryRun ?? false;
 
+  // Resolved once upfront (not just in the analyze step) since the record
+  // step also needs it to know where to run source.startCommand from.
+  let rootDir: string | undefined;
+  if (!dryRun) {
+    rootDir = await resolveProjectSource({ source: config.source, cloneDir });
+  }
+
   // ── Step 1: Analyze ──────────────────────────────────────────────────────
   let summary: ProjectSummary;
   if (!options.skipAnalyze) {
-    logger.step('1/5', 'Resolving and analyzing project source...');
+    logger.step('1/5', 'Analyzing project source...');
     if (!dryRun) {
-      const rootDir = await resolveProjectSource({ source: config.source, cloneDir });
-      const sourceContext = await inspectProject(rootDir);
+      const sourceContext = await inspectProject(rootDir!);
       await writeJson(contextPath, sourceContext);
+
+      if (!config.source.startCommand) {
+        const detected = detectStartCommand(sourceContext.packageJson);
+        if (detected) {
+          config.source.startCommand = detected;
+          await saveConfig(configPath, config);
+          logger.info(`Detected dev server command '${detected}' — saved to ${configPath}.`);
+        }
+      }
 
       const analyzer = new ProjectAnalyzer(llm);
       summary = await analyzer.analyze(sourceContext);
@@ -140,6 +161,15 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   // ── Step 3: Record ───────────────────────────────────────────────────────
   if (!options.skipRecord) {
     logger.step('3/5', 'Recording browser interactions...');
+    if (!dryRun) {
+      await ensureServerRunning({
+        url: config.target.url,
+        startCommand: config.source.startCommand,
+        cwd: rootDir!,
+        installDeps: config.source.installDeps,
+        logPath: join(workDir, 'dev-server.log'),
+      });
+    }
     const recorder = new SceneRecorder();
     for (const scene of scenario.scenes) {
       await recorder.recordScene(scene, config.video, {

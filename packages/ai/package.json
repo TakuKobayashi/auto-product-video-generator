@@ -19,6 +19,7 @@
   "dependencies": {
     "@demo-video-gen/core": "workspace:*",
     "@demo-video-gen/source": "workspace:*",
-    "@google/generative-ai": "^0.21.0"
+    "@google/generative-ai": "^0.21.0",
+    "zod": "^3.23.0"
   }
 }

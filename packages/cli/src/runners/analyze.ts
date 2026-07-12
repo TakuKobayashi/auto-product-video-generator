@@ -1,7 +1,7 @@
 import { join } from 'node:path';
-import { loadConfig, writeJson, logger } from '@demo-video-gen/core';
+import { loadConfig, saveConfig, writeJson, logger } from '@demo-video-gen/core';
 import { createLlmProvider, ProjectAnalyzer } from '@demo-video-gen/ai';
-import { resolveProjectSource, inspectProject } from '@demo-video-gen/source';
+import { resolveProjectSource, inspectProject, detectStartCommand } from '@demo-video-gen/source';
 
 interface AnalyzeOptions {
   config?: string;
@@ -34,6 +34,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   }
 
   // Deterministic: resolve (clone or verify local) + inspect the actual source.
+  logger.step('source', 'Resolving project source (this may take a moment for a fresh clone)...');
   const rootDir = await resolveProjectSource({ source: config.source, cloneDir });
   const sourceContext = await inspectProject(rootDir);
 
@@ -45,6 +46,20 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
       `No routes could be auto-discovered for framework '${sourceContext.framework}'. ` +
       `The AI will infer routes from the file listing instead — review scenario.yaml carefully after generation.`,
     );
+  }
+
+  // If dvg.config.yaml doesn't already say how to start the dev server,
+  // suggest one from package.json's scripts and save it — 'record'/'build'
+  // will use it to start the app automatically instead of requiring it to
+  // already be running.
+  if (!config.source.startCommand) {
+    const detected = detectStartCommand(sourceContext.packageJson);
+    if (detected) {
+      config.source.startCommand = detected;
+      await saveConfig(configPath, config);
+      logger.info(`Detected dev server command '${detected}' — saved to ${configPath} (source.startCommand).`);
+      logger.dim(`  Edit dvg.config.yaml if this isn't right, or clear it to start the app yourself.`);
+    }
   }
 
   // AI: turn the deterministic source context into a feature summary.
