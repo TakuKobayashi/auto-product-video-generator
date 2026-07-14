@@ -36,6 +36,15 @@ export interface ProjectSourceContext {
   routes: RouteInfo[];
   /** A capped, filtered listing of source files for extra AI context when no routes were discoverable. */
   fileTree: string[];
+  /**
+   * Deterministic, file-based signals for what platform this project targets
+   * (e.g. "Podfile found (iOS/CocoaPods)"). Passed to the AI as grounding
+   * for its platform classification — see
+   * @demo-video-gen/ai's platform-classifier.ts. Not authoritative by
+   * itself (a project could have stray files from an unrelated tool), just
+   * strong evidence.
+   */
+  platformHints: string[];
 }
 
 const EXCLUDED_DIRS = new Set([
@@ -53,20 +62,32 @@ export async function inspectProject(rootDir: string): Promise<ProjectSourceCont
   const packageJson = await readPackageJson(rootDir);
   const readme = await readReadme(rootDir);
 
-  const appRouterDir = await findFirst(rootDir, ['app', 'src/app']);
-  const pagesRouterDir = await findFirst(rootDir, ['pages', 'src/pages']);
+  const deps = new Set([...(packageJson?.dependencies ?? []), ...(packageJson?.devDependencies ?? [])]);
+  const looksLikeNextProject = deps.has('next') || existsSync(join(rootDir, 'next.config.js')) || existsSync(join(rootDir, 'next.config.mjs')) || existsSync(join(rootDir, 'next.config.ts'));
+
+  // Directory presence alone isn't enough evidence — an "app/" (or "pages/")
+  // directory can exist for unrelated reasons (e.g. an Android project's
+  // app/ module). Only trust it if this actually looks like a Next.js
+  // project (an explicit dependency/config file), or if we find real
+  // page.* route files inside it.
+  const appRouterDir = looksLikeNextProject ? await findFirst(rootDir, ['app', 'src/app']) : null;
+  const pagesRouterDir = looksLikeNextProject ? await findFirst(rootDir, ['pages', 'src/pages']) : null;
 
   let framework: DetectedFramework = 'unknown';
   let routes: RouteInfo[] = [];
 
-  const deps = new Set([...(packageJson?.dependencies ?? []), ...(packageJson?.devDependencies ?? [])]);
-
   if (appRouterDir) {
-    framework = 'nextjs-app-router';
-    routes = await discoverNextAppRoutes(rootDir, appRouterDir);
+    const found = await discoverNextAppRoutes(rootDir, appRouterDir);
+    if (found.length > 0 || looksLikeNextProject) {
+      framework = 'nextjs-app-router';
+      routes = found;
+    }
   } else if (pagesRouterDir) {
-    framework = 'nextjs-pages-router';
-    routes = await discoverNextPagesRoutes(rootDir, pagesRouterDir);
+    const found = await discoverNextPagesRoutes(rootDir, pagesRouterDir);
+    if (found.length > 0 || looksLikeNextProject) {
+      framework = 'nextjs-pages-router';
+      routes = found;
+    }
   } else if (deps.has('nuxt')) {
     framework = 'nuxt';
   } else if (deps.has('@sveltejs/kit')) {
@@ -80,13 +101,15 @@ export async function inspectProject(rootDir: string): Promise<ProjectSourceCont
   }
 
   const fileTree = routes.length === 0 ? await buildFileTree(rootDir) : [];
+  const platformHints = await detectPlatformHints(rootDir, packageJson, deps);
 
   logger.success(
     `Detected: ${framework}` +
-    (routes.length > 0 ? `, ${routes.length} route(s) discovered` : ', no routes auto-discovered'),
+    (routes.length > 0 ? `, ${routes.length} route(s) discovered` : ', no routes auto-discovered') +
+    (platformHints.length > 0 ? `; platform hints: ${platformHints.length}` : ''),
   );
 
-  return { rootDir, packageJson, readme, framework, routes, fileTree };
+  return { rootDir, packageJson, readme, framework, routes, fileTree, platformHints };
 }
 
 async function readPackageJson(rootDir: string): Promise<PackageJsonSummary | null> {
@@ -217,7 +240,72 @@ async function discoverNextPagesRoutes(rootDir: string, pagesRelDir: string): Pr
   return routes;
 }
 
-/** Generic fallback when no framework-specific routes could be discovered. */
+/**
+ * Cheap, top-level(ish) file existence checks for common non-web platform
+ * markers. Deliberately shallow (a handful of readdir/existsSync calls, not
+ * a deep walk) since this only needs to produce *hints* — the AI makes the
+ * final call, grounded by these plus package.json/README.
+ *
+ * To recognize a new platform: add a check here that pushes a short,
+ * human-readable hint string, and add the platform itself to
+ * ProjectPlatformSchema in packages/core/src/types/config.ts.
+ */
+async function detectPlatformHints(
+  rootDir: string,
+  packageJson: PackageJsonSummary | null,
+  deps: Set<string>,
+): Promise<string[]> {
+  const hints: string[] = [];
+
+  let topLevel: string[] = [];
+  try {
+    topLevel = (await readdir(rootDir, { withFileTypes: true }))
+      .filter((e) => e.isDirectory() || e.isFile())
+      .map((e) => e.name);
+  } catch {
+    /* ignore */
+  }
+
+  // iOS (Xcode / Swift)
+  if (topLevel.some((n) => n.endsWith('.xcodeproj'))) hints.push('*.xcodeproj found (iOS/macOS, Xcode)');
+  if (topLevel.some((n) => n.endsWith('.xcworkspace'))) hints.push('*.xcworkspace found (iOS/macOS, Xcode)');
+  if (topLevel.includes('Podfile')) hints.push('Podfile found (iOS, CocoaPods)');
+  if (topLevel.includes('Package.swift')) hints.push('Package.swift found (Swift Package Manager)');
+
+  // Android (Gradle)
+  if (topLevel.includes('build.gradle') || topLevel.includes('build.gradle.kts')) {
+    hints.push('build.gradle(.kts) found (Android, Gradle)');
+  }
+  if (topLevel.includes('settings.gradle') || topLevel.includes('settings.gradle.kts')) {
+    hints.push('settings.gradle(.kts) found (Android, Gradle)');
+  }
+  if (existsSync(join(rootDir, 'app', 'src', 'main', 'AndroidManifest.xml'))) {
+    hints.push('app/src/main/AndroidManifest.xml found (Android)');
+  }
+
+  // Unity
+  if (existsSync(join(rootDir, 'ProjectSettings', 'ProjectVersion.txt'))) {
+    hints.push('ProjectSettings/ProjectVersion.txt found (Unity)');
+  }
+  if (topLevel.includes('Assets') && topLevel.includes('ProjectSettings')) {
+    hints.push('Assets/ + ProjectSettings/ found (Unity)');
+  }
+
+  // Flutter
+  if (topLevel.includes('pubspec.yaml')) hints.push('pubspec.yaml found (Flutter/Dart)');
+
+  // React Native (package.json-based; often also has ios/ and android/ dirs)
+  if (deps.has('react-native')) hints.push('package.json depends on react-native');
+  if (topLevel.includes('ios') && topLevel.includes('android') && packageJson) {
+    hints.push('ios/ and android/ directories alongside package.json (likely React Native or similar)');
+  }
+
+  // Desktop (Electron / Tauri)
+  if (deps.has('electron')) hints.push('package.json depends on electron');
+  if (deps.has('@tauri-apps/cli') || topLevel.includes('src-tauri')) hints.push('Tauri project (src-tauri/ or @tauri-apps/cli dependency)');
+
+  return hints;
+}
 async function buildFileTree(rootDir: string): Promise<string[]> {
   const results: string[] = [];
 

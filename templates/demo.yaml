@@ -2,6 +2,7 @@ meta:
   title: "{{PROJECT_NAME}} Demo"
   description: "A demo video showcasing {{PROJECT_NAME}}"
   type: demo
+  platform: web
   duration: 90
   language: ja
   createdAt: "{{CREATED_AT}}"

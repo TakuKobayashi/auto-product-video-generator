@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { VideoTypeSchema } from './config.js';
+import { VideoTypeSchema, ProjectPlatformSchema } from './config.js';
 
 // --- Actions ---
 
@@ -120,6 +120,12 @@ export const ScenarioMetaSchema = z.object({
   title: z.string(),
   description: z.string().default(''),
   type: VideoTypeSchema,
+  // What kind of project this recording plan is for (web/ios/android/...).
+  // Recording (Playwright) currently only supports "web" — `record`/`build`
+  // print a warning (without blocking) for any other value, since the
+  // corresponding recorder doesn't exist yet. Defaults to "web" for
+  // scenario.yaml files written before this field existed.
+  platform: ProjectPlatformSchema.default('web'),
   duration: z.number().int().positive(),
   language: z.string().default('ja'),
   createdAt: z.string().default(() => new Date().toISOString()),

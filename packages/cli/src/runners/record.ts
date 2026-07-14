@@ -29,6 +29,15 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   const rawScenario = await readYaml(scenarioPath);
   const scenario = ScenarioSchema.parse(rawScenario);
 
+  if (scenario.meta.platform !== 'web') {
+    logger.warn(
+      `scenario.yaml was generated for platform '${scenario.meta.platform}', but recording ` +
+      `currently only supports 'web' (via Playwright). Proceeding anyway, but the actions in ` +
+      `scenario.yaml (goto/click/etc.) likely won't apply to a ${scenario.meta.platform} app — ` +
+      `a dedicated recorder for that platform doesn't exist yet.`,
+    );
+  }
+
   const recordingsDir = join(workDir, 'recordings');
   const screenshotDir = join(workDir, 'screenshots');
 

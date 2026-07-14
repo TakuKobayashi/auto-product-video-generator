@@ -3,16 +3,41 @@ import { z } from 'zod';
 export const VideoTypeSchema = z.enum(['teaser', 'shorts', 'demo', 'tutorial']);
 export type VideoType = z.infer<typeof VideoTypeSchema>;
 
+// What kind of project this is, as classified by AI from the actual source
+// (see @demo-video-gen/ai's platform-classifier.ts for the prompt, and
+// @demo-video-gen/source's inspector.ts for the deterministic file-based
+// hints that ground that classification). Recorded in both
+// project-summary.json and scenario.yaml's meta.platform.
+//
+// Recording itself (Playwright) currently only supports "web" — other
+// values are still detected/recorded so the groundwork is in place, and
+// `record`/`build` warn (without blocking) if the platform isn't "web".
+//
+// To add a new platform: add it here, then add a one-line description to
+// PLATFORM_DESCRIPTIONS in packages/ai/src/pipeline/platform-classifier.ts
+// (and, ideally, a deterministic hint in packages/source/src/inspector.ts).
+export const ProjectPlatformSchema = z.enum([
+  'web',
+  'ios',
+  'android',
+  'unity',
+  'flutter',
+  'react-native',
+  'desktop',
+  'other',
+]);
+export type ProjectPlatform = z.infer<typeof ProjectPlatformSchema>;
+
 export const ProjectConfigSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
 });
 
 // Where the AI-facing project *source* comes from — this is what `analyze`
-// reads (package.json, README, route/page files) to understand what the
-// app actually does. Web-only for now (platform is implicitly "web" via
-// the route-discovery heuristics in @demo-video-gen/source); Android/iOS/
-// Unity source analysis is intentionally out of scope for v1.
+// reads (package.json, README, route/page files, platform signals) to
+// understand what the app actually does. Recording via Playwright is
+// web-only for now (see ProjectPlatformSchema above), but source analysis
+// itself already detects and records non-web platforms.
 //
 // Exactly one of `repository` / `localPath` must be set:
 //   - repository: a git remote (https:// or git@ form). Shallow-cloned into

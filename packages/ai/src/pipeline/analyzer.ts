@@ -2,27 +2,33 @@ import { ProjectSummary, ProjectSummarySchema, logger, withHeartbeat } from '@de
 import { ProjectSourceContext } from '@demo-video-gen/source';
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
+import { buildPlatformClassificationPrompt } from './platform-classifier.js';
 
-const SYSTEM_PROMPT = `You are a video production expert analyzing a web application's source code
+const SYSTEM_PROMPT = `You are a video production expert analyzing a project's source code
 to plan a promotional demo video.
 
 You will be given: the project's package.json (name/description/scripts/dependencies),
-its README, the detected framework, and either a list of discovered routes (URL paths
-mapped from actual page/route files) or a general file listing when routes couldn't be
-auto-discovered.
+its README, deterministic platform signals, the detected web framework (if any), and
+either a list of discovered routes (URL paths mapped from actual page/route files) or a
+general file listing when routes couldn't be auto-discovered.
 
 Respond ONLY with a JSON object matching this TypeScript type:
 {
   name: string;
   description: string;
+  platform: string;            // REQUIRED. One of the exact platform keys given to you
+                                // in the "Platform classification" section below.
   features: Array<{
     id: string;                 // a short slug string, e.g. "dashboard-overview"
     title: string;
     description: string;
-    route: string;              // REQUIRED. A real URL path from the provided routes list
-                                 // (e.g. "/dashboard"), or "/" if no specific route applies.
-                                 // Never invent a route that wasn't given to you.
-    demoable: boolean;          // true only if this is something a browser can visually demonstrate
+    route: string;              // A real URL path from the provided routes list
+                                 // (e.g. "/dashboard"), or "/" if no specific route
+                                 // applies. Never invent a route that wasn't given to
+                                 // you. Only meaningful when platform is "web" — for
+                                 // other platforms, just use "/".
+    demoable: boolean;          // true only if this is something that can be visually
+                                 // demonstrated in a recording
     priority: 'high' | 'medium' | 'low';
   }>;
   targetAudience: string;
@@ -47,7 +53,16 @@ export class ProjectAnalyzer {
       }),
     );
 
-    logger.success(`Analysis complete: ${summary.features.length} feature(s) identified.`);
+    logger.success(
+      `Analysis complete: platform=${summary.platform}, ${summary.features.length} feature(s) identified.`,
+    );
+    if (summary.platform !== 'web') {
+      logger.warn(
+        `Platform classified as '${summary.platform}' — recording currently only supports 'web' ` +
+        `(via Playwright). The scenario will still be generated, but 'record'/'build' will warn ` +
+        `until a recorder for this platform exists.`,
+      );
+    }
     return summary;
   }
 }
@@ -64,11 +79,15 @@ function buildPrompt(context: ProjectSourceContext): string {
         `"/" for the route field if genuinely unsure:\n` +
         context.fileTree.slice(0, 150).map((f) => `- ${f}`).join('\n');
 
-  return `Analyze this web application's source for a promotional demo video.
+  return `Analyze this project's source for a promotional demo video.
+
+${buildPlatformClassificationPrompt(context.platformHints)}
+
+## Project details
 
 Project name: ${pkg?.name ?? '(unknown)'}
 Description (from package.json): ${pkg?.description ?? '(none)'}
-Framework detected: ${context.framework}
+Web framework detected (if any): ${context.framework}
 
 package.json scripts: ${JSON.stringify(pkg?.scripts ?? {})}
 Key dependencies: ${(pkg?.dependencies ?? []).slice(0, 40).join(', ') || '(none listed)'}
@@ -77,10 +96,10 @@ ${context.readme ? `README:\n${context.readme}\n` : '(No README found)'}
 
 ${routesSection}
 
-Based on the above, identify the features that are visually demonstrable via
-browser interaction, each anchored to a real discovered route where possible.
-Also determine the target audience, key value propositions, and which video
-types suit this project.
+Based on the above, first classify the platform (see "Platform classification"),
+then identify the features that are visually demonstrable in a recording, each
+anchored to a real discovered route where possible (web only). Also determine the
+target audience, key value propositions, and which video types suit this project.
 
 Respond with JSON only.`;
 }

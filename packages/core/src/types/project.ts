@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { VideoTypeSchema } from './config.js';
+import { VideoTypeSchema, ProjectPlatformSchema } from './config.js';
 
 export const FeatureSchema = z.object({
   id: z.string(),
@@ -9,6 +9,7 @@ export const FeatureSchema = z.object({
   // from the project's route/page files where possible (see
   // @demo-video-gen/source), otherwise inferred by the AI. Combined with
   // `target.url` at scenario-generation time to produce a real `goto` URL.
+  // Only meaningful for platform: "web"; other platforms may leave this unset.
   route: z.string().optional(),
   demoable: z.boolean(),
   priority: z.enum(['high', 'medium', 'low']),
@@ -17,6 +18,9 @@ export const FeatureSchema = z.object({
 export const ProjectSummarySchema = z.object({
   name: z.string(),
   description: z.string(),
+  // AI-classified from the actual source — see
+  // @demo-video-gen/ai's platform-classifier.ts.
+  platform: ProjectPlatformSchema,
   features: z.array(FeatureSchema),
   targetAudience: z.string(),
   keyValueProps: z.array(z.string()),

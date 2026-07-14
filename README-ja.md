@@ -12,7 +12,9 @@ Webアプリ・CLIツール向けのAIプロモーション動画自動生成ツ
 - 各ステップの中間ファイルはすべて人間が編集可能
 - **ローカルLLMファースト**: Ollamaで完全オフライン実行、Geminiクラウド、あるいは両方を併用（自動フォールバック）も可能
 - 環境構築・サーバー起動は [`Taskfile.yml`](./Taskfile.yml) にコマンド1つずつで集約
-- 現時点ではWebアプリのみ対応（Playwrightによる録画のため）。Android/iOS/Unity対応は将来の拡張予定です
+- `analyze`はプロジェクトの種別（web/ios/android/unity/flutter/react-native/desktop/other）を
+  判定し`scenario.yaml`に記録します。録画そのもの（Playwright）は現時点ではWeb限定ですが、
+  それ以外のプラットフォームも判定・記録はされます（録画にはまだ非対応というだけです）
 
 ---
 
@@ -26,7 +28,9 @@ Webアプリ・CLIツール向けのAIプロモーション動画自動生成ツ
              → package.json / README を読み込み
              → 実際のページルートを検出（Next.js App Router / Pages Router に対応。
                それ以外のフレームワークはファイル一覧のフォールバック）
-             → AIがこれを基に project-summary.json を生成（各機能に実在するルートを紐付け）
+             → プラットフォームのシグナルも検出（Podfile, build.gradle, pubspec.yaml 等）
+             → AIがプラットフォーム（web/ios/android/unity/...）を判定しつつ
+               project-summary.json を生成（各機能に実在するルートを紐付け）
                     │
                     ▼
 3. scenario generate   AIが project-summary.json + 実在するルート一覧から
@@ -440,6 +444,35 @@ output:
 
 Vite+ルーター設定、Vue Router、SvelteKitなど他のフレームワーク対応は、
 `@demo-video-gen/source`の`inspector.ts`を拡張することで追加できます。
+
+### プロジェクト種別の判定（platform）
+
+`analyze`は、そのプロジェクトが**どんな種類**か（`web` / `ios` / `android` / `unity` /
+`flutter` / `react-native` / `desktop` / `other`）も判定し、`.dvg/project-summary.json`と
+`scenario.yaml`の`meta.platform`の両方に記録します。この判定は、実際のファイルに基づく
+決定論的なシグナル（`Podfile`があればiOS、`build.gradle`/`AndroidManifest.xml`があれば
+Android、`ProjectSettings/`があればUnity、`pubspec.yaml`があればFlutter、など —
+`packages/source/src/inspector.ts`の`detectPlatformHints()`を参照）をpackage.json・READMEと
+一緒にAIへ渡すことで、当て推量ではなく根拠のある判定にしています。
+
+録画そのもの（Playwright）は現時点で`platform: web`のみ対応しています。
+`scenario.yaml`がそれ以外のプラットフォーム向けに生成されていた場合、
+`record`/`build`は**処理を止めずに警告だけ**表示します（そのプラットフォーム用の
+録画実装がまだ存在しないため）。判定結果自体はどちらにしても記録されるので、
+将来Android/iOS/Unity用の録画実装が追加された際にすぐ活用できます。
+
+**新しいプラットフォームへの対応**は、意図的に1箇所に集約されています。
+`packages/ai/src/pipeline/platform-classifier.ts`が`PLATFORM_DESCRIPTIONS`
+（各プラットフォームの一行説明。LLMへの選択肢として提示されます）と
+`buildPlatformClassificationPrompt()`（説明文と決定論的シグナルを組み合わせて
+プロンプトのセクションを組み立てる関数）をエクスポートしています。新しい
+プラットフォームを追加する手順:
+1. `packages/core/src/types/config.ts`の`ProjectPlatformSchema`に追加
+2. `PLATFORM_DESCRIPTIONS`に説明を追加
+3. （推奨）`detectPlatformHints()`に決定論的なシグナル検出を追加
+
+これ以外のコード変更は不要です — `analyzer.ts`と`scenario-generator.ts`は
+返ってきた`platform`の値をそのまま使うだけです。
 
 ### LLMプロバイダー一覧
 

@@ -91,7 +91,13 @@ Respond with JSON only.`;
       ),
     );
 
-    logger.success(`Scenario generated: ${scenario.scenes.length} scene(s).`);
+    // The platform was already classified deterministically-grounded in
+    // `analyze` (see platform-classifier.ts) — stamp it here rather than
+    // letting this LLM call re-decide it, so scenario.yaml always agrees
+    // with project-summary.json.
+    scenario.meta.platform = summary.platform;
+
+    logger.success(`Scenario generated: platform=${scenario.meta.platform}, ${scenario.scenes.length} scene(s).`);
     return { scenario, script };
   }
 }

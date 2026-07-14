@@ -2,6 +2,7 @@ meta:
   title: "{{PROJECT_NAME}} Teaser"
   description: "Short teaser for {{PROJECT_NAME}}"
   type: teaser
+  platform: web
   duration: 30
   language: ja
   createdAt: "{{CREATED_AT}}"

@@ -110,6 +110,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       summary = {
         name: config.project.name,
         description: '',
+        platform: 'web',
         features: [],
         targetAudience: '',
         keyValueProps: [],
@@ -161,6 +162,13 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   // ── Step 3: Record ───────────────────────────────────────────────────────
   if (!options.skipRecord) {
     logger.step('3/5', 'Recording browser interactions...');
+    if (scenario.meta.platform !== 'web') {
+      logger.warn(
+        `scenario.yaml was generated for platform '${scenario.meta.platform}', but recording ` +
+        `currently only supports 'web' (via Playwright). Proceeding anyway, but this likely ` +
+        `won't produce a usable recording — a dedicated recorder for that platform doesn't exist yet.`,
+      );
+    }
     if (!dryRun) {
       await ensureServerRunning({
         url: config.target.url,

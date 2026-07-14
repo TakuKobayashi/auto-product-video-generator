@@ -13,7 +13,9 @@ AI-powered promotional video generator for web apps and CLI tools.
 - Every intermediate file is human-editable before the next step
 - **Local-first LLM**: run fully offline with Ollama, use Gemini, or combine both (automatic fallback)
 - Environment setup and local services are unified into one command each via [`Taskfile.yml`](./Taskfile.yml)
-- Web apps only for now (Playwright-based recording). Android/iOS/Unity are a future direction.
+- `analyze` classifies the project's platform (web/ios/android/unity/flutter/react-native/desktop/other)
+  and records it in `scenario.yaml`. Recording itself (Playwright) is web-only for now — other
+  platforms are detected and recorded, just not recordable yet.
 
 ---
 
@@ -25,8 +27,10 @@ AI-powered promotional video generator for web apps and CLI tools.
                     ▼
 2. analyze   git clone (or use local checkout) → read package.json/README →
              discover real page routes (Next.js App/Pages Router; generic
-             file listing fallback for other frameworks) → AI turns this
-             into project-summary.json (features, each anchored to a real route)
+             file listing fallback for other frameworks) + platform signals
+             (Podfile, build.gradle, pubspec.yaml, ...) → AI classifies the
+             platform (web/ios/android/unity/...) and turns this into
+             project-summary.json (features, each anchored to a real route)
                     │
                     ▼
 3. scenario generate   AI turns project-summary.json + real routes into
@@ -444,6 +448,36 @@ example with Gemini-only / Ollama-only / combined configurations commented in.
 
 More frameworks (Vite + a router config, Vue Router, SvelteKit, etc.) are a
 natural place to extend `@demo-video-gen/source`'s `inspector.ts`.
+
+### Platform classification
+
+`analyze` also classifies what *kind* of project this is — `web`, `ios`,
+`android`, `unity`, `flutter`, `react-native`, `desktop`, or `other` — and
+records it as `platform` in both `.dvg/project-summary.json` and
+`scenario.yaml`'s `meta.platform`. This is grounded by deterministic
+file-based signals (`Podfile` → iOS, `build.gradle`/`AndroidManifest.xml` →
+Android, `ProjectSettings/` → Unity, `pubspec.yaml` → Flutter, etc. — see
+`detectPlatformHints()` in `packages/source/src/inspector.ts`), which are
+passed to the AI alongside package.json/README so it isn't guessing blind.
+
+Recording itself (Playwright) currently only supports `platform: web` —
+`record`/`build` print a warning (without blocking) if `scenario.yaml` was
+generated for anything else, since no recorder for that platform exists yet.
+The classification is still recorded either way, so the scenario file is
+future-proofed for when other recorders (Android/iOS/Unity) are added.
+
+**Extending this to a new platform** is deliberately isolated to one place:
+`packages/ai/src/pipeline/platform-classifier.ts` exports
+`PLATFORM_DESCRIPTIONS` (a one-line description per platform, shown to the
+LLM as its classification options) and `buildPlatformClassificationPrompt()`
+(assembles that + the deterministic hints into a prompt section). To add a
+platform:
+1. Add it to `ProjectPlatformSchema` in `packages/core/src/types/config.ts`
+2. Add a description for it to `PLATFORM_DESCRIPTIONS`
+3. (Recommended) add a deterministic hint for it in `detectPlatformHints()`
+
+No other code needs to change — `analyzer.ts` and `scenario-generator.ts`
+just read whatever `platform` value comes back.
 
 ### LLM Providers
 

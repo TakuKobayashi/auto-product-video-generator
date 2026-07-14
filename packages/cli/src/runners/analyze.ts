@@ -71,6 +71,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
 
   logger.success(`Saved: ${summaryPath}`);
   logger.info('');
+  logger.info(`Platform: ${summary.platform}`);
   logger.info(`Found ${summary.features.length} features:`);
   for (const f of summary.features) {
     const mark = f.priority === 'high' ? '★' : f.priority === 'medium' ? '◆' : '◇';
