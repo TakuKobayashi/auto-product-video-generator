@@ -91,13 +91,18 @@ Respond with JSON only.`;
       ),
     );
 
-    // The platform was already classified deterministically-grounded in
-    // `analyze` (see platform-classifier.ts) — stamp it here rather than
-    // letting this LLM call re-decide it, so scenario.yaml always agrees
-    // with project-summary.json.
+    // The platform and setup plan were already determined,
+    // deterministically-grounded, in `analyze` (see platform-classifier.ts
+    // and setup-planner.ts) — stamp them here rather than letting this LLM
+    // call re-decide them, so scenario.yaml always agrees with
+    // project-summary.json.
     scenario.meta.platform = summary.platform;
+    scenario.setup = summary.setupSteps;
 
-    logger.success(`Scenario generated: platform=${scenario.meta.platform}, ${scenario.scenes.length} scene(s).`);
+    logger.success(
+      `Scenario generated: platform=${scenario.meta.platform}, ${scenario.setup.length} setup step(s), ` +
+      `${scenario.scenes.length} scene(s).`,
+    );
     return { scenario, script };
   }
 }

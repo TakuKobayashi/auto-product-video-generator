@@ -131,8 +131,33 @@ export const ScenarioMetaSchema = z.object({
   createdAt: z.string().default(() => new Date().toISOString()),
 });
 
+// One step of the "how to get this project running" plan — a Taskfile-like
+// ordered command list, AI-generated during `analyze` (grounded by
+// package.json scripts, README, and the platform classification) and
+// recorded here so scenario.yaml is a fully self-contained execution plan:
+// everything needed to go from a fresh checkout to a recording, not just
+// what to click once something is already running.
+//
+// Steps run in array order. A non-background step (e.g. "npm install")
+// blocks until it exits; a background step (e.g. "npm run dev") is started
+// detached and, if `readyUrl` is set, polled until reachable before moving
+// on to the next step / to recording.
+export const SetupStepSchema = z.object({
+  name: z.string(), // human-readable label, e.g. "Install dependencies"
+  command: z.string(), // shell command, e.g. "npm install" or "npm run dev"
+  cwd: z.string().optional(), // relative to the project root; default "."
+  background: z.boolean().default(false), // true for long-running processes (dev servers)
+  readyUrl: z.string().url().optional(), // only meaningful when background: true
+  readyTimeoutMs: z.number().int().positive().default(60000),
+});
+
 export const ScenarioSchema = z.object({
   meta: ScenarioMetaSchema,
+  // Ordered setup/start commands — see SetupStepSchema above. Empty by
+  // default so scenario.yaml files from before this field existed still
+  // validate; `record`/`build` fall back to dvg.config.yaml's
+  // source.startCommand (or manual startup) when this is empty.
+  setup: z.array(SetupStepSchema).default([]),
   scenes: z.array(SceneSchema).min(1),
 });
 
@@ -170,6 +195,7 @@ export type Effect = z.infer<typeof EffectSchema>;
 
 export type Scene = z.infer<typeof SceneSchema>;
 export type ScenarioMeta = z.infer<typeof ScenarioMetaSchema>;
+export type SetupStep = z.infer<typeof SetupStepSchema>;
 export type Scenario = z.infer<typeof ScenarioSchema>;
 export type ScriptScene = z.infer<typeof ScriptSceneSchema>;
 export type Script = z.infer<typeof ScriptSchema>;

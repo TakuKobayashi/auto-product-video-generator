@@ -25,7 +25,7 @@ import {
 import { SceneRecorder } from '@demo-video-gen/playwright';
 import { VoicevoxClient } from '@demo-video-gen/voicevox';
 import { FfmpegRenderer } from '@demo-video-gen/renderer';
-import { resolveProjectSource, inspectProject, detectStartCommand, ensureServerRunning } from '@demo-video-gen/source';
+import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning } from '@demo-video-gen/source';
 
 interface BuildOptions {
   config?: string;
@@ -100,7 +100,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       }
 
       const analyzer = new ProjectAnalyzer(llm);
-      summary = await analyzer.analyze(sourceContext);
+      summary = await analyzer.analyze(sourceContext, config.target.url);
       await writeJson(summaryPath, summary);
       logger.success(`Saved: ${summaryPath}`);
     } else {
@@ -111,6 +111,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         name: config.project.name,
         description: '',
         platform: 'web',
+        setupSteps: [],
         features: [],
         targetAudience: '',
         keyValueProps: [],
@@ -170,8 +171,9 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       );
     }
     if (!dryRun) {
-      await ensureServerRunning({
+      await ensureAppRunning({
         url: config.target.url,
+        setupSteps: scenario.setup,
         startCommand: config.source.startCommand,
         cwd: rootDir!,
         installDeps: config.source.installDeps,

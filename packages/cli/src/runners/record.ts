@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { loadConfig, readYaml, logger, ScenarioSchema } from '@demo-video-gen/core';
 import { SceneRecorder } from '@demo-video-gen/playwright';
-import { resolveProjectSource, ensureServerRunning } from '@demo-video-gen/source';
+import { resolveProjectSource, ensureAppRunning } from '@demo-video-gen/source';
 
 interface RecordOptions {
   config?: string;
@@ -59,8 +59,9 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   if (!options.dryRun) {
     const cloneDir = join(workDir, 'source-repo');
     const rootDir = await resolveProjectSource({ source: config.source, cloneDir });
-    await ensureServerRunning({
+    await ensureAppRunning({
       url: config.target.url,
+      setupSteps: scenario.setup,
       startCommand: config.source.startCommand,
       cwd: rootDir,
       installDeps: config.source.installDeps,

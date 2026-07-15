@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { VideoTypeSchema, ProjectPlatformSchema } from './config.js';
+import { SetupStepSchema } from './scenario.js';
 
 export const FeatureSchema = z.object({
   id: z.string(),
@@ -21,6 +22,15 @@ export const ProjectSummarySchema = z.object({
   // AI-classified from the actual source — see
   // @demo-video-gen/ai's platform-classifier.ts.
   platform: ProjectPlatformSchema,
+  // AI-generated "how to get this project running" plan (install deps,
+  // start the dev server, ...), grounded by package.json scripts / README /
+  // platform signals — see @demo-video-gen/ai's analyzer.ts. Copied
+  // verbatim into scenario.yaml's `setup` field when the scenario is
+  // generated (not re-decided there), so project-summary.json and
+  // scenario.yaml always agree. Can be empty if nothing could be
+  // determined — `record`/`build` fall back to dvg.config.yaml's
+  // source.startCommand or manual startup in that case.
+  setupSteps: z.array(SetupStepSchema).default([]),
   features: z.array(FeatureSchema),
   targetAudience: z.string(),
   keyValueProps: z.array(z.string()),

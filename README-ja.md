@@ -242,23 +242,28 @@ Options:
   --dry-run           ファイルを書き込まずプレビューのみ
 ```
 
-**アプリの起動について**: `source.startCommand`が設定されていれば（`--serve-command`で
-指定するか、`analyze`が自動検出）、`target.url`に到達できない場合`record`/`build`が
-自動的にこのコマンドを実行してくれます。別ターミナルで手動起動する必要はありません。
-設定されておらずURLにも到達できない場合は、手動で起動するよう分かりやすい警告が出ます。
+**アプリの起動について**: `target.url`に到達できない場合、`record`/`build`は自動的に
+アプリを起動します。優先されるのは`scenario.yaml`のAI生成`setup`計画です（後述の
+「起動手順の記録」を参照。これは`init`ではなく`analyze`が生成します）。ここでの
+`--serve-command`は`source.startCommand`を手動フォールバック/上書きとして設定するだけで、
+`scenario.yaml`にまだ`setup`が無い場合（例: `analyze`をまだ実行していない場合）にのみ
+使われます。どちらも設定が無くURLにも到達できない場合は、手動で起動するよう分かりやすい
+警告が出ます。
 
 ### `analyze`
 プロジェクトソースを解決（`source.repository`ならclone、`source.localPath`なら
 gitリポジトリであることを検証）し、決定論的に中身を調査します —
 `package.json`とREADMEを読み、Next.js（App Router / Pages Router）の場合は
 `app/`・`pages/`を走査して実在するページルートを検出します。それ以外のフレームワークは
-容量制限付きのファイル一覧にフォールバックします。この情報をAIに渡し、実在するルートに
-紐付けられた形で機能一覧を抽出します。LLMが返したJSONがスキーマと合わない場合は、
-エラー内容をLLMにフィードバックして最大2回まで再生成を試みます。
+容量制限付きのファイル一覧にフォールバックします。この情報（＋`Podfile`・`build.gradle`・
+`pubspec.yaml`等の決定論的なプラットフォームシグナル）をAIに渡し、`platform`の判定・
+起動手順（`setupSteps`）の計画・実在するルートに紐付けられた機能一覧の抽出を行います。
+LLMが返したJSONがスキーマと合わない場合は、エラー内容をLLMにフィードバックして
+最大2回まで再生成を試みます。
 
 `dvg.config.yaml`に`source.startCommand`が未設定の場合、package.jsonのscriptsから
-自動検出も行います（`dev` → `start` → `serve` → `preview`の優先順）。検出できれば
-保存され、以降の`record`/`build`でアプリが自動起動されるようになります。
+自動検出も行い、フォールバック用として保存します（古いシナリオや手動指定向け）。ただし
+`record`/`build`が実際に優先して使うのは上記のAI生成`setupSteps`です（「起動手順の記録」を参照）。
 
 ```bash
 demo-video-gen analyze [options]
@@ -372,7 +377,7 @@ Options:
 ├── source-repo/            # source.repository のgit clone先（source.localPathの場合は無し）
 ├── source-context.json    # 決定論的処理: package.jsonの要約、README、検出フレームワーク、発見済みルート
 ├── project-summary.json   # AI: 機能抽出結果（各機能に実在するルートを紐付け）
-├── scenario.yaml          # AI: シーン定義 + Playwright操作            ← 自由に編集可
+├── scenario.yaml          # AI: 起動手順(setup) + シーン定義 + Playwright操作 ← 自由に編集可
 ├── script.yaml            # AI: ナレーションのタイミング                ← 自由に編集可
 ├── subtitles.srt          # 決定論的処理: script.yamlから自動生成       ← 自由に編集可
 ├── timeline.json          # 決定論的処理: レンダリング時に自動生成
@@ -473,6 +478,48 @@ Android、`ProjectSettings/`があればUnity、`pubspec.yaml`があればFlutte
 
 これ以外のコード変更は不要です — `analyzer.ts`と`scenario-generator.ts`は
 返ってきた`platform`の値をそのまま使うだけです。
+
+### 起動手順の記録（`scenario.yaml`の`setup`フィールド）
+
+`analyze`は、プロジェクトを「まっさらな状態から実際に動かすまで」の手順を、
+Taskfile的な順序付きコマンドリストとしてAIに生成させます。`platform`の判定と同じ考え方で、
+package.jsonの`scripts`やREADMEの起動手順記載を根拠にします。これは
+`.dvg/project-summary.json`の`setupSteps`として記録され、`scenario.yaml`の`setup`
+フィールドにそのままコピーされます。つまり、**`scenario.yaml`はクリックする内容だけでなく、
+「どうやってそこに辿り着くか」まで含んだ、完全に自己完結した実行計画になります**。
+
+```yaml
+setup:
+  - name: "Install dependencies"
+    command: "npm install"
+    background: false
+  - name: "Start dev server"
+    command: "npm run dev"
+    background: true
+    readyUrl: "http://localhost:3000"
+    readyTimeoutMs: 60000
+scenes:
+  - id: intro
+    ...
+```
+
+`record`/`build`は、`target.url`に到達できないときに自動的にこれを実行します。
+`background`ではないステップ（依存関係のインストール、ビルドなど）は順番に実行完了を待ち、
+`background`のステップ（リスト内に1つだけ、最後に置く想定）はバックグラウンドで起動し、
+`readyUrl`があればそこに到達できるまでポーリングしてから録画を開始します。LLMが推測した
+`readyUrl`は、実行時に必ず実際の`target.url`へ確定的に上書きされるため、LLMが正しい
+ポート番号を当てられるかどうかに依存することはありません。
+
+他の中間ファイルと同様、自由に編集できます — ステップの追加・削除・並べ替え、`command`を
+別のスクリプトに変える、モノレポのサブディレクトリ用に`cwd`を追加する、など。`setup`が
+空の場合（信頼できる手順を決定できなかった場合）は、この機能が実装される前と同じく
+`dvg.config.yaml`の`source.startCommand`（`init --serve-command`で指定）にフォールバックし、
+それも無ければ手動起動を促す警告が出ます。
+
+この仕組みは`{name, command, background, readyUrl}`という順序付きリストに過ぎないため、
+npmプロジェクト以外にもそのまま拡張できる構造になっています — 将来Android用の録画実装が
+追加されれば、`./gradlew installDebug` + `adb shell am start ...`のような
+起動計画も同じ形式で表現できます。
 
 ### LLMプロバイダー一覧
 

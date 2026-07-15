@@ -3,6 +3,7 @@ import { ProjectSourceContext } from '@demo-video-gen/source';
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
 import { buildPlatformClassificationPrompt } from './platform-classifier.js';
+import { buildSetupPlanningPrompt } from './setup-planner.js';
 
 const SYSTEM_PROMPT = `You are a video production expert analyzing a project's source code
 to plan a promotional demo video.
@@ -18,6 +19,12 @@ Respond ONLY with a JSON object matching this TypeScript type:
   description: string;
   platform: string;            // REQUIRED. One of the exact platform keys given to you
                                 // in the "Platform classification" section below.
+  setupSteps: Array<{          // see "Setup plan" section below. Can be an empty array.
+    name: string;
+    command: string;
+    background: boolean;
+    readyUrl?: string;
+  }>;
   features: Array<{
     id: string;                 // a short slug string, e.g. "dashboard-overview"
     title: string;
@@ -40,11 +47,11 @@ No markdown, no explanation. JSON only.`;
 export class ProjectAnalyzer {
   constructor(private llm: LlmProvider) {}
 
-  async analyze(context: ProjectSourceContext): Promise<ProjectSummary> {
+  async analyze(context: ProjectSourceContext, targetUrl: string): Promise<ProjectSummary> {
     logger.step('analyze', 'Calling LLM to analyze project source...');
     logger.info('  This can take a while, especially on local models — progress prints every few seconds.');
 
-    const prompt = buildPrompt(context);
+    const prompt = buildPrompt(context, targetUrl);
 
     const summary = await withHeartbeat(
       'project analysis',
@@ -53,8 +60,20 @@ export class ProjectAnalyzer {
       }),
     );
 
+    // Deterministic normalization: whatever URL the LLM guessed for the
+    // background (dev-server) setup step, replace it with the real
+    // target.url — that's the only URL that actually matters, since it's
+    // what Playwright will record against, regardless of what port the LLM
+    // assumed from reading scripts.
+    if (summary.platform === 'web') {
+      summary.setupSteps = summary.setupSteps.map((step) =>
+        step.background ? { ...step, readyUrl: targetUrl } : step,
+      );
+    }
+
     logger.success(
-      `Analysis complete: platform=${summary.platform}, ${summary.features.length} feature(s) identified.`,
+      `Analysis complete: platform=${summary.platform}, ${summary.setupSteps.length} setup step(s), ` +
+      `${summary.features.length} feature(s) identified.`,
     );
     if (summary.platform !== 'web') {
       logger.warn(
@@ -67,7 +86,7 @@ export class ProjectAnalyzer {
   }
 }
 
-function buildPrompt(context: ProjectSourceContext): string {
+function buildPrompt(context: ProjectSourceContext, targetUrl: string): string {
   const pkg = context.packageJson;
 
   const routesSection =
@@ -78,6 +97,11 @@ function buildPrompt(context: ProjectSourceContext): string {
         `Here is a partial file listing instead — infer likely pages/routes from it, and use ` +
         `"/" for the route field if genuinely unsure:\n` +
         context.fileTree.slice(0, 150).map((f) => `- ${f}`).join('\n');
+
+  const platformHint =
+    context.platformHints.length > 0
+      ? `Deterministic platform signals were already found: ${context.platformHints.join('; ')}.`
+      : '';
 
   return `Analyze this project's source for a promotional demo video.
 
@@ -96,10 +120,13 @@ ${context.readme ? `README:\n${context.readme}\n` : '(No README found)'}
 
 ${routesSection}
 
-Based on the above, first classify the platform (see "Platform classification"),
-then identify the features that are visually demonstrable in a recording, each
-anchored to a real discovered route where possible (web only). Also determine the
-target audience, key value propositions, and which video types suit this project.
+${buildSetupPlanningPrompt(targetUrl, platformHint)}
+
+Based on all of the above: first classify the platform (see "Platform classification"),
+then produce the setup plan (see "Setup plan"), then identify the features that are
+visually demonstrable in a recording, each anchored to a real discovered route where
+possible (web only). Also determine the target audience, key value propositions, and
+which video types suit this project.
 
 Respond with JSON only.`;
 }

@@ -65,7 +65,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   // AI: turn the deterministic source context into a feature summary.
   const llm = createLlmProvider(config.llm);
   const analyzer = new ProjectAnalyzer(llm);
-  const summary = await analyzer.analyze(sourceContext);
+  const summary = await analyzer.analyze(sourceContext, targetUrl);
 
   await writeJson(summaryPath, summary);
 

@@ -240,26 +240,33 @@ Options:
   --dry-run           Preview config without writing
 ```
 
-**Starting the app**: if `source.startCommand` is set (via `--serve-command`,
-or auto-detected by `analyze`), `record`/`build` will run it automatically
-whenever `target.url` isn't already reachable — you don't have to start it
-in another terminal yourself. If it's not set and the URL isn't reachable,
-you'll get a clear warning telling you to start it manually.
+**Starting the app**: `record`/`build` start the app automatically whenever
+`target.url` isn't already reachable, preferring `scenario.yaml`'s AI-generated
+`setup` plan (see "Setup plan" below — this is filled in by `analyze`, not
+`init`). `--serve-command` here just sets `source.startCommand` as a manual
+fallback/override, used only when `scenario.yaml` has no `setup` steps yet
+(e.g. before you've run `analyze`). Either way, if nothing is configured and
+the URL isn't reachable, you'll get a clear warning telling you to start it
+manually.
 
 ### `analyze`
 Resolves the project source (clones `source.repository`, or verifies
 `source.localPath` is a git repo) and inspects it deterministically — reads
 `package.json` and `README.md`, and for Next.js projects (App or Pages
 Router) discovers real page routes by walking `app/`/`pages/`. Other
-frameworks fall back to a capped file listing. That context is then handed
-to AI to extract demoable features, each anchored to a real route where
-possible. If the LLM's JSON response doesn't match the expected schema, the
-errors are fed back to it and it gets up to 2 retries before failing.
+frameworks fall back to a capped file listing. That context (plus
+deterministic platform signals — `Podfile`, `build.gradle`, `pubspec.yaml`,
+etc.) is then handed to AI, which classifies the project's `platform`,
+plans an ordered `setupSteps` list for getting it running, and extracts
+demoable features, each anchored to a real route where possible. If the
+LLM's JSON response doesn't match the expected schema, the errors are fed
+back to it and it gets up to 2 retries before failing.
 
 If `dvg.config.yaml` doesn't already have `source.startCommand` set, this
 also detects one from package.json's scripts (`dev` → `start` → `serve` →
-`preview`, in that order) and saves it, so later `record`/`build` runs can
-start the app automatically.
+`preview`, in that order) and saves it as a fallback for older/manual
+scenarios — but the AI-generated `setupSteps` above (see "Setup plan") is
+what `record`/`build` actually prefer.
 
 ```bash
 demo-video-gen analyze [options]
@@ -375,7 +382,7 @@ All files under `.dvg/` are human-editable. Edit them between steps and re-run f
 ├── source-context.json    # deterministic: package.json summary, README, detected
 │                           # framework, discovered routes
 ├── project-summary.json   # AI: feature extraction (each anchored to a real route)
-├── scenario.yaml          # AI: scene definitions + Playwright actions  ← edit freely
+├── scenario.yaml          # AI: setup plan + scene definitions + Playwright actions  ← edit freely
 ├── script.yaml            # AI: narration timing                        ← edit freely
 ├── subtitles.srt          # deterministic: generated from script.yaml   ← edit freely
 ├── timeline.json          # deterministic: generated at render time
@@ -478,6 +485,52 @@ platform:
 
 No other code needs to change — `analyzer.ts` and `scenario-generator.ts`
 just read whatever `platform` value comes back.
+
+### Setup plan (`scenario.yaml`'s `setup` field)
+
+`analyze` also has the AI generate a Taskfile-like ordered list of shell
+commands for getting the project from a fresh checkout to actually running —
+grounded by package.json's `scripts` and README setup instructions, the same
+way `platform` is grounded by file signals. This is recorded as
+`setupSteps` in `.dvg/project-summary.json` and copied into `scenario.yaml`'s
+`setup` field, so **the scenario file is a fully self-contained execution
+plan**: not just what to click, but how to get there from nothing.
+
+```yaml
+setup:
+  - name: "Install dependencies"
+    command: "npm install"
+    background: false
+  - name: "Start dev server"
+    command: "npm run dev"
+    background: true
+    readyUrl: "http://localhost:3000"
+    readyTimeoutMs: 60000
+scenes:
+  - id: intro
+    ...
+```
+
+`record`/`build` run this automatically whenever `target.url` isn't already
+reachable: non-`background` steps run to completion in order (installs,
+builds); the `background` step (there should be at most one, last in the
+list) is started detached and, if it has `readyUrl`, polled until reachable
+before recording starts. The `readyUrl` the LLM guesses is always
+deterministically overwritten with the real `target.url` afterward, so it's
+never actually relying on the LLM to have picked the right port.
+
+This is edit-friendly like every other intermediate file — add/remove/reorder
+steps, point `command` at a different script, add a `cwd` for a monorepo
+subdirectory, etc. If `setup` is empty (nothing could be reliably
+determined), `record`/`build` fall back to `dvg.config.yaml`'s
+`source.startCommand` (see the `init --serve-command` flag) or a warning to
+start the app manually — same as before this field existed.
+
+Since this whole mechanism is just an ordered list of `{name, command,
+background, readyUrl}`, it's already structured to extend beyond `npm`
+projects — an Android setup plan might look like
+`./gradlew installDebug` + `adb shell am start ...`, once a
+platform-specific recorder exists to act on it.
 
 ### LLM Providers
 
