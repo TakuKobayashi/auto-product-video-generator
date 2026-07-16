@@ -1,9 +1,7 @@
-import { z } from 'zod';
 import {
   Scenario,
   ScenarioSchema,
   Script,
-  ScriptSchema,
   VideoConfig,
   ProjectSummary,
   logger,
@@ -11,9 +9,10 @@ import {
 } from '@demo-video-gen/core';
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
+import { buildScriptFromScenario } from './script-builder.js';
 
 const SYSTEM_PROMPT = `You are a video director creating promotional demo videos.
-Generate a scenario for a web application demo.
+Generate a scenario (the recording plan) for a web application demo.
 
 Rules:
 - scene "id" fields MUST be strings (e.g. "intro", "feature-1"), never numbers.
@@ -24,19 +23,13 @@ Rules:
 - For wait_visible: use "text" (visible text on screen) or "selector" (data-testid preferred)
 - Every scene needs a non-empty "title" and "narration".
 - Keep narration concise and engaging (1-2 sentences per scene)
-- Scene durations should sum to approximately the target duration
+- Keep the TOTAL number of scenes reasonable for the target duration — roughly one scene per
+  10-15 seconds of video is plenty; don't create more scenes than that, since more scenes
+  means more chances for something to go wrong.
 
 Respond ONLY with valid JSON matching:
-{
-  scenario: { meta: ScenarioMeta, scenes: Scene[] },
-  script: { scenes: ScriptScene[] }
-}
-No markdown, no explanation. JSON only.`;
-
-const GenerationResultSchema = z.object({
-  scenario: ScenarioSchema,
-  script: ScriptSchema,
-});
+{ meta: ScenarioMeta, scenes: Scene[] }
+No markdown, no explanation, no extra top-level fields. JSON only.`;
 
 export class ScenarioGenerator {
   constructor(private llm: LlmProvider) {}
@@ -73,22 +66,15 @@ Language: ${config.language}
 The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
 demonstrate a specific feature should "goto" that feature's URL from the list above.
 
-For the script, distribute startTime/endTime based on estimated narration length (~3 words/sec).
-Voice files follow pattern: voice/scene-{id}.wav
-
-Respond with JSON only.`;
+Respond with JSON only — just the scenario object, no "script" field, no other wrapping.`;
 
     logger.info(`  Calling ${describeProvider(this.llm)}... this can take a while, especially on local models.`);
 
-    const { scenario, script } = await withHeartbeat(
+    const scenario = await withHeartbeat(
       'scenario generation',
-      generateValidatedJson<{ scenario: Scenario; script: Script }>(
-        this.llm,
-        GenerationResultSchema,
-        prompt,
-        SYSTEM_PROMPT,
-        { label: 'scenario' },
-      ),
+      generateValidatedJson<Scenario>(this.llm, ScenarioSchema, prompt, SYSTEM_PROMPT, {
+        label: 'scenario',
+      }),
     );
 
     // The platform and setup plan were already determined,
@@ -98,6 +84,10 @@ Respond with JSON only.`;
     // project-summary.json.
     scenario.meta.platform = summary.platform;
     scenario.setup = summary.setupSteps;
+
+    // script.yaml is derived deterministically from scenario.yaml's
+    // narration text — no second LLM call, no risk of the two disagreeing.
+    const script = buildScriptFromScenario(scenario);
 
     logger.success(
       `Scenario generated: platform=${scenario.meta.platform}, ${scenario.setup.length} setup step(s), ` +

@@ -57,6 +57,33 @@ giving up with a readable error.
 
 ---
 
+## Quick reference
+
+Every step above is its own command, each reading/writing files under
+`.dvg/` — so you can run the whole thing with `build`, or run each step by
+hand and resume from any point (e.g. after hand-editing `scenario.yaml`,
+just re-run from `record` onward; no need to re-analyze or regenerate it).
+
+| # | Command | Reads | Produces |
+|---|---|---|---|
+| 1 | `demo-video-gen init --repo <url>` (or `--source <path>`) | — | `dvg.config.yaml` |
+| 2 | `demo-video-gen analyze` | the cloned/local project | `.dvg/source-context.json`, `.dvg/project-summary.json` |
+| 3 | `demo-video-gen scenario generate` | `.dvg/project-summary.json` | `.dvg/scenario.yaml`, `.dvg/script.yaml`, `.dvg/subtitles.srt` |
+| 4 | `demo-video-gen record` | `.dvg/scenario.yaml` (runs its `setup` plan first if needed) | `.dvg/recordings/*.mp4` |
+| 5 | `demo-video-gen voice` | `.dvg/script.yaml` | `.dvg/voice/*.wav` |
+| 6 | `demo-video-gen render` | recordings + voice + `.dvg/scenario.yaml` | `output/final.mp4` |
+
+`demo-video-gen build` runs 2–6 in one command. Use `--skip-analyze` /
+`--skip-scenario` / `--skip-record` / `--skip-voice` to resume partway
+through (each skip flag reuses that step's existing output instead of
+regenerating it) — e.g. `demo-video-gen build --skip-analyze --skip-scenario`
+re-records + re-renders using an already-generated `scenario.yaml` you
+hand-edited, without touching the source or calling the LLM again.
+
+Full option reference for each command is in the "Commands (CLI)" section below.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -207,6 +234,40 @@ Qwen2.5-Instruct (chosen for reliable JSON-schema output, which the `analyze`
 | `local` (e.g. Ryzen 7 5800H / 64GB RAM / RTX 3050 Ti 4GB) | `qwen2.5:7b-instruct` | ~4.7GB (Q4_K_M), good quality, fits with partial GPU offload |
 | `ci` (GitHub Actions hosted runners) | `qwen2.5:3b-instruct` | ~1.9GB (Q4_K_M), CPU-only friendly, fits within job time limits |
 
+### Different models per task
+
+`analyze` (mostly extraction/classification from source + README) and
+`scenario generate` (structured multi-scene JSON with actions, timing, and a
+setup plan) are quite different tasks — a model that's fine for one can
+struggle with the other, especially smaller local models on the harder
+`scenario generate` output. `llm.tasks` lets you use a different
+provider/model for each, falling back to the top-level `provider`/`model`/
+`apiKeyEnv` for whatever isn't overridden:
+
+```yaml
+llm:
+  provider: "ollama"
+  model: "qwen2.5:7b-instruct"    # used for analyze (and anything not overridden)
+  fallbackProvider: "gemini"
+  fallbackModel: "gemini-2.5-pro"
+  tasks:
+    scenario:
+      provider: "gemini"           # use the stronger cloud model just for
+      model: "gemini-2.5-pro"      # scenario generation, keep analyze local
+    # analyze:
+    #   model: "qwen2.5:3b-instruct"  # or: use an even smaller/faster model
+    #                                  # for analyze specifically
+```
+
+If `scenario generate` keeps failing schema validation (check the retry
+warnings it prints — they show exactly which fields the model got wrong),
+that's a sign the current model isn't a great fit for that task specifically;
+pointing `llm.tasks.scenario` at a stronger model (a bigger local model, or
+Gemini) usually resolves it without needing to change what's used for
+`analyze`. Both `analyze` and `build` print which provider/model is actually
+being used for each task at the start, so you can confirm the override took
+effect.
+
 ---
 
 ## Commands (CLI)
@@ -282,8 +343,12 @@ README, detected framework, discovered routes), `.dvg/project-summary.json`
 (AI-generated feature list)
 
 ### `scenario generate`
-Generate `scenario.yaml`, `script.yaml`, and `subtitles.srt` with AI. Same
-retry-on-validation-failure behavior as `analyze`.
+AI generates `scenario.yaml` (the recording plan — scenes, actions, and the
+`setup` startup plan). Same retry-on-validation-failure behavior as
+`analyze`. `script.yaml` and `subtitles.srt` are then derived *deterministically*
+from `scenario.yaml`'s narration text (no second LLM call) — narration timing
+is estimated from text length, so the two files can never disagree with each
+other.
 
 ```bash
 demo-video-gen scenario generate [options]
@@ -295,7 +360,8 @@ Options:
   --dry-run
 ```
 
-Produces: `.dvg/scenario.yaml`, `.dvg/script.yaml`, `.dvg/subtitles.srt`
+Produces: `.dvg/scenario.yaml` (AI), `.dvg/script.yaml` (deterministic),
+`.dvg/subtitles.srt` (deterministic)
 
 ### `scenario validate`
 Validate a `scenario.yaml` against the schema.
@@ -383,7 +449,7 @@ All files under `.dvg/` are human-editable. Edit them between steps and re-run f
 │                           # framework, discovered routes
 ├── project-summary.json   # AI: feature extraction (each anchored to a real route)
 ├── scenario.yaml          # AI: setup plan + scene definitions + Playwright actions  ← edit freely
-├── script.yaml            # AI: narration timing                        ← edit freely
+├── script.yaml            # deterministic: narration timing derived from scenario.yaml ← edit freely
 ├── subtitles.srt          # deterministic: generated from script.yaml   ← edit freely
 ├── timeline.json          # deterministic: generated at render time
 ├── recordings/            # Playwright output mp4s
@@ -430,6 +496,10 @@ llm:
   model: "gemini-2.5-pro"
   # fallbackProvider: "ollama"
   # fallbackModel: "qwen2.5:7b-instruct"
+  # tasks:               # optional per-task override — see "Different models per task" above
+  #   scenario:
+  #     provider: "gemini"
+  #     model: "gemini-2.5-pro"
 
 voicevox:
   host: "http://localhost:50021"
@@ -619,6 +689,14 @@ Taskfile.yml      The single entry point for environment setup & services
   empty, the AI was working from a file listing instead and accuracy will be
   lower — review and fix `goto` actions in `scenario.yaml` by hand before
   `record`.
+- **`scenario generate` fails with "LLM failed to produce valid JSON after
+  3 attempt(s)"** — the current model isn't a great fit for that task. It's
+  a much harder structured-output task than `analyze` (multiple scenes,
+  each with actions and a setup plan), so a model that handles `analyze`
+  fine can still struggle here. See "Different models per task" — point
+  `llm.tasks.scenario` at a stronger model (bigger local model, or Gemini)
+  without changing what `analyze` uses. The warning output shows exactly
+  which fields the model got wrong, which is useful context either way.
 - **Can't reach VOICEVOX** — make sure `task serve` was run and Docker is
   installed; check `docker logs dvg-voicevox`.
 - **Can't reach Ollama / model not found** — `ollama serve`, then

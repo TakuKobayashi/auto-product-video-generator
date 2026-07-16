@@ -34,8 +34,9 @@ Webアプリ・CLIツール向けのAIプロモーション動画自動生成ツ
                     │
                     ▼
 3. scenario generate   AIが project-summary.json + 実在するルート一覧から
-                        scenario.yaml（録画計画: どのURLを訪れ、何をクリックするか）
-                        + script.yaml（ナレーション） + subtitles.srt を生成
+                        scenario.yaml（録画計画: どのURLを訪れ、何をクリックするか、
+                        起動計画）を生成 → script.yaml・subtitles.srtはナレーション文から
+                        決定論的に算出（追加のLLM呼び出し無し）
                     │
                     ▼
 4. record    Playwrightが scenario.yaml の計画通りに `target.url` に対して操作を実行
@@ -54,6 +55,33 @@ LLM呼び出し中は数秒おきに「... still working, Ns elapsed」という
 LLMの返したJSONがスキーマと合わない場合は、実際のバリデーションエラーを自動的に
 LLMへフィードバックして再生成させます（最大2回リトライ）。それでも失敗した場合は
 読みやすい形式でエラーを表示します。
+
+---
+
+## クイックリファレンス
+
+上記の各ステップはそれぞれ独立したコマンドで、すべて`.dvg/`配下のファイルを
+読み書きします。つまり`build`で一気に実行することも、各コマンドを個別に実行して
+好きな地点から再開することもできます（例: `scenario.yaml`を手で編集した後は
+`record`以降だけ再実行すればよく、解析やシナリオ再生成をやり直す必要はありません）。
+
+| # | コマンド | 入力 | 生成物 |
+|---|---|---|---|
+| 1 | `demo-video-gen init --repo <URL>`（または`--source <パス>`） | — | `dvg.config.yaml` |
+| 2 | `demo-video-gen analyze` | clone/ローカルのプロジェクト | `.dvg/source-context.json`、`.dvg/project-summary.json` |
+| 3 | `demo-video-gen scenario generate` | `.dvg/project-summary.json` | `.dvg/scenario.yaml`、`.dvg/script.yaml`、`.dvg/subtitles.srt` |
+| 4 | `demo-video-gen record` | `.dvg/scenario.yaml`（必要なら`setup`計画を先に実行） | `.dvg/recordings/*.mp4` |
+| 5 | `demo-video-gen voice` | `.dvg/script.yaml` | `.dvg/voice/*.wav` |
+| 6 | `demo-video-gen render` | 録画＋音声＋`.dvg/scenario.yaml` | `output/final.mp4` |
+
+`demo-video-gen build`はステップ2〜6をまとめて実行します。`--skip-analyze` /
+`--skip-scenario` / `--skip-record` / `--skip-voice`を使うと、そのステップの
+既存の生成物をそのまま使って途中から再開できます（再生成しません）。例えば
+`demo-video-gen build --skip-analyze --skip-scenario`とすれば、手で編集済みの
+`scenario.yaml`を使って録画〜レンダリングだけをやり直せます（ソース解析やLLM呼び出しは
+発生しません）。
+
+各コマンドの詳細なオプションは、下の「コマンド一覧（CLI本体）」セクションを参照してください。
 
 ---
 
@@ -212,6 +240,36 @@ llm:
 | `local`（例: Ryzen 7 5800H / 64GB RAM / RTX 3050 Ti 4GB VRAM） | `qwen2.5:7b-instruct` | 約4.7GB（Q4_K_M量子化）。4GB VRAMでも部分的にGPUオフロードでき、64GBのRAMがあれば残りのレイヤーをCPU側で処理しても十分な速度が出ます |
 | `ci`（GitHub Actions ホステッドランナー） | `qwen2.5:3b-instruct` | 約1.9GB（Q4_K_M量子化）。GPUのないCPUのみの環境でもジョブの時間制限内に収まる軽量さを優先 |
 
+### タスクごとに違うモデルを使う
+
+`analyze`（ソースコード・READMEからの抽出・分類が中心）と`scenario generate`
+（アクション・タイミング・起動計画を含む複雑なJSON構造の生成）は、かなり性質の異なる
+タスクです。片方は得意でももう片方は苦手、というモデルは珍しくなく、特に小さめの
+ローカルモデルでは`scenario generate`側でスキーマ検証に失敗しやすい傾向があります。
+`llm.tasks`で、タスクごとに別のプロバイダー/モデルを指定できます（未指定の項目は
+トップレベルの`provider`/`model`/`apiKeyEnv`にフォールバックします）。
+
+```yaml
+llm:
+  provider: "ollama"
+  model: "qwen2.5:7b-instruct"    # analyze（および上書きされないタスク）で使用
+  fallbackProvider: "gemini"
+  fallbackModel: "gemini-2.5-pro"
+  tasks:
+    scenario:
+      provider: "gemini"           # scenario生成だけクラウドの強いモデルを使い、
+      model: "gemini-2.5-pro"      # analyzeはローカルのままにする
+    # analyze:
+    #   model: "qwen2.5:3b-instruct"  # 逆にanalyzeだけ軽量モデルにする、なども可能
+```
+
+`scenario generate`が何度もスキーマ検証に失敗する場合（リトライ時の警告に、モデルが
+どのフィールドを間違えたか具体的に表示されます）、そのモデルがこのタスクにあまり
+向いていないサインです。`llm.tasks.scenario`だけをより強いモデル（大きめのローカル
+モデルやGemini）に向ければ、`analyze`側の設定はそのままで解決できることが多いです。
+`analyze`・`build`はどちらも、実際にどのプロバイダー/モデルを使っているかをタスクごとに
+実行開始時に表示するので、上書きが効いているか確認できます。
+
 ---
 
 ## コマンド一覧（CLI本体）
@@ -278,8 +336,11 @@ Options:
 検出されたフレームワーク、発見済みルート）、`.dvg/project-summary.json`（AI生成の機能一覧）
 
 ### `scenario generate`
-AIで `scenario.yaml`・`script.yaml`・`subtitles.srt` を生成します。`analyze`と同様、
-スキーマ検証に失敗した場合は自動的にリトライします。
+AIが`scenario.yaml`（録画計画 — シーン・アクション・起動計画`setup`）を生成します。
+`analyze`と同様、スキーマ検証に失敗した場合は自動的にリトライします。`script.yaml`と
+`subtitles.srt`は、`scenario.yaml`のナレーション文から**決定論的に**（LLM呼び出しなしで）
+算出されます — ナレーションのタイミングはテキストの長さから推定するため、両ファイルの
+内容が食い違うことはありません。
 
 ```bash
 demo-video-gen scenario generate [options]
@@ -291,7 +352,8 @@ Options:
   --dry-run
 ```
 
-生成物: `.dvg/scenario.yaml`、`.dvg/script.yaml`、`.dvg/subtitles.srt`
+生成物: `.dvg/scenario.yaml`（AI生成）、`.dvg/script.yaml`（決定論的）、
+`.dvg/subtitles.srt`（決定論的）
 
 ### `scenario validate`
 `scenario.yaml` をスキーマに対して検証します。
@@ -378,7 +440,7 @@ Options:
 ├── source-context.json    # 決定論的処理: package.jsonの要約、README、検出フレームワーク、発見済みルート
 ├── project-summary.json   # AI: 機能抽出結果（各機能に実在するルートを紐付け）
 ├── scenario.yaml          # AI: 起動手順(setup) + シーン定義 + Playwright操作 ← 自由に編集可
-├── script.yaml            # AI: ナレーションのタイミング                ← 自由に編集可
+├── script.yaml            # 決定論的処理: scenario.yamlのナレーション文から算出   ← 自由に編集可
 ├── subtitles.srt          # 決定論的処理: script.yamlから自動生成       ← 自由に編集可
 ├── timeline.json          # 決定論的処理: レンダリング時に自動生成
 ├── recordings/            # Playwrightの録画出力（mp4）
@@ -424,6 +486,10 @@ llm:
   model: "gemini-2.5-pro"
   # fallbackProvider: "ollama"
   # fallbackModel: "qwen2.5:7b-instruct"
+  # tasks:               # タスクごとのモデル上書き（任意） — 上の「タスクごとに違うモデルを使う」を参照
+  #   scenario:
+  #     provider: "gemini"
+  #     model: "gemini-2.5-pro"
 
 voicevox:
   host: "http://localhost:50021"
@@ -650,6 +716,16 @@ demo-video-gen init --source ../my-local-project --url http://localhost:3000
 現時点で自動検出に対応しているのはNext.js（App Router / Pages Router）のみです。
 それ以外のフレームワークの場合は、生成された`scenario.yaml`の`goto`アクションを
 手動で修正してから`record`を実行してください。
+
+### `scenario generate`が「LLM failed to produce valid JSON after 3 attempt(s)」で失敗する
+
+今使っているモデルが、そのタスクにあまり向いていない可能性が高いです。`scenario generate`
+は`analyze`よりもずっと難しい構造化出力タスクです（複数シーン、それぞれにアクションと
+起動計画を含む）。`analyze`はうまくいくのにこちらだけ失敗する、というのはよくあります。
+「タスクごとに違うモデルを使う」を参照し、`llm.tasks.scenario`だけをより強いモデル
+（大きめのローカルモデル、またはGemini）に向けてください。`analyze`側の設定は変えなくて
+大丈夫です。警告メッセージにはモデルが具体的にどのフィールドを間違えたかも表示されるので、
+参考にしてください。
 
 ### VOICEVOXに接続できない
 

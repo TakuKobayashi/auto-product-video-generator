@@ -1,6 +1,6 @@
 import { join } from 'node:path';
-import { loadConfig, saveConfig, writeJson, logger } from '@demo-video-gen/core';
-import { createLlmProvider, ProjectAnalyzer } from '@demo-video-gen/ai';
+import { loadConfig, saveConfig, writeJson, logger, describeTaskLlm } from '@demo-video-gen/core';
+import { createLlmProviderForTask, ProjectAnalyzer } from '@demo-video-gen/ai';
 import { resolveProjectSource, inspectProject, detectStartCommand } from '@demo-video-gen/source';
 
 interface AnalyzeOptions {
@@ -23,7 +23,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
 
   logger.info(`Source:     ${config.source.repository ?? config.source.localPath}`);
   logger.info(`Target URL: ${targetUrl}`);
-  logger.info(`LLM:        ${config.llm.provider} / ${config.llm.model}`);
+  logger.info(`LLM:        ${describeTaskLlm(config.llm, 'analyze')}`);
 
   if (options.dryRun) {
     logger.dryRun('Would resolve project source (clone/verify) and inspect it for routes.');
@@ -63,7 +63,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   }
 
   // AI: turn the deterministic source context into a feature summary.
-  const llm = createLlmProvider(config.llm);
+  const llm = createLlmProviderForTask(config.llm, 'analyze');
   const analyzer = new ProjectAnalyzer(llm);
   const summary = await analyzer.analyze(sourceContext, targetUrl);
 

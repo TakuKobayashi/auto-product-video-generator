@@ -249,6 +249,30 @@ export function createLlmProvider(config: LlmConfig): LlmProvider {
   );
 }
 
+/**
+ * Same as createLlmProvider, but applies dvg.config.yaml's optional
+ * `llm.tasks.<task>` override first (provider/model/apiKeyEnv), falling
+ * back to the top-level llm.* settings for anything not overridden. Use
+ * this from analyze/scenario-generate instead of createLlmProvider
+ * directly, so per-task model choices (e.g. a stronger model just for
+ * scenario generation) actually take effect.
+ *
+ * The fallback chain (llm.fallbackProvider/-Model) is untouched by task
+ * overrides — it always comes from the top-level config, since a fallback
+ * is meant to be a general safety net regardless of which task is running.
+ */
+export function createLlmProviderForTask(config: LlmConfig, task: 'analyze' | 'scenario'): LlmProvider {
+  const override = config.tasks?.[task];
+  if (!override) return createLlmProvider(config);
+
+  return createLlmProvider({
+    ...config,
+    provider: override.provider ?? config.provider,
+    model: override.model ?? config.model,
+    apiKeyEnv: override.apiKeyEnv ?? config.apiKeyEnv,
+  });
+}
+
 function stripCodeFence(raw: string): string {
   return raw.replace(/^```(?:json)?\n?|\n?```$/g, '').trim();
 }

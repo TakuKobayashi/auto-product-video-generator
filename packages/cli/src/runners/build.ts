@@ -10,13 +10,14 @@ import {
   writeYaml,
   ensureDir,
   logger,
+  describeTaskLlm,
   resolveFfmpegPath,
   ProjectSummary,
   ScenarioSchema,
   ScriptSchema,
 } from '@demo-video-gen/core';
 import {
-  createLlmProvider,
+  createLlmProviderForTask,
   ProjectAnalyzer,
   ScenarioGenerator,
   SubtitleGenerator,
@@ -57,7 +58,8 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   logger.info(`Source:  ${config.source.repository ?? config.source.localPath}`);
   logger.info(`Target:  ${config.target.url}`);
   logger.info(`Video:   ${config.video.type}, ~${config.video.duration}s`);
-  logger.info(`LLM:     ${config.llm.provider}/${config.llm.model}${config.llm.fallbackProvider ? ` (fallback: ${config.llm.fallbackProvider}/${config.llm.fallbackModel})` : ''}`);
+  logger.info(`LLM (analyze):  ${describeTaskLlm(config.llm, 'analyze')}`);
+  logger.info(`LLM (scenario): ${describeTaskLlm(config.llm, 'scenario')}`);
   logger.info('');
 
   const summaryPath    = join(workDir, 'project-summary.json');
@@ -72,7 +74,8 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   const screenshotDir  = join(workDir, 'screenshots');
   const outputPath     = join(config.output.dir, 'final.mp4');
 
-  const llm = createLlmProvider(config.llm);
+  const analyzeLlm = createLlmProviderForTask(config.llm, 'analyze');
+  const scenarioLlm = createLlmProviderForTask(config.llm, 'scenario');
   const dryRun = options.dryRun ?? false;
 
   // Resolved once upfront (not just in the analyze step) since the record
@@ -99,7 +102,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         }
       }
 
-      const analyzer = new ProjectAnalyzer(llm);
+      const analyzer = new ProjectAnalyzer(analyzeLlm);
       summary = await analyzer.analyze(sourceContext, config.target.url);
       await writeJson(summaryPath, summary);
       logger.success(`Saved: ${summaryPath}`);
@@ -134,7 +137,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
 
   if (!options.skipScenario) {
     logger.step('2/5', 'Generating scenario...');
-    const generator = new ScenarioGenerator(llm);
+    const generator = new ScenarioGenerator(scenarioLlm);
     const result = await generator.generate(summary, config.video, config.target.url);
     scenario = result.scenario;
     script = result.script;

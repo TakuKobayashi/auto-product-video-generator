@@ -59,6 +59,15 @@ llm:
   #   model: "qwen2.5:7b-instruct"
   #   fallbackProvider: "gemini"
   #   fallbackModel: "gemini-2.5-pro"
+  #
+  # Option D — different model per task. `analyze` (extraction/classification)
+  # and `scenario generate` (complex structured JSON: actions, timing, a
+  # setup plan) are different tasks; a model that's fine for one can
+  # struggle with the other. Unset fields fall back to provider/model above.
+  #   tasks:
+  #     scenario:
+  #       provider: "gemini"
+  #       model: "gemini-2.5-pro"
 
 voicevox:
   host: "http://localhost:50021"

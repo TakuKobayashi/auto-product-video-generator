@@ -2,6 +2,7 @@ export * from './llm/provider.js';
 export * from './pipeline/analyzer.js';
 export * from './pipeline/platform-classifier.js';
 export * from './pipeline/scenario-generator.js';
+export * from './pipeline/script-builder.js';
 export * from './pipeline/setup-planner.js';
 export * from './pipeline/subtitle-generator.js';
 export * from './pipeline/timeline-builder.js';

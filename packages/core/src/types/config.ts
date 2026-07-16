@@ -86,8 +86,20 @@ export const VideoConfigSchema = z.object({
 export const LlmProviderNameSchema = z.enum(['gemini', 'openai', 'claude', 'groq', 'ollama']);
 export type LlmProviderName = z.infer<typeof LlmProviderNameSchema>;
 
+// Per-task override: analyze (understanding source code, extracting
+// features) and scenario (generating the recording plan) are quite
+// different tasks — some models are good at one and not the other. Falls
+// back to the top-level provider/model/apiKeyEnv when a field is omitted.
+export const LlmTaskOverrideSchema = z.object({
+  provider: LlmProviderNameSchema.optional(),
+  model: z.string().optional(),
+  apiKeyEnv: z.string().optional(),
+});
+export type LlmTaskOverride = z.infer<typeof LlmTaskOverrideSchema>;
+
 export const LlmConfigSchema = z.object({
-  // Primary provider used for analyze/scenario generation.
+  // Primary provider used for analyze/scenario generation, unless
+  // overridden per-task below.
   provider: LlmProviderNameSchema.default('gemini'),
   model: z.string().default('gemini-2.5-pro'),
   apiKeyEnv: z.string().optional(),
@@ -105,6 +117,18 @@ export const LlmConfigSchema = z.object({
   fallbackProvider: LlmProviderNameSchema.optional(),
   fallbackModel: z.string().optional(),
   fallbackApiKeyEnv: z.string().optional(),
+
+  // Optional per-task overrides — e.g. a smaller/faster model is often
+  // fine for `analyze` (mostly extraction/classification), while
+  // `scenario generate` (structured multi-scene JSON) benefits from a
+  // stronger model. Unset fields fall back to the top-level
+  // provider/model/apiKeyEnv above.
+  tasks: z
+    .object({
+      analyze: LlmTaskOverrideSchema.optional(),
+      scenario: LlmTaskOverrideSchema.optional(),
+    })
+    .optional(),
 });
 
 export const VoicevoxConfigSchema = z.object({

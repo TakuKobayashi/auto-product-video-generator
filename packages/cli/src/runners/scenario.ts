@@ -7,10 +7,11 @@ import {
   writeYaml,
   ensureDir,
   logger,
+  describeTaskLlm,
   ProjectSummary,
   ScenarioSchema,
 } from '@demo-video-gen/core';
-import { createLlmProvider, ScenarioGenerator, SubtitleGenerator } from '@demo-video-gen/ai';
+import { createLlmProviderForTask, ScenarioGenerator, SubtitleGenerator } from '@demo-video-gen/ai';
 
 interface ScenarioGenerateOptions {
   config?: string;
@@ -59,7 +60,9 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
 
   await ensureDir(workDir);
 
-  const llm = createLlmProvider(config.llm);
+  logger.info(`LLM: ${describeTaskLlm(config.llm, 'scenario')}`);
+
+  const llm = createLlmProviderForTask(config.llm, 'scenario');
   const generator = new ScenarioGenerator(llm);
   const { scenario, script } = await generator.generate(summary, videoConfig, config.target.url);
 
