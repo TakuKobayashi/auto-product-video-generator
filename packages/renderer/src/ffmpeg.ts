@@ -60,20 +60,26 @@ export class FfmpegRenderer {
     const concatInputs: string[] = [];
 
     videoTracks.forEach((t, i) => {
-      const parts: string[] = [`[${i}:v]`];
+      // NOTE: the input link label (e.g. "[0:v]") must attach directly to
+      // the first filter with NO comma in between — "[0:v]scale=..." is
+      // correct, "[0:v],scale=..." makes ffmpeg parse an empty filter name
+      // right after the label and fail with "No such filter: ''". So the
+      // label is kept out of this array and prepended separately below,
+      // while `,` only ever joins the filter expressions themselves.
+      const filters: string[] = [];
       if (t.trimStart !== undefined && t.trimEnd !== undefined) {
-        parts.push(`trim=start=${t.trimStart}:end=${t.trimEnd},setpts=PTS-STARTPTS`);
+        filters.push(`trim=start=${t.trimStart}:end=${t.trimEnd},setpts=PTS-STARTPTS`);
       }
       if (t.speed && t.speed !== 1.0) {
-        parts.push(`setpts=${(1 / t.speed).toFixed(4)}*PTS`);
+        filters.push(`setpts=${(1 / t.speed).toFixed(4)}*PTS`);
       }
       // Scale to target resolution
       const [w, h] = timeline.meta.resolution.split('x');
-      parts.push(`scale=${w}:${h}:force_original_aspect_ratio=decrease`);
-      parts.push(`pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2`);
+      filters.push(`scale=${w}:${h}:force_original_aspect_ratio=decrease`);
+      filters.push(`pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2`);
 
       const label = `[v${i}]`;
-      filterParts.push(parts.join(',') + label);
+      filterParts.push(`[${i}:v]${filters.join(',')}${label}`);
       concatInputs.push(label);
     });
 
