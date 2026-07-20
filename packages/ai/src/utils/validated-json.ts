@@ -18,16 +18,20 @@ interface ParseableSchema<T> {
  * Calls `llm.generateJson()` and validates the result against `schema`. LLMs
  * (especially smaller local models) sometimes produce JSON that's *almost*
  * right — wrong field name, a number where a string was expected, a missing
- * required field. Rather than failing immediately, we feed the exact
- * validation errors back to the model and ask it to correct them, up to
- * `maxRetries` times, before giving up with a clear error.
+ * required field. Before treating that as a failure, an optional `repair`
+ * hook gets a chance to fix known-safe, common near-misses (e.g. filling a
+ * sensible default for a missing-but-optional-in-spirit field) — this is
+ * for cosmetic defaults only, never anything that changes meaning. If it's
+ * still invalid after that, we feed the exact validation errors back to the
+ * model and ask it to correct them, up to `maxRetries` times, before giving
+ * up with a clear error.
  */
 export async function generateValidatedJson<T>(
   llm: LlmProvider,
   schema: ParseableSchema<T>,
   prompt: string,
   systemPrompt: string,
-  options: { label: string; maxRetries?: number } = { label: 'response' },
+  options: { label: string; maxRetries?: number; repair?: (raw: unknown) => unknown } = { label: 'response' },
 ): Promise<T> {
   const maxRetries = options.maxRetries ?? 2;
   let lastErrorText = '';
@@ -52,6 +56,15 @@ export async function generateValidatedJson<T>(
       );
       if (attempt === maxRetries) throw err;
       continue;
+    }
+
+    if (options.repair) {
+      try {
+        raw = options.repair(raw);
+      } catch {
+        // A repair hook that throws just means "couldn't repair this one" —
+        // fall through to normal validation/retry handling below.
+      }
     }
 
     const result = schema.safeParse(raw);
