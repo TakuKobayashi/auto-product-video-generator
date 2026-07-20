@@ -12,30 +12,26 @@
     "lint": "eslint packages/*/src/**/*.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-
     "setup": "task install",
     "setup:full": "task install PROFILE=local WITH_OLLAMA=true",
     "setup:cloud-only": "task install PROFILE=local WITH_OLLAMA=false",
     "setup:ci": "task install PROFILE=ci WITH_OLLAMA=true",
-
     "serve": "task serve",
     "serve:stop": "task stop",
-
     "doctor": "task doctor",
-
     "task": "task"
   },
   "devDependencies": {
-    "@go-task/cli": "^3.44.0",
-    "@types/node": "^20.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "eslint": "^9.0.0",
-    "ffmpeg-static": "^5.2.0",
+    "@go-task/cli": "^3.52.0",
+    "@types/node": "^20.19.43",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "eslint": "^9.39.5",
+    "ffmpeg-static": "^5.3.0",
     "ffprobe-static": "^3.1.0",
-    "playwright": "^1.47.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.5.0",
-    "vitest": "^2.0.0"
+    "playwright": "^1.61.1",
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9"
   }
 }
