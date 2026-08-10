@@ -227,6 +227,21 @@ export function createLlmProvider(config: LlmConfig): LlmProvider {
     return primary;
   }
 
+  // A fallback that cannot be authenticated is not a usable fallback. In
+  // particular, fresh Ollama-only configs used to include Gemini even when
+  // GEMINI_API_KEY was absent, hiding the useful Ollama error behind a final
+  // "GEMINI_API_KEY is not set" failure.
+  const fallbackApiKeyEnv = requiredApiKeyEnv(
+    config.fallbackProvider,
+    config.fallbackApiKeyEnv,
+  );
+  if (fallbackApiKeyEnv && !process.env[fallbackApiKeyEnv]) {
+    logger.warn(
+      `[llm] ${config.fallbackProvider} fallback disabled because ${fallbackApiKeyEnv} is not set.`,
+    );
+    return primary;
+  }
+
   const fallbackModel =
     config.fallbackModel ?? (config.fallbackProvider === 'ollama' ? 'qwen2.5:7b-instruct' : config.model);
 
@@ -247,6 +262,21 @@ export function createLlmProvider(config: LlmConfig): LlmProvider {
     buildFallback,
     `${config.fallbackProvider}/${fallbackModel}`,
   );
+}
+
+function requiredApiKeyEnv(
+  provider: LlmProviderName,
+  configuredEnv: string | undefined,
+): string | null {
+  if (provider === 'ollama') return null;
+  if (configuredEnv) return configuredEnv;
+  switch (provider) {
+    case 'gemini': return 'GEMINI_API_KEY';
+    case 'openai': return 'OPENAI_API_KEY';
+    case 'claude': return 'ANTHROPIC_API_KEY';
+    case 'groq': return 'GROQ_API_KEY';
+    default: return null;
+  }
 }
 
 /**

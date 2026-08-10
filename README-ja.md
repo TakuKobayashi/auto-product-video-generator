@@ -113,8 +113,9 @@ pnpm dev -- render
 最初に知っておくとよいのは以下の3点です。
 
 - **LLMプロバイダー**: `gemini`（`GEMINI_API_KEY`が必要）か`ollama`（完全ローカル、
-  キー不要）。`init`はその時点で使えるほうを自動選択します。`fallbackProvider`を
-  設定すれば両方使えます。`analyze`と`scenario generate`は`llm.tasks`で**別々の
+  キー不要）。`init`はその時点で使えるほうを自動選択します。APIキーが設定済みの
+  プロバイダーだけを`fallbackProvider`に指定できます。必須APIキーが未設定の
+  フォールバックは自動的に無効化されます。`analyze`と`scenario generate`は`llm.tasks`で**別々の
   モデル**を指定可能です — `scenario generate`のほうが難しいタスクなので、
   `analyze`より強いモデルが必要になることがあります。
 - **アプリの起動**: `analyze`が`package.json`から起動コマンド（`npm run dev`等）を

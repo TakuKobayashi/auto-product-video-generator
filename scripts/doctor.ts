@@ -9,7 +9,7 @@
 // fragile, since pnpm's on-disk layout for these isn't a stable path to
 // grep for). Everything else (installing, serving, pulling models) is
 // plain sequential commands in Taskfile.yml — see the comments there.
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 
@@ -20,12 +20,17 @@ interface CheckResult {
   ok: boolean;
   hint: string;
   optional?: boolean;
+  skipped?: boolean;
 }
 
 const results: CheckResult[] = [];
 
 function check(label: string, ok: boolean, hint: string, optional = false): void {
   results.push({ label, ok, hint, optional });
+}
+
+function skipped(label: string, hint: string): void {
+  results.push({ label, ok: false, hint, optional: true, skipped: true });
 }
 
 async function httpOk(url: string, timeoutMs = 2000): Promise<boolean> {
@@ -91,28 +96,56 @@ async function main(): Promise<void> {
   const voicevoxUp = await httpOk('http://localhost:50021/version');
   check('VOICEVOX Engine reachable (localhost:50021)', voicevoxUp, 'Run: task serve');
 
-  // Ollama reachable (optional)
+  // LLM availability: Gemini OR Ollama is sufficient. Read configured
+  // Ollama model names so doctor can also verify they have been pulled.
   const ollamaUp = await httpOk('http://localhost:11434/api/tags');
-  check('Ollama daemon reachable (localhost:11434)', ollamaUp, 'Run: task serve', true);
+  const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+  let ollamaModels: string[] = [];
 
   if (ollamaUp) {
     try {
       const res = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(2000) });
       const data = (await res.json()) as { models?: Array<{ name: string }> };
-      const names = (data.models ?? []).map((m) => m.name).join(', ') || '(none)';
-      console.log(`  \x1b[90mmodels available: ${names}\x1b[0m`);
+      ollamaModels = (data.models ?? []).map((m) => m.name);
     } catch {
       /* best-effort only */
     }
   }
 
-  // Gemini API key (optional)
-  check(
-    'GEMINI_API_KEY set',
-    !!process.env.GEMINI_API_KEY,
-    'export GEMINI_API_KEY=... (see .env.example)',
-    true,
+  const configuredModels = readConfiguredOllamaModels();
+  const allConfiguredModelsPulled = configuredModels.every((model) =>
+    ollamaModels.some((name) => normalizeModelName(name) === normalizeModelName(model)),
   );
+
+  check(
+    'LLM available (Gemini API key or Ollama)',
+    hasGeminiKey || (ollamaUp && allConfiguredModelsPulled),
+    configuredModels.length > 0 && ollamaUp
+      ? `Pull the configured model: ollama pull ${configuredModels[0]}`
+      : 'Set GEMINI_API_KEY, or start Ollama: task serve:ollama',
+  );
+
+  if (hasGeminiKey) check('Gemini API key', true, '');
+  else skipped('Gemini API key', 'not set (OK because Ollama can be used)');
+
+  if (ollamaUp) {
+    check('Ollama daemon reachable (localhost:11434)', true, '');
+    for (const model of configuredModels) {
+      const pulled = ollamaModels.some((name) => normalizeModelName(name) === normalizeModelName(model));
+      check(
+        `Ollama model downloaded (${model})`,
+        pulled,
+        `Run: ollama pull ${model}`,
+        hasGeminiKey,
+      );
+    }
+    const names = ollamaModels.join(', ') || '(none)';
+    console.log(`  \x1b[90mOllama models available: ${names}\x1b[0m`);
+  } else if (hasGeminiKey) {
+    skipped('Ollama daemon', 'not running (OK because Gemini is available)');
+  } else {
+    check('Ollama daemon reachable (localhost:11434)', false, 'Run: task serve:ollama');
+  }
 
   // Config file
   check(
@@ -124,7 +157,11 @@ async function main(): Promise<void> {
   console.log();
   let allCriticalOk = true;
   for (const r of results) {
-    const mark = r.ok ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
+    const mark = r.ok
+      ? '\x1b[32m✓\x1b[0m'
+      : r.skipped
+        ? '\x1b[90m-\x1b[0m'
+        : '\x1b[31m✗\x1b[0m';
     const suffix = r.optional ? ' (optional)' : '';
     console.log(`${mark} ${r.label}${suffix}`);
     if (!r.ok) {
@@ -139,6 +176,41 @@ async function main(): Promise<void> {
   } else {
     console.log("\x1b[33m⚠\x1b[0m Some required items are missing — see hints above, or just run: task install");
   }
+}
+
+function readConfiguredOllamaModels(): string[] {
+  const defaults = ['qwen2.5:7b-instruct'];
+  if (!existsSync('dvg.config.yaml')) return defaults;
+
+  try {
+    const yaml = require('js-yaml') as { load(input: string): unknown };
+    const raw = yaml.load(readFileSync('dvg.config.yaml', 'utf-8')) as {
+      llm?: {
+        provider?: string;
+        model?: string;
+        fallbackProvider?: string;
+        fallbackModel?: string;
+        tasks?: Record<string, { provider?: string; model?: string }>;
+      };
+    };
+    const llm = raw?.llm;
+    if (!llm) return defaults;
+
+    const models = new Set<string>();
+    if (llm.provider === 'ollama') models.add(llm.model ?? defaults[0]);
+    if (llm.fallbackProvider === 'ollama') models.add(llm.fallbackModel ?? defaults[0]);
+    for (const task of Object.values(llm.tasks ?? {})) {
+      const provider = task.provider ?? llm.provider;
+      if (provider === 'ollama') models.add(task.model ?? llm.model ?? defaults[0]);
+    }
+    return [...models];
+  } catch {
+    return defaults;
+  }
+}
+
+function normalizeModelName(name: string): string {
+  return name.includes(':') ? name : `${name}:latest`;
 }
 
 main();

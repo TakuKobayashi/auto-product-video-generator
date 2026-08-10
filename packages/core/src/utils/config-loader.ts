@@ -36,12 +36,9 @@ export async function saveConfig(configPath: string, config: DvgConfig): Promise
 }
 
 export function createDefaultConfig(name: string, url: string, source: SourceConfig): DvgConfig {
-  // Pick a sensible default LLM setup based on what's actually available
-  // right now, so a fresh `init` doesn't require GEMINI_API_KEY to be set
-  // just because that happens to be the schema's fallback default. Either
-  // way, both directions are configured (as `provider` + `fallbackProvider`)
-  // so the config keeps working if the situation changes later (e.g. the
-  // person adds a Gemini key, or Ollama isn't running yet at build time).
+  // Pick a default that only references providers usable right now. Do not
+  // add a cloud fallback without its API key: Ollama-only usage must remain
+  // fully local and must never fail with an unrelated cloud-key error.
   const hasGeminiKey = !!process.env.GEMINI_API_KEY;
 
   const llm = hasGeminiKey
@@ -54,8 +51,7 @@ export function createDefaultConfig(name: string, url: string, source: SourceCon
     : {
         provider: 'ollama' as const,
         model: 'qwen2.5:7b-instruct',
-        fallbackProvider: 'gemini' as const,
-        fallbackModel: 'gemini-2.5-pro',
+        ollamaHost: 'http://127.0.0.1:11434',
       };
 
   return DvgConfigSchema.parse({

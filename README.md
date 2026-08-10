@@ -114,8 +114,9 @@ duplicated here on purpose — that file *is* the documentation for it.
 Three things worth knowing up front:
 
 - **LLM provider**: `gemini` (needs `GEMINI_API_KEY`) or `ollama` (fully
-  local, no key). `init` picks whichever you have available; set
-  `fallbackProvider` to use both. `analyze` and `scenario generate` can use
+  local, no key). `init` picks whichever you have available. A configured
+  fallback is enabled only when its required API key is present, so an
+  Ollama-only setup never fails on a missing cloud key. `analyze` and `scenario generate` can use
   *different* models via `llm.tasks` — useful since `scenario generate` is
   a harder task and sometimes needs a stronger model than `analyze` does.
 - **Starting the app**: `analyze` tries to detect a start command
