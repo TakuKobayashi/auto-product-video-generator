@@ -22,6 +22,7 @@ import {
   ScenarioGenerator,
   SubtitleGenerator,
   TimelineBuilder,
+  recomputeScriptTimingFromAudio,
 } from '@demo-video-gen/ai';
 import { SceneRecorder } from '@demo-video-gen/playwright';
 import { VoicevoxClient } from '@demo-video-gen/voicevox';
@@ -163,17 +164,65 @@ export async function runBuild(options: BuildOptions): Promise<void> {
     script = ScriptSchema.parse(await readYaml(scriptPath));
   }
 
-  // ── Step 3: Record ───────────────────────────────────────────────────────
+  // ── Step 3: Voice ────────────────────────────────────────────────────────
+  if (!options.skipVoice) {
+    logger.step('3/5', 'Synthesizing voice narration...');
+    if (!dryRun) {
+      const voicevox = new VoicevoxClient(config.voicevox);
+      const healthy = await voicevox.checkHealth();
+      if (!healthy) {
+        throw new Error(
+          `VOICEVOX is not available at ${config.voicevox.host}. Start it with: ` +
+          'docker run --rm -p 50021:50021 voicevox/voicevox_engine:cpu-latest',
+        );
+      } else {
+        await voicevox.synthesizeAll(script, { outputDir: voiceDir, dryRun });
+        script = await recomputeScriptTimingFromAudio(
+          script,
+          voiceDir,
+          config.video.sceneGapSeconds,
+        );
+        await writeYaml(scriptPath, script);
+        await writeFile(srtPath, new SubtitleGenerator().generateSrt(script), 'utf-8');
+        logger.success('Updated script and subtitles from actual audio durations.');
+      }
+    } else {
+      logger.dryRun(`Would synthesize ${script.scenes.length} voice files`);
+    }
+  } else {
+    logger.step('3/5', 'Skipping voice (--skip-voice)');
+    if (!dryRun && !options.skipRecord) {
+      for (const scriptScene of script.scenes) {
+        const voicePath = join(workDir, scriptScene.voiceFile);
+        if (!existsSync(voicePath)) {
+          throw new Error(`Voice file not found: ${voicePath}. Voice must run before recording.`);
+        }
+      }
+      script = await recomputeScriptTimingFromAudio(
+        script,
+        voiceDir,
+        config.video.sceneGapSeconds,
+      );
+      await writeYaml(scriptPath, script);
+      await writeFile(srtPath, new SubtitleGenerator().generateSrt(script), 'utf-8');
+    }
+  }
+
+  // ── Step 4: Record ───────────────────────────────────────────────────────
   if (!options.skipRecord) {
-    logger.step('3/5', 'Recording browser interactions...');
+    logger.step('4/5', 'Recording browser interactions...');
     if (scenario.meta.platform !== 'web') {
-      logger.warn(
-        `scenario.yaml was generated for platform '${scenario.meta.platform}', but recording ` +
-        `currently only supports 'web' (via Playwright). Proceeding anyway, but this likely ` +
-        `won't produce a usable recording — a dedicated recorder for that platform doesn't exist yet.`,
+      throw new Error(
+        `Recording platform '${scenario.meta.platform}' is not supported. Playwright recording requires 'web'.`,
       );
     }
     if (!dryRun) {
+      for (const scriptScene of script.scenes) {
+        const voicePath = join(workDir, scriptScene.voiceFile);
+        if (!existsSync(voicePath)) {
+          throw new Error(`Voice file not found: ${voicePath}. Voice must run before recording.`);
+        }
+      }
       await ensureAppRunning({
         url: config.target.url,
         setupSteps: scenario.setup,
@@ -185,35 +234,21 @@ export async function runBuild(options: BuildOptions): Promise<void> {
     }
     const recorder = new SceneRecorder();
     for (const scene of scenario.scenes) {
+      const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
+      if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yaml.`);
+      const scriptScene = script.scenes[scriptIndex];
+      const nextScene = script.scenes[scriptIndex + 1];
+      const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
       await recorder.recordScene(scene, config.video, {
         headed: options.headed ?? false,
         slowMo: 0,
         outputDir: recordingsDir,
         screenshotDir,
         dryRun,
-      });
+      }, targetDurationSeconds, scriptScene.endTime - scriptScene.startTime);
     }
   } else {
-    logger.step('3/5', 'Skipping record (--skip-record)');
-  }
-
-  // ── Step 4: Voice ────────────────────────────────────────────────────────
-  if (!options.skipVoice) {
-    logger.step('4/5', 'Synthesizing voice narration...');
-    if (!dryRun) {
-      const voicevox = new VoicevoxClient(config.voicevox);
-      const healthy = await voicevox.checkHealth();
-      if (!healthy) {
-        logger.warn(`VOICEVOX not available at ${config.voicevox.host} — skipping voice.`);
-        logger.warn('Start: docker run --rm -p 50021:50021 voicevox/voicevox_engine:cpu-latest');
-      } else {
-        await voicevox.synthesizeAll(script, { outputDir: voiceDir, dryRun });
-      }
-    } else {
-      logger.dryRun(`Would synthesize ${script.scenes.length} voice files`);
-    }
-  } else {
-    logger.step('4/5', 'Skipping voice (--skip-voice)');
+    logger.step('4/5', 'Skipping record (--skip-record)');
   }
 
   // ── Step 5: Render ───────────────────────────────────────────────────────

@@ -84,7 +84,7 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
   }
   logger.info('');
   logger.info('Review and edit the files above, then run:');
-  logger.dim('  demo-video-gen record');
+  logger.dim('  demo-video-gen voice');
 }
 
 export async function runScenarioValidate(filePath: string): Promise<void> {

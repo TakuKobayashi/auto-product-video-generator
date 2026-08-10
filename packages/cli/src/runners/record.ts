@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { loadConfig, readYaml, logger, ScenarioSchema } from '@demo-video-gen/core';
+import { loadConfig, readYaml, logger, ScenarioSchema, ScriptSchema } from '@demo-video-gen/core';
 import { SceneRecorder } from '@demo-video-gen/playwright';
 import { resolveProjectSource, ensureAppRunning } from '@demo-video-gen/source';
 
@@ -20,6 +20,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
 
   const workDir = config.output.workDir;
   const scenarioPath = join(workDir, 'scenario.yaml');
+  const scriptPath = join(workDir, 'script.yaml');
 
   if (!existsSync(scenarioPath)) {
     logger.error(`scenario.yaml not found. Run 'demo-video-gen scenario generate' first.`);
@@ -28,6 +29,11 @@ export async function runRecord(options: RecordOptions): Promise<void> {
 
   const rawScenario = await readYaml(scenarioPath);
   const scenario = ScenarioSchema.parse(rawScenario);
+
+  if (!existsSync(scriptPath)) {
+    throw new Error(`script.yaml not found. Run 'demo-video-gen voice' before recording.`);
+  }
+  const script = ScriptSchema.parse(await readYaml(scriptPath));
 
   if (scenario.meta.platform !== 'web') {
     logger.warn(
@@ -72,6 +78,15 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   const recorder = new SceneRecorder();
 
   for (const scene of scenesToRecord) {
+    const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
+    if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yaml.`);
+    const scriptScene = script.scenes[scriptIndex];
+    const voicePath = join(workDir, scriptScene.voiceFile);
+    if (!options.dryRun && !existsSync(voicePath)) {
+      throw new Error(`Voice file not found: ${voicePath}. Run 'demo-video-gen voice' before recording.`);
+    }
+    const nextScene = script.scenes[scriptIndex + 1];
+    const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
     logger.info('');
     await recorder.recordScene(scene, config.video, {
       headed: options.headed ?? false,
@@ -79,12 +94,12 @@ export async function runRecord(options: RecordOptions): Promise<void> {
       outputDir: recordingsDir,
       screenshotDir,
       dryRun: options.dryRun ?? false,
-    });
+    }, targetDurationSeconds, scriptScene.endTime - scriptScene.startTime);
   }
 
   logger.info('');
   logger.success('Recording complete.');
   if (!options.dryRun) {
-    logger.info('Next: demo-video-gen voice');
+    logger.info('Next: demo-video-gen render');
   }
 }

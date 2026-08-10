@@ -38,6 +38,8 @@ export class SceneRecorder {
     scene: Scene,
     config: VideoConfig,
     options: RecordOptions,
+    targetDurationSeconds?: number,
+    actionDurationSeconds = targetDurationSeconds,
   ): Promise<string> {
     const [width, height] = config.resolution.split('x').map(Number);
     const outputPath = join(options.outputDir, `scene-${scene.id}.mp4`);
@@ -73,14 +75,31 @@ export class SceneRecorder {
     });
 
     const page = await context.newPage();
+    let recordingError: unknown;
+    const startedAt = Date.now();
 
     try {
-      await this.executeActions(page, scene.actions, options.screenshotDir);
-      // Small pause at end so last frame is visible
-      await page.waitForTimeout(500);
+      await this.executeActions(
+        page,
+        scene.actions,
+        options.screenshotDir,
+        actionDurationSeconds,
+        startedAt,
+      );
+      const elapsedSeconds = (Date.now() - startedAt) / 1000;
+      const holdSeconds = Math.max(0, (targetDurationSeconds ?? 0.5) - elapsedSeconds);
+      if (holdSeconds > 0) {
+        logger.dim(`  Holding final frame for ${holdSeconds.toFixed(1)}s`);
+        await page.waitForTimeout(holdSeconds * 1000);
+      } else if (targetDurationSeconds && elapsedSeconds > targetDurationSeconds) {
+        logger.warn(
+          `Scene '${scene.id}' actions took ${elapsedSeconds.toFixed(1)}s, ` +
+          `longer than its ${targetDurationSeconds.toFixed(1)}s narration slot.`,
+        );
+      }
     } catch (err) {
-      logger.warn(`Scene '${scene.id}' had an error: ${(err as Error).message}`);
-      logger.warn('Saving partial recording anyway.');
+      recordingError = err;
+      logger.error(`Scene '${scene.id}' recording failed: ${(err as Error).message}`);
     } finally {
       const videoPath = await page.video()?.path();
       await context.close();
@@ -95,6 +114,12 @@ export class SceneRecorder {
       }
     }
 
+    if (recordingError) {
+      throw new Error(`Failed to record scene '${scene.id}'. Partial recording was saved.`, {
+        cause: recordingError,
+      });
+    }
+
     return outputPath;
   }
 
@@ -102,11 +127,21 @@ export class SceneRecorder {
     page: Page,
     actions: Action[],
     screenshotDir: string,
+    targetDurationSeconds?: number,
+    startedAt = Date.now(),
   ): Promise<void> {
-    for (const action of actions) {
+    for (let index = 0; index < actions.length; index++) {
+      const action = actions[index];
       await this.executeAction(page, action, screenshotDir);
-      // Small stabilization pause between actions
-      await page.waitForTimeout(100);
+      // Spread quick interactions across the narration instead of executing
+      // every click immediately and showing only a long frozen final frame.
+      if (targetDurationSeconds && actions.length > 0) {
+        const milestoneMs = (targetDurationSeconds * 1000 * (index + 1)) / actions.length;
+        const elapsedMs = Date.now() - startedAt;
+        await page.waitForTimeout(Math.max(0, milestoneMs - elapsedMs));
+      } else {
+        await page.waitForTimeout(100);
+      }
     }
   }
 
@@ -117,7 +152,13 @@ export class SceneRecorder {
   ): Promise<void> {
     switch (action.type) {
       case 'goto':
-        await page.goto(action.url, { waitUntil: 'networkidle' });
+        {
+          const response = await page.goto(action.url, { waitUntil: 'networkidle' });
+          if (!response) throw new Error(`Navigation to ${action.url} returned no response`);
+          if (!response.ok()) {
+            throw new Error(`Navigation to ${action.url} returned HTTP ${response.status()}`);
+          }
+        }
         break;
 
       case 'click': {

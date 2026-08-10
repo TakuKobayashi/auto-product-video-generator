@@ -17,14 +17,24 @@ Task、任意でOllama）は下のセットアップコマンドがまとめて�
 git clone <このリポジトリ> && cd demo-video-gen
 
 task install          # 初回のみ: 必要なもの一式をインストール（内訳は task --list）
-task serve             # ローカルサービスを起動（VOICEVOX、Ollama）
-task doctor              # 何か足りてるか不安なら実行
+task serve            # ローカルサービスを起動（VOICEVOX、Ollama）
+task doctor           # 何か足りてるか不安なら実行
 
 # 動画化したいプロジェクトと、それが動くURLを指定
 pnpm dev -- init --repo https://github.com/you/your-app.git --url http://localhost:3000
 #   ローカルに既にある場合は: --source ../your-app
 
 pnpm dev -- build       # 動画を作る
+```
+
+VOICEVOX EngineやOllamaを別の`docker compose up -d`で起動している場合、`task serve`は
+省略できます。その場合もホスト側からVOICEVOXの`http://localhost:50021`とOllamaの
+`http://localhost:11434`へ到達できるよう、Composeでポートを公開してください。
+`task doctor`、または次のコマンドで起動状態を確認できます。
+
+```bash
+curl http://localhost:50021/version
+curl http://localhost:11434/api/tags  # Ollamaを使う場合のみ
 ```
 
 `task`コマンドが無くても、下記はすべて`pnpm install`だけで動きます — 各`task`コマンドが
@@ -47,13 +57,13 @@ flowchart TD
         direction TB
         analyze(["<b>analyze</b><br/>ソースをclone/読込み、<br/>AIが機能・プラットフォーム・<br/>起動計画を抽出"])
         scenario(["<b>scenario generate</b><br/>AIが録画計画<br/>(scenario.yaml)を生成"])
-        record(["<b>record</b><br/>scenarioの起動計画を実行し、<br/>Playwrightが録画"])
         voice(["<b>voice</b><br/>VOICEVOXでナレーション合成"])
+        record(["<b>record</b><br/>音声の実時間に合わせて<br/>Playwrightが録画"])
         render(["<b>render</b><br/>ffmpegで合成"])
         analyze -->|project-summary.json| scenario
-        scenario -->|scenario.yaml, script.yaml| record
-        record -->|recordings/*.mp4| voice
-        voice -->|voice/*.wav| render
+        scenario -->|scenario.yaml, script.yaml| voice
+        voice -->|実時間を反映したscript.yaml| record
+        record -->|recordings/*.mp4| render
     end
 
     cfg --> analyze
@@ -63,21 +73,33 @@ flowchart TD
 上図の各箱はそれぞれ独立したCLIコマンドで、すべて`.dvg/`配下のファイルを読み書きします。
 つまり`build`はブラックボックスではなく、単にこの5つを順番に実行しているだけです。
 個別に実行すれば好きな地点から再開できます（例: `scenario.yaml`を手で編集した後、
-`record`以降だけ再実行すればOK）。
+`voice`以降だけ再実行すればOK）。
+
+```bash
+pnpm dev -- analyze
+pnpm dev -- scenario generate
+pnpm dev -- voice     # WAV生成後、実音声の長さでscript/subtitlesを更新
+pnpm dev -- record    # 更新済みscriptとWAVが必須
+pnpm dev -- render
+```
 
 | コマンド | 生成物 | 補足 |
 |---|---|---|
 | `demo-video-gen init --repo <URL>` | `dvg.config.yaml` | 初回のみ。ローカルの場合は`--source <パス>` |
 | `demo-video-gen analyze` | `.dvg/source-context.json`、`.dvg/project-summary.json` | 決定論的なソース走査 + AIによる分類 |
 | `demo-video-gen scenario generate` | `.dvg/scenario.yaml`、`.dvg/script.yaml`、`.dvg/subtitles.srt` | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
-| `demo-video-gen record` | `.dvg/recordings/*.mp4` | `target.url`に到達できなければ先にアプリを自動起動 |
-| `demo-video-gen voice` | `.dvg/voice/*.wav` | |
+| `demo-video-gen voice` | `.dvg/voice/*.wav` | 実音声の長さでscript/subtitlesの時刻も更新 |
+| `demo-video-gen record` | `.dvg/recordings/*.mp4` | 音声の実時間に合わせて操作し、到達不能なら停止 |
 | `demo-video-gen render` | `output/final.mp4` | |
 
 `demo-video-gen build [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
 は上記5つをまとめて実行し、指定したステップだけ既存の生成物を使って
 スキップできます。各コマンドの全オプションは`--help`で確認できます
 （例: `pnpm dev -- analyze --help`）。
+
+`--skip-voice`と録画を組み合わせる場合も、既存の`.dvg/voice/*.wav`が必要です。
+録画前に既存WAVを測り直すため、音声なしの状態で録画だけを先行することはできません。
+ナレーションや`sceneGapSeconds`を変更した場合は、`voice → record → render`を再実行してください。
 
 ---
 
@@ -88,7 +110,7 @@ flowchart TD
 フォールバック/タスク別モデル、VOICEVOX等）。ここでは意図的に重複させていません
 — あのファイル自体がドキュメントです。
 
-最初に知っておくとよいのは以下の2点です。
+最初に知っておくとよいのは以下の3点です。
 
 - **LLMプロバイダー**: `gemini`（`GEMINI_API_KEY`が必要）か`ollama`（完全ローカル、
   キー不要）。`init`はその時点で使えるほうを自動選択します。`fallbackProvider`を
@@ -97,7 +119,10 @@ flowchart TD
   `analyze`より強いモデルが必要になることがあります。
 - **アプリの起動**: `analyze`が`package.json`から起動コマンド（`npm run dev`等）を
   自動検出し、`scenario.yaml`の`setup`計画に焼き込みます。`record`/`build`は
-  それを使って自動的にアプリを起動します。
+  それを使って自動的にアプリを起動します。`target.url`へ到達できない場合やブラウザ操作が
+  失敗した場合は、白画面や部分録画を完成品にせずエラーで停止します。
+- **シーン間の無音**: `video.sceneGapSeconds`（デフォルト`1`秒）で、ナレーションと
+  シーンの間隔を調整できます。この値は音声合成後のscript、字幕、録画時間へ反映されます。
 
 ---
 
@@ -144,6 +169,17 @@ pnpm approve-builds
 task serve          # 両方まとめて起動を試みる
 task doctor          # 何が足りないか診断
 ```
+
+Docker Composeを使う場合は、少なくともVOICEVOXの`50021:50021`を公開してください。
+Ollamaもコンテナで動かす場合は`11434:11434`が必要です。`voice`が成功する前に`record`へ
+進むことはできません。
+
+### 録画が対象URLやブラウザ操作のエラーで停止する
+
+まず`target.url`を通常のブラウザで開けるか確認してください。次に`.dvg/scenario.yaml`の
+`goto`、`click`、`wait_visible`が実際の画面と合っているか確認します。修正後は音声を
+変えていなければ`pnpm dev -- record`、ナレーションも変えた場合は
+`pnpm dev -- voice`から再実行してください。
 
 ### とにかく何もわからない
 

@@ -13,7 +13,10 @@ export class TimelineBuilder {
 
     const tracks: Timeline['tracks'] = [];
 
-    for (const scene of script.scenes) {
+    for (let sceneIndex = 0; sceneIndex < script.scenes.length; sceneIndex++) {
+      const scene = script.scenes[sceneIndex];
+      const nextScene = script.scenes[sceneIndex + 1];
+      const videoEndTime = nextScene?.startTime ?? scene.endTime;
       // Video track
       tracks.push({
         type: 'video',
@@ -21,18 +24,19 @@ export class TimelineBuilder {
         sceneId: scene.id,
         src: `recordings/scene-${scene.id}.mp4`,
         startTime: scene.startTime,
-        endTime: scene.endTime,
+        endTime: videoEndTime,
         trimStart: 0,
+        trimEnd: videoEndTime - scene.startTime,
         speed: 1.0,
       });
 
-      // Audio track (offset by 0.3s for natural feel)
+      // Audio and subtitles use the exact synthesized-audio timing.
       tracks.push({
         type: 'audio',
         id: `a-${scene.id}`,
         sceneId: scene.id,
         src: scene.voiceFile,
-        startTime: scene.startTime + 0.3,
+        startTime: scene.startTime,
         endTime: scene.endTime,
         volume: 0.9,
       });
@@ -43,7 +47,7 @@ export class TimelineBuilder {
         id: `s-${scene.id}`,
         sceneId: scene.id,
         text: scene.narration,
-        startTime: scene.startTime + 0.3,
+        startTime: scene.startTime,
         endTime: scene.endTime,
         style: {
           fontSize: 36,

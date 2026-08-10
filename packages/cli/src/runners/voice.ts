@@ -1,6 +1,8 @@
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { loadConfig, readYaml, logger, ScriptSchema } from '@demo-video-gen/core';
+import { writeFile } from 'node:fs/promises';
+import { loadConfig, readYaml, writeYaml, logger, ScriptSchema } from '@demo-video-gen/core';
+import { recomputeScriptTimingFromAudio, SubtitleGenerator } from '@demo-video-gen/ai';
 import { VoicevoxClient } from '@demo-video-gen/voicevox';
 
 interface VoiceOptions {
@@ -33,6 +35,7 @@ export async function runVoice(options: VoiceOptions): Promise<void> {
   };
 
   const voiceDir = join(workDir, 'voice');
+  const srtPath = join(workDir, 'subtitles.srt');
 
   logger.info(`VOICEVOX host:  ${voicevoxConfig.host}`);
   logger.info(`Speaker ID:     ${voicevoxConfig.speakerId}`);
@@ -55,9 +58,20 @@ export async function runVoice(options: VoiceOptions): Promise<void> {
     sceneId: options.scene,
   });
 
+  if (!options.dryRun) {
+    const timedScript = await recomputeScriptTimingFromAudio(
+      script,
+      voiceDir,
+      config.video.sceneGapSeconds,
+    );
+    await writeYaml(scriptPath, timedScript);
+    await writeFile(srtPath, new SubtitleGenerator().generateSrt(timedScript), 'utf-8');
+    logger.success(`Updated actual audio timing: ${scriptPath}, ${srtPath}`);
+  }
+
   logger.info('');
   logger.success('Voice synthesis complete.');
   if (!options.dryRun) {
-    logger.info('Next: demo-video-gen render');
+    logger.info('Next: demo-video-gen record');
   }
 }

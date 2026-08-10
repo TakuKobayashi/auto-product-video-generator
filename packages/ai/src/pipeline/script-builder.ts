@@ -1,4 +1,5 @@
-import { Scenario, Script, ScriptScene, logger } from '@demo-video-gen/core';
+import { join } from 'node:path';
+import { Scenario, Script, ScriptScene, getAudioDurationSeconds, logger } from '@demo-video-gen/core';
 
 /**
  * Builds script.yaml deterministically from an already-generated
@@ -12,15 +13,14 @@ import { Scenario, Script, ScriptScene, logger } from '@demo-video-gen/core';
  * this text take to say out loud", there's no reason for the LLM to
  * regenerate any of this — it's a pure calculation.
  */
-export function buildScriptFromScenario(scenario: Scenario): Script {
+export function buildScriptFromScenario(scenario: Scenario, sceneGapSeconds = 1): Script {
   let cursor = 0;
-  const gapSeconds = 0.5; // brief pause between scenes
 
   const scenes: ScriptScene[] = scenario.scenes.map((scene) => {
     const duration = estimateNarrationSeconds(scene.narration, scenario.meta.language);
     const startTime = round1(cursor);
     const endTime = round1(cursor + duration);
-    cursor = endTime + gapSeconds;
+    cursor = endTime + sceneGapSeconds;
 
     return {
       id: scene.id,
@@ -32,6 +32,27 @@ export function buildScriptFromScenario(scenario: Scenario): Script {
   });
 
   logger.step('script', `Derived timing for ${scenes.length} scene(s) from narration length (no LLM call).`);
+  return { scenes };
+}
+
+/** Rebuild script timing from the actual synthesized WAV files. */
+export async function recomputeScriptTimingFromAudio(
+  script: Script,
+  audioDir: string,
+  sceneGapSeconds = 1,
+): Promise<Script> {
+  let cursor = 0;
+  const scenes: ScriptScene[] = [];
+
+  for (const scene of script.scenes) {
+    const duration = await getAudioDurationSeconds(join(audioDir, `scene-${scene.id}.wav`));
+    const startTime = round3(cursor);
+    const endTime = round3(cursor + duration);
+    scenes.push({ ...scene, startTime, endTime });
+    cursor = endTime + sceneGapSeconds;
+  }
+
+  logger.step('script', `Recomputed timing from ${scenes.length} synthesized audio file(s).`);
   return { scenes };
 }
 
@@ -56,4 +77,8 @@ function estimateNarrationSeconds(text: string, language: string): number {
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+function round3(n: number): number {
+  return Math.round(n * 1000) / 1000;
 }

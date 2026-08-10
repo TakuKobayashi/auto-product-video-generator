@@ -1,8 +1,7 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { spawn } from 'node:child_process';
-import { Script, VoicevoxConfig, logger, resolveFfprobePath } from '@demo-video-gen/core';
+import { Script, VoicevoxConfig, logger, getAudioDurationSeconds } from '@demo-video-gen/core';
 
 export interface SynthesizeOptions {
   outputDir: string;
@@ -80,30 +79,7 @@ export class VoicevoxClient {
   }
 
   async getWavDuration(wavPath: string): Promise<number> {
-    return new Promise((resolve, reject) => {
-      const proc = spawn(resolveFfprobePath(), [
-        '-v', 'quiet',
-        '-print_format', 'json',
-        '-show_format',
-        wavPath,
-      ]);
-
-      let stdout = '';
-      proc.stdout.on('data', (d: Buffer) => (stdout += d.toString()));
-      proc.on('close', (code) => {
-        if (code !== 0) {
-          reject(new Error(`ffprobe failed with code ${code}`));
-          return;
-        }
-        try {
-          const data = JSON.parse(stdout) as { format: { duration: string } };
-          resolve(parseFloat(data.format.duration));
-        } catch (e) {
-          reject(new Error(`Failed to parse ffprobe output: ${stdout}`));
-        }
-      });
-      proc.on('error', reject);
-    });
+    return getAudioDurationSeconds(wavPath);
   }
 
   async checkHealth(): Promise<boolean> {

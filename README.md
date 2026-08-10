@@ -20,8 +20,8 @@ command below.
 git clone <this-repo> && cd demo-video-gen
 
 task install          # one-time: installs everything (see task --list)
-task serve             # starts local services (VOICEVOX, Ollama)
-task doctor             # not sure something's set up right? check here
+task serve            # starts local services (VOICEVOX, Ollama)
+task doctor           # not sure something's set up right? check here
 
 # Point it at the project you want a video for, and where it'll be running:
 pnpm dev -- init --repo https://github.com/you/your-app.git --url http://localhost:3000
@@ -29,6 +29,12 @@ pnpm dev -- init --repo https://github.com/you/your-app.git --url http://localho
 
 pnpm dev -- build       # go make the video
 ```
+
+If VOICEVOX Engine and Ollama are already running through your own
+`docker compose up -d`, skip `task serve`. Expose VOICEVOX on host port
+`50021` and, when using Ollama, expose it on `11434`. Verify them with
+`task doctor`, `curl http://localhost:50021/version`, and optionally
+`curl http://localhost:11434/api/tags`.
 
 No `task` binary? `pnpm install` alone still works for everything below —
 see [Taskfile.yml](./Taskfile.yml) for what each `task` command actually
@@ -51,13 +57,13 @@ flowchart TD
         direction TB
         analyze(["<b>analyze</b><br/>clone/read source,<br/>AI extracts features<br/>+ platform + setup plan"])
         scenario(["<b>scenario generate</b><br/>AI writes the recording<br/>plan (scenario.yaml)"])
-        record(["<b>record</b><br/>runs scenario's setup plan,<br/>Playwright records it"])
         voice(["<b>voice</b><br/>VOICEVOX narration"])
+        record(["<b>record</b><br/>Playwright records using<br/>actual narration durations"])
         render(["<b>render</b><br/>ffmpeg composite"])
         analyze -->|project-summary.json| scenario
-        scenario -->|scenario.yaml, script.yaml| record
-        record -->|recordings/*.mp4| voice
-        voice -->|voice/*.wav| render
+        scenario -->|scenario.yaml, script.yaml| voice
+        voice -->|script.yaml with actual timing| record
+        record -->|recordings/*.mp4| render
     end
 
     cfg --> analyze
@@ -67,21 +73,34 @@ flowchart TD
 Each box above is its own CLI command, reading/writing files under `.dvg/`
 — so `build` isn't a black box, it's just those five in a row. Run them
 individually to resume from anywhere (e.g. hand-edit `scenario.yaml`, then
-just re-run from `record`):
+just re-run from `voice`):
+
+```bash
+pnpm dev -- analyze
+pnpm dev -- scenario generate
+pnpm dev -- voice     # synthesizes WAVs and applies their actual timing
+pnpm dev -- record    # requires the timed script and WAVs
+pnpm dev -- render
+```
 
 | Command | Produces | Notes |
 |---|---|---|
 | `demo-video-gen init --repo <url>` | `dvg.config.yaml` | one-time; `--source <path>` for a local checkout instead |
 | `demo-video-gen analyze` | `.dvg/source-context.json`, `.dvg/project-summary.json` | deterministic source scan + AI classification |
 | `demo-video-gen scenario generate` | `.dvg/scenario.yaml`, `.dvg/script.yaml`, `.dvg/subtitles.srt` | scenario is AI; script/subtitles are derived deterministically from it |
-| `demo-video-gen record` | `.dvg/recordings/*.mp4` | auto-starts the app first if `target.url` isn't reachable |
-| `demo-video-gen voice` | `.dvg/voice/*.wav` | |
+| `demo-video-gen voice` | `.dvg/voice/*.wav` | also updates script/subtitle timing from actual audio |
+| `demo-video-gen record` | `.dvg/recordings/*.mp4` | paces actions to audio timing; fails if the target is unreachable |
 | `demo-video-gen render` | `output/final.mp4` | |
 
 `demo-video-gen build [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
 runs all five, skipping (reusing existing output for) whichever steps you
 name. Every command's full option list is in `--help`
 (e.g. `pnpm dev -- analyze --help`).
+
+Recording cannot run before voice synthesis. When combining
+`--skip-voice` with recording, existing `.dvg/voice/*.wav` files are still
+required and are measured again before recording. After changing narration
+or `video.sceneGapSeconds`, rerun `voice → record → render`.
 
 ---
 
@@ -92,7 +111,7 @@ for the full reference, every option commented inline (git source, target
 URL, video type, LLM provider/fallback/per-task overrides, VOICEVOX). Not
 duplicated here on purpose — that file *is* the documentation for it.
 
-Two things worth knowing up front:
+Three things worth knowing up front:
 
 - **LLM provider**: `gemini` (needs `GEMINI_API_KEY`) or `ollama` (fully
   local, no key). `init` picks whichever you have available; set
@@ -102,6 +121,11 @@ Two things worth knowing up front:
 - **Starting the app**: `analyze` tries to detect a start command
   (`npm run dev`, etc.) from `package.json` and bakes it into
   `scenario.yaml`'s `setup` plan; `record`/`build` run it automatically.
+  Recording stops with an error instead of rendering blank/partial footage
+  when the target is unreachable or a browser action fails.
+- **Scene gaps**: `video.sceneGapSeconds` (default: `1`) controls the silent
+  interval between narration clips/scenes. Voice synthesis applies it to
+  script, subtitle, and recording timing.
 
 ---
 
@@ -116,6 +140,10 @@ Two things worth knowing up front:
   troubleshooting section (same content, more detail):
   [README-ja.md#トラブルシューティング](./README-ja.md).
 - **Nothing works and you don't know why** — `task doctor`.
+- **Recording stops on a URL or browser-action error** — first open
+  `target.url` in a normal browser, then verify the `goto`, `click`, and
+  `wait_visible` actions in `.dvg/scenario.yaml`. Rerun from `record` if
+  narration is unchanged, or from `voice` if narration changed.
 
 ---
 

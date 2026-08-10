@@ -136,7 +136,7 @@ Respond with JSON only — just the scenario object, no "script" field, no other
 
     // script.yaml is derived deterministically from scenario.yaml's
     // narration text — no second LLM call, no risk of the two disagreeing.
-    const script = buildScriptFromScenario(scenario);
+    const script = buildScriptFromScenario(scenario, config.sceneGapSeconds);
 
     logger.success(
       `Scenario generated: platform=${scenario.meta.platform}, ${scenario.setup.length} setup step(s), ` +

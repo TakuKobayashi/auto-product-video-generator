@@ -49,6 +49,10 @@ export class FfmpegRenderer {
       ? []
       : timeline.tracks.filter((t): t is SubtitleTrack => t.type === 'subtitle');
 
+    if (videoTracks.length === 0) {
+      throw new Error('Timeline contains no video tracks to render.');
+    }
+
     const args: string[] = [options.ffmpegPath, '-y'];
 
     // --- Inputs ---
@@ -68,7 +72,11 @@ export class FfmpegRenderer {
       // while `,` only ever joins the filter expressions themselves.
       const filters: string[] = [];
       if (t.trimStart !== undefined && t.trimEnd !== undefined) {
-        filters.push(`trim=start=${t.trimStart}:end=${t.trimEnd},setpts=PTS-STARTPTS`);
+        const targetDuration = t.trimEnd - t.trimStart;
+        filters.push(
+          `tpad=stop_mode=clone:stop_duration=${targetDuration},` +
+          `trim=start=${t.trimStart}:duration=${targetDuration},setpts=PTS-STARTPTS`,
+        );
       }
       if (t.speed && t.speed !== 1.0) {
         filters.push(`setpts=${(1 / t.speed).toFixed(4)}*PTS`);

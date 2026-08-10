@@ -131,6 +131,11 @@ export async function ensureAppRunning(options: EnsureAppRunningOptions): Promis
       await runToCompletion('npm install', options.cwd, options.logPath);
     }
     await runSetupSteps(options.setupSteps, { cwd: options.cwd, logPath: options.logPath });
+    if (!(await httpReachable(options.url))) {
+      throw new Error(
+        `Setup finished, but ${options.url} is still unreachable. Check ${options.logPath}.`,
+      );
+    }
     return;
   }
 
@@ -141,6 +146,9 @@ export async function ensureAppRunning(options: EnsureAppRunningOptions): Promis
     installDeps: options.installDeps,
     logPath: options.logPath,
   });
+  if (!(await httpReachable(options.url))) {
+    throw new Error(`Cannot record because ${options.url} is unreachable. Check ${options.logPath}.`);
+  }
 }
 
 export interface EnsureServerRunningOptions {
@@ -196,9 +204,9 @@ export async function ensureServerRunning(options: EnsureServerRunningOptions): 
     await sleep(1000);
   }
 
-  logger.warn(
+  throw new Error(
     `${options.url} did not become reachable within ${Math.round(timeoutMs / 1000)}s. ` +
-    `Check ${options.logPath} for errors — proceeding anyway in case it's still starting up.`,
+    `Check ${options.logPath} for errors.`,
   );
 }
 

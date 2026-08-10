@@ -2,7 +2,7 @@ import { Command } from 'commander';
 
 export function buildCommand(): Command {
   return new Command('build')
-    .description('Run the full pipeline: analyze → scenario → record → voice → render')
+    .description('Run the full pipeline: analyze → scenario → voice → record → render')
     .option('-c, --config <path>', 'path to dvg.config.yaml', 'dvg.config.yaml')
     .option('-t, --type <type>', 'video type: teaser|shorts|demo|tutorial', 'demo')
     .option('-u, --url <url>', 'target application URL (overrides config)')
