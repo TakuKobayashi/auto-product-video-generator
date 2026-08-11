@@ -10,6 +10,7 @@
 // grep for). Everything else (installing, serving, pulling models) is
 // plain sequential commands in Taskfile.yml — see the comments there.
 import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 
@@ -91,6 +92,20 @@ async function main(): Promise<void> {
     /* not installed yet */
   }
   check('Playwright Chromium browser', playwrightOk, 'Run: task install:playwright');
+
+  // Android tooling is required only after an Android-family project has
+  // been detected/configured. An AVD must exist, but it need not be running:
+  // the recorder starts it and waits for boot automatically.
+  const androidTarget = configuredTargetType() === 'android';
+  const adbPath = androidSdkTool('adb');
+  const emulatorPath = androidSdkTool('emulator');
+  const adbOk = spawnSync(adbPath, ['version'], { stdio: 'ignore' }).status === 0;
+  const emulatorResult = spawnSync(emulatorPath, ['-list-avds'], { encoding: 'utf8' });
+  const emulatorOk = emulatorResult.status === 0;
+  const avds = emulatorOk ? emulatorResult.stdout.split(/\r?\n/).map((v) => v.trim()).filter(Boolean) : [];
+  check('Android adb', adbOk, 'Install Android SDK Platform-Tools in Android Studio', !androidTarget);
+  check('Android Emulator', emulatorOk, 'Install Android Emulator in Android Studio SDK Manager', !androidTarget);
+  check('Android AVD available', avds.length > 0, 'Create an AVD in Android Studio Device Manager', !androidTarget);
 
   // VOICEVOX reachable
   const voicevoxUp = await httpOk('http://localhost:50021/version');
@@ -211,6 +226,23 @@ function readConfiguredOllamaModels(): string[] {
 
 function normalizeModelName(name: string): string {
   return name.includes(':') ? name : `${name}:latest`;
+}
+
+function configuredTargetType(): string | undefined {
+  if (!existsSync('dvg.config.yaml')) return undefined;
+  try {
+    const yaml = require('js-yaml') as { load(input: string): unknown };
+    return (yaml.load(readFileSync('dvg.config.yaml', 'utf8')) as { target?: { type?: string } })?.target?.type;
+  } catch { return undefined; }
+}
+
+function androidSdkTool(name: 'adb' | 'emulator'): string {
+  const executable = process.platform === 'win32' ? `${name}.exe` : name;
+  const relative = name === 'adb' ? join('platform-tools', executable) : join('emulator', executable);
+  for (const root of [process.env.ANDROID_SDK_ROOT, process.env.ANDROID_HOME]) {
+    if (root && existsSync(join(root, relative))) return join(root, relative);
+  }
+  return executable;
 }
 
 main();

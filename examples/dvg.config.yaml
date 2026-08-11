@@ -14,6 +14,12 @@ source:
   # (must itself be a git repository):
   # localPath: "../my-local-project"
 
+  # Monorepos are scanned after every clone/update. DVG normally selects a
+  # runnable web app (for example apps/web) automatically. Use these only
+  # when you want to override that choice:
+  # projectPath: "apps/web"
+  # platformPriority: [web, android, flutter, react-native, unity, ios, desktop, other]
+
   # Command to start the app's dev server, run from the source root.
   # If unset, `analyze` tries to detect one from package.json's scripts
   # (dev -> start -> serve -> preview) and fills this in automatically.
@@ -29,14 +35,25 @@ source:
 # dev server yourself (e.g. `npm run dev`) first.
 target:
   url: "http://localhost:3000"
+  # true means analyze replaces the URL above with a localhost URL inferred
+  # from the project's scripts/README. `project init` sets this automatically
+  # when --url is omitted.
+  autoDetectUrl: false
   type: "web"
-  # Android / Flutter / React Native / Unity Android recording:
-  # Start an emulator/device and install the app first. `package` is required;
-  # activity is optional, and serial is only needed with multiple devices.
+  # Android / Flutter / React Native / Unity Android recording overrides.
+  # Normally this entire block can be omitted: after platform detection DVG
+  # builds a debug APK, starts the first installed AVD if needed, detects the
+  # application id, and installs the APK. Set only values you need to override.
   # android:
   #   package: "com.example.app"
   #   activity: ".MainActivity"
   #   serial: "emulator-5554"
+  #   avd: "Pixel_8_API_35"
+  #   apkPath: "build/custom/app.apk"
+  #   buildCommand: "./build-android.sh"
+  #   sdkPath: "/Users/you/Library/Android/sdk"
+  #   autoStartEmulator: true
+  #   autoInstall: true
 
 video:
   type: "demo"       # teaser | shorts | demo | tutorial

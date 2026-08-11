@@ -9,7 +9,9 @@ WebおよびAndroidアプリ向けのAIプロモーション動画自動生成�
 ## 必要な環境
 
 Node.js ≥ 20、pnpm ≥ 9、git、Docker（VOICEVOX用）。Web録画にはPlaywright、Android録画には
-Android SDKの`adb`と起動済みのエミュレーターまたは端末が必要です。それ以外（ffmpeg、Playwright、
+Android SDK（`adb`、`emulator`）と作成済みAVDが必要です。AVDは停止中でも構いません。SDKは
+`target.android.sdkPath`、`ANDROID_SDK_ROOT`、`ANDROID_HOME`のいずれかで指定できます。
+それ以外（ffmpeg、Playwright、
 Task、任意でOllama）は下のセットアップコマンドがまとめてインストールします。
 
 ## クイックスタート
@@ -21,36 +23,50 @@ task install          # 初回のみ: 必要なもの一式をインストール
 task serve            # ローカルサービスを起動（VOICEVOX、Ollama）
 task doctor           # 何か足りてるか不安なら実行
 
-# 動画化したいプロジェクトと、それが動くURLを指定
-pnpm dvg project init --repo https://github.com/you/your-app.git --url http://localhost:3000
+# 動画化したいプロジェクトを指定（ローカルURLと起動方法はソースから推定）
+pnpm dvg project init --repo https://github.com/you/your-app.git
 #   ローカルに既にある場合は: --source ../your-app
 
 pnpm dvg video generate # 動画を作る
 ```
 
-Android、Flutter、React Native、UnityのAndroidビルドを録画する場合は、APKを端末へ
-インストールしたうえでapplication idを指定します。プラットフォーム自体はソースから自動判別されます。
+Android、Flutter、React Nativeは、GitHub URLまたはローカルソースだけでプラットフォームを判定し、
+Debug APKのビルド、停止中AVDの起動、boot待機、application id検出、APKインストール、録画まで
+自動実行します。
 
 ```bash
-pnpm dvg project init --source ../my-android-app \
-  --android-package com.example.app \
-  --android-serial emulator-5554
-adb devices
+pnpm dvg project init --repo https://github.com/you/your-android-app.git
 pnpm dvg video generate
 ```
 
-`target.android.activity`は省略可能です。省略時はランチャーActivityを自動起動します。
+接続済み端末があればそれを使い、なければインストール済みAVDの先頭を起動します。AVDが未作成の場合は
+Android StudioのDevice Managerで一度作成してください。複数端末や独自ビルドでは
+`target.android.avd`、`serial`、`buildCommand`、`apkPath`などを指定できます。
+SDKを環境変数で指定しない場合は`target.android.sdkPath`を設定します。
+`target.android.activity`は省略可能で、省略時はランチャーActivityを自動起動します。
 生成された端末向けシナリオは、安全のため推測したボタン名をタップせず、起動・待機・スワイプを
 中心にします。実際のラベルが分かる場合は`.dvg/scenario.yaml`へ`tap`、`input_text`、
 `back`などを追加してから`pnpm dvg video record`を実行できます。
 
-Unityのバッチモードはプロジェクトのビルドには利用できますが、ヘッドレス実行だけでは
-プロモーション用の画面録画になりません。現段階ではUnityをAndroid Playerとしてビルド・
-インストールし、同じADB録画ドライバーを使う方式に対応します。iOSとUnity Desktopの録画は未対応です。
+Unityのバッチモードはプロジェクト固有のBuild Methodが必要なため、Unityでは既存APK、または
+`target.android.buildCommand`を指定します。生成後のAVD起動・インストール・ADB録画は同じく自動です。
+iOSとUnity Desktopの録画は未対応です。
 
 `init`が`dvg.config.yaml`を生成します。動画化するソースがGitHub等にある場合は`--repo`、
 ローカルにある場合は`--source`を使います。非エンジニア向け・使い方中心という編集方針は
 ツール本体のデフォルトなので、設定ファイルへの追記は不要です。
+`--url`を省略すると、LLMがpackage.jsonの起動スクリプトとREADMEを読み、起動コマンドと
+`localhost`のURL（ポートを含む）を推定してconfigへ保存します。既にURLが決まっている場合だけ
+`--url http://localhost:3000`を指定してください。明示指定した値は推定値で上書きされません。
+
+モノレポの場合も通常は追加設定不要です。DVGはclone/updateのたびにワークスペースを走査し、
+`apps/web`のような実行可能なWebアプリを優先して、そのディレクトリの画面・ルート・起動コマンドを
+解析します。選択結果は`.dvg/source-context.json`の`projectPath`に記録されます。意図したアプリと
+異なる場合は`source.platformPriority`で種類の優先順位を変更できます（デフォルトはWebが最優先）。
+特定アプリに固定する場合だけ、初期化時の`--project-path apps/web`または
+`dvg.config.yaml`の`source.projectPath`を使います。初期化時にも、たとえば
+`--platform-priority web,android,flutter`と指定できます。
+依存関係はモノレポのルートで、開発サーバーは選択したアプリのディレクトリで自動実行されます。
 
 VOICEVOX EngineやOllamaを別の`docker compose up -d`で起動している場合、`task serve`は
 省略できます。その場合もホスト側からVOICEVOXの`http://localhost:50021`とOllamaの

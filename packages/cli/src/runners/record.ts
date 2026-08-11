@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { loadConfig, readYaml, logger, ScenarioSchema, ScriptSchema } from '@demo-video-gen/core';
 import { createPlatformRecorder } from '@demo-video-gen/recorder';
-import { resolveProjectSource, ensureAppRunning, runSetupSteps } from '@demo-video-gen/source';
+import { resolveProjectSource, ensureAppRunning } from '@demo-video-gen/source';
 
 interface RecordOptions {
   config?: string;
@@ -53,9 +53,10 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   logger.info(`Headed:           ${options.headed ?? false}`);
   logger.info(`Slow-mo:          ${options.slowMo ?? '0'}ms`);
 
+  let rootDir: string | undefined;
   if (!options.dryRun) {
     const cloneDir = join(workDir, 'source-repo');
-    const rootDir = await resolveProjectSource({ source: config.source, cloneDir });
+    rootDir = await resolveProjectSource({ source: config.source, cloneDir });
     if (scenario.meta.platform === 'web') {
       await ensureAppRunning({
         url: config.target.url,
@@ -65,15 +66,10 @@ export async function runRecord(options: RecordOptions): Promise<void> {
         installDeps: config.source.installDeps,
         logPath: join(workDir, 'dev-server.log'),
       });
-    } else if (scenario.setup.length > 0) {
-      await runSetupSteps(scenario.setup, {
-        cwd: rootDir,
-        logPath: join(workDir, 'device-setup.log'),
-      });
     }
   }
 
-  const recorder = createPlatformRecorder(scenario.meta.platform, config);
+  const recorder = createPlatformRecorder(scenario.meta.platform, config, { rootDir, workDir });
 
   for (const scene of scenesToRecord) {
     const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);

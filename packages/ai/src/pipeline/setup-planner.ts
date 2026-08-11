@@ -5,7 +5,13 @@
  * guidance (e.g. once Android/iOS/Unity get their own deterministic
  * detection, add platform-specific examples here).
  */
-export function buildSetupPlanningPrompt(targetUrl: string, platformHint: string): string {
+export function buildSetupPlanningPrompt(targetUrl: string | undefined, platformHint: string): string {
+  const readyUrl = targetUrl ?? 'http://localhost:3000';
+  const urlRule = targetUrl
+    ? `A background web-server step MUST use "readyUrl":"${targetUrl}".`
+    : `The shown port 3000 is only an example. Infer readyUrl from the actual script and README. ` +
+      `Use only localhost or 127.0.0.1, never a deployed/public URL. If no port is stated, use the ` +
+      `framework's conventional local development port.`;
   return `## Setup plan
 
 Also produce an ordered list of shell commands ("setupSteps") that take this project from
@@ -28,12 +34,12 @@ Foreground step (install/build):
 {"name":"Install dependencies","command":"npm install","background":false}
 
 Background web-server step:
-{"name":"Start application","command":"npm run dev","background":true,"readyUrl":"${targetUrl}"}
+{"name":"Start application","command":"npm run dev","background":true,"readyUrl":"${readyUrl}"}
 
 Rules:
 - name, command, and background are required on every step.
 - A foreground step MUST OMIT readyUrl, cwd, and readyTimeoutMs unless they have real values.
-- A background web-server step MUST use "readyUrl":"${targetUrl}".
+- ${urlRule}
 - Never write "readyUrl":null. Never write null for any optional field.
 - There may be at most one background step and it must be last.
 

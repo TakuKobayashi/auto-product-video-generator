@@ -1,11 +1,13 @@
 import { join, resolve, basename } from 'node:path';
 import { existsSync } from 'node:fs';
-import { createDefaultConfig, saveConfig, logger, SourceConfig } from '@demo-video-gen/core';
+import { createDefaultConfig, DEFAULT_PLATFORM_PRIORITY, saveConfig, logger, SourceConfig } from '@demo-video-gen/core';
 
 interface InitOptions {
   repo?: string;
   source?: string;
   ref?: string;
+  projectPath?: string;
+  platformPriority?: string;
   serveCommand?: string;
   installDeps?: boolean;
   type?: string;
@@ -14,6 +16,10 @@ interface InitOptions {
   androidPackage?: string;
   androidActivity?: string;
   androidSerial?: string;
+  androidAvd?: string;
+  androidApk?: string;
+  androidBuildCommand?: string;
+  androidSdk?: string;
   force?: boolean;
   dryRun?: boolean;
 }
@@ -44,24 +50,37 @@ export async function runInit(directory: string, options: InitOptions): Promise<
     process.exit(1);
   }
 
-  // --url is optional (defaults to http://localhost:3000 via the CLI option
-  // default) and can always be overridden later — every command that needs
-  // it (analyze/record/build) also accepts its own -u/--url, which takes
-  // priority over whatever's saved in dvg.config.yaml.
+  // A placeholder keeps the config immediately valid. autoDetectUrl tells
+  // analyze to replace it with the local readyUrl inferred from source.
   const url = options.url ?? 'http://localhost:3000';
   const name = options.name ?? basename(resolve(options.source ?? directory));
 
   const source: SourceConfig = options.repo
-    ? { repository: options.repo, ref: options.ref, installDeps: options.installDeps ?? false, startCommand: options.serveCommand }
-    : { localPath: options.source, installDeps: options.installDeps ?? false, startCommand: options.serveCommand };
+    ? {
+        repository: options.repo, ref: options.ref, installDeps: options.installDeps ?? false,
+        startCommand: options.serveCommand, projectPath: options.projectPath,
+        platformPriority: parsePlatformPriority(options.platformPriority),
+      }
+    : {
+        localPath: options.source, installDeps: options.installDeps ?? false,
+        startCommand: options.serveCommand, projectPath: options.projectPath,
+        platformPriority: parsePlatformPriority(options.platformPriority),
+      };
 
-  const config = createDefaultConfig(name, url, source);
-  if (options.androidPackage) {
+  const config = createDefaultConfig(name, url, source, !options.url);
+  if (options.androidPackage || options.androidActivity || options.androidSerial ||
+      options.androidAvd || options.androidApk || options.androidBuildCommand || options.androidSdk) {
     config.target.type = 'android';
     config.target.android = {
       package: options.androidPackage,
       activity: options.androidActivity,
       serial: options.androidSerial,
+      avd: options.androidAvd,
+      apkPath: options.androidApk,
+      buildCommand: options.androidBuildCommand,
+      sdkPath: options.androidSdk,
+      autoStartEmulator: true,
+      autoInstall: true,
     };
   }
   config.video.type = (options.type as 'teaser' | 'shorts' | 'demo' | 'tutorial') ?? 'demo';
@@ -79,12 +98,12 @@ export async function runInit(directory: string, options: InitOptions): Promise<
   logger.info(
     `Source: ${options.repo ? `git repository ${options.repo}${options.ref ? ` (ref: ${options.ref})` : ' (default branch)'}` : `local path ${resolve(options.source!)}`}`,
   );
-  logger.info(`Target: ${url}`);
-  if (config.target.android) logger.info(`Android package: ${config.target.android.package}`);
+  logger.info(`Target: ${options.url ? url : 'auto-detect from the project during analyze'}`);
+  if (config.target.android?.package) logger.info(`Android package: ${config.target.android.package}`);
   logger.info(
     `Serve:  ${
       source.startCommand
-        ? `'${source.startCommand}' will be run automatically if ${url} isn't already reachable`
+        ? `'${source.startCommand}' will be run automatically when the target isn't already reachable`
         : `not set — 'analyze' will try to detect one from package.json, or start the app yourself before 'record'/'build'`
     }`,
   );
@@ -102,4 +121,9 @@ export async function runInit(directory: string, options: InitOptions): Promise<
   logger.dim(`  4. Run: pnpm dvg video record`);
   logger.dim(`  5. Run: pnpm dvg video render`);
   logger.dim(`  Or run all five at once: pnpm dvg video generate`);
+}
+
+function parsePlatformPriority(value?: string): SourceConfig['platformPriority'] {
+  if (!value) return DEFAULT_PLATFORM_PRIORITY;
+  return value.split(',').map((item) => item.trim()).filter(Boolean) as SourceConfig['platformPriority'];
 }

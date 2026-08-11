@@ -5,24 +5,18 @@ import { logger, SetupStep } from '@demo-video-gen/core';
 import { PackageJsonSummary } from './inspector.js';
 
 /** Picks a sensible default dev-server command from package.json's scripts. */
-export function detectStartCommand(packageJson: PackageJsonSummary | null): string | null {
+export function detectStartCommand(
+  packageJson: PackageJsonSummary | null,
+  packageManager: 'pnpm' | 'yarn' | 'npm' | 'bun' = 'npm',
+): string | null {
   const scripts = packageJson?.scripts ?? {};
   const preferredOrder = ['dev', 'start', 'serve', 'preview'];
   for (const name of preferredOrder) {
     if (scripts[name]) {
-      const pkgManager = detectPackageManagerHint(packageJson);
-      return `${pkgManager} run ${name}`;
+      return `${packageManager} run ${name}`;
     }
   }
   return null;
-}
-
-function detectPackageManagerHint(packageJson: PackageJsonSummary | null): string {
-  // Best-effort only — we don't have access to the lockfile from here, and
-  // `npm run` works regardless of which package manager was actually used
-  // to install (as long as node_modules exists), so this is a safe default.
-  void packageJson;
-  return 'npm';
 }
 
 export async function httpReachable(url: string, timeoutMs = 2000): Promise<boolean> {

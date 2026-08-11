@@ -4,15 +4,23 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger, type Action, type Scene, type VideoConfig } from '@demo-video-gen/core';
 import type { PlatformRecorder, PlatformRecordOptions } from './types.js';
+import {
+  prepareAndroidProject,
+  type AndroidProjectContext,
+  type AndroidProjectOptions,
+  type PreparedAndroidTarget,
+} from './android-project.js';
 
-export interface AndroidTarget {
-  package: string;
-  activity?: string;
-  serial?: string;
-}
+export type AndroidTarget = AndroidProjectOptions;
 
 export class AndroidRecorder implements PlatformRecorder {
-  constructor(private readonly target: AndroidTarget) {}
+  private prepared?: Promise<PreparedAndroidTarget>;
+  private runtime!: PreparedAndroidTarget;
+
+  constructor(
+    private readonly target: AndroidTarget,
+    private readonly context: { rootDir?: string; workDir: string },
+  ) {}
 
   async recordScene(scene: Scene, _config: VideoConfig, options: PlatformRecordOptions,
     targetDurationSeconds = 1, actionDurationSeconds = targetDurationSeconds): Promise<string> {
@@ -25,6 +33,7 @@ export class AndroidRecorder implements PlatformRecorder {
 
     await mkdir(options.outputDir, { recursive: true });
     await mkdir(options.screenshotDir, { recursive: true });
+    await this.prepare();
     await this.assertDeviceReady();
 
     const remotePath = `/sdcard/dvg-${safeName(scene.id)}.mp4`;
@@ -56,10 +65,10 @@ export class AndroidRecorder implements PlatformRecorder {
   private async assertDeviceReady(): Promise<void> {
     const state = (await this.adb(['get-state'])).trim();
     if (state !== 'device') throw new Error(`Android device is not ready (adb state: ${state || 'unknown'}).`);
-    const packagePath = (await this.adb(['shell', 'pm', 'path', this.target.package])).trim();
+    const packagePath = (await this.adb(['shell', 'pm', 'path', this.runtime.package])).trim();
     if (!packagePath.startsWith('package:')) {
       throw new Error(
-        `Android package '${this.target.package}' is not installed. Build/install the APK before recording.`,
+        `Android package '${this.runtime.package}' is not installed. Build/install the APK before recording.`,
       );
     }
   }
@@ -67,10 +76,10 @@ export class AndroidRecorder implements PlatformRecorder {
   private async executeAction(action: Action, screenshotDir: string): Promise<void> {
     switch (action.type) {
       case 'launch_app':
-        if (this.target.activity) {
-          await this.adb(['shell', 'am', 'start', '-W', '-n', `${this.target.package}/${this.target.activity}`]);
+        if (this.runtime.activity) {
+          await this.adb(['shell', 'am', 'start', '-W', '-n', `${this.runtime.package}/${this.runtime.activity}`]);
         } else {
-          await this.adb(['shell', 'monkey', '-p', this.target.package, '-c', 'android.intent.category.LAUNCHER', '1']);
+          await this.adb(['shell', 'monkey', '-p', this.runtime.package, '-c', 'android.intent.category.LAUNCHER', '1']);
         }
         return;
       case 'tap': {
@@ -137,19 +146,29 @@ export class AndroidRecorder implements PlatformRecorder {
     await this.adb(['pull', remote, localPath]);
   }
 
-  private adb(args: string[]): Promise<string> { return run(this.adbArgs(args)); }
-  private spawnAdb(args: string[]) { return spawn('adb', this.adbArgs(args), { stdio: ['ignore', 'pipe', 'pipe'] }); }
-  private adbArgs(args: string[]): string[] { return this.target.serial ? ['-s', this.target.serial, ...args] : args; }
+  private async prepare(): Promise<void> {
+    if (!this.context.rootDir) throw new Error('Android recording requires a resolved source project.');
+    const projectContext: AndroidProjectContext = {
+      rootDir: this.context.rootDir,
+      workDir: this.context.workDir,
+    };
+    this.prepared ??= prepareAndroidProject(this.target, projectContext);
+    this.runtime = await this.prepared;
+  }
+
+  private adb(args: string[]): Promise<string> { return run(this.runtime.adbPath, this.adbArgs(args)); }
+  private spawnAdb(args: string[]) { return spawn(this.runtime.adbPath, this.adbArgs(args), { stdio: ['ignore', 'pipe', 'pipe'] }); }
+  private adbArgs(args: string[]): string[] { return ['-s', this.runtime.serial, ...args]; }
 }
 
-function run(args: string[]): Promise<string> {
+function run(command: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn('adb', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = ''; let stderr = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; });
     child.stderr.on('data', (chunk) => { stderr += chunk; });
-    child.on('error', (error) => reject(new Error(`Could not start adb: ${error.message}`)));
-    child.on('close', (code) => code === 0 ? resolve(stdout) : reject(new Error(`adb ${args.join(' ')} failed (${code}): ${stderr.trim()}`)));
+    child.on('error', (error) => reject(new Error(`Could not start ${command}: ${error.message}`)));
+    child.on('close', (code) => code === 0 ? resolve(stdout) : reject(new Error(`${command} ${args.join(' ')} failed (${code}): ${stderr.trim()}`)));
   });
 }
 function wait(ms: number): Promise<void> { return new Promise((resolve) => setTimeout(resolve, ms)); }

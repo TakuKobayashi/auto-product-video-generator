@@ -26,6 +26,9 @@ export const ProjectPlatformSchema = z.enum([
   'other',
 ]);
 export type ProjectPlatform = z.infer<typeof ProjectPlatformSchema>;
+export const DEFAULT_PLATFORM_PRIORITY: ProjectPlatform[] = [
+  'web', 'android', 'flutter', 'react-native', 'unity', 'ios', 'desktop', 'other',
+];
 
 export const ProjectConfigSchema = z.object({
   name: z.string(),
@@ -58,6 +61,10 @@ export const SourceConfigSchema = z
     // package.json's scripts (prefers "dev", falls back to "start") and
     // save it into dvg.config.yaml for you to confirm/edit.
     startCommand: z.string().optional(),
+    // Monorepo application selection. projectPath wins; otherwise runnable
+    // workspace packages are ranked by this platform order, then app quality.
+    projectPath: z.string().min(1).optional(),
+    platformPriority: z.array(ProjectPlatformSchema).min(1).default(DEFAULT_PLATFORM_PRIORITY),
   })
   .refine((data) => Boolean(data.repository) !== Boolean(data.localPath), {
     message: 'Specify exactly one of source.repository or source.localPath, not both/neither.',
@@ -69,16 +76,31 @@ export type SourceConfig = z.infer<typeof SourceConfigSchema>;
 // dev server yourself (e.g. `npm run dev`) before `record`/`build` run.
 export const TargetConfigSchema = z.object({
   url: z.string().url(),
+  // Set by `project init` when --url is omitted. Analyze then adopts the
+  // local readyUrl inferred by the LLM from the project's own start script.
+  autoDetectUrl: z.boolean().default(false),
   type: z.enum(['web', 'cli', 'android', 'ios']).default('web'),
   credentials: z.record(z.string()).optional(),
   android: z.object({
-    // Android application id installed on the selected emulator/device.
-    package: z.string().min(1),
+    // All fields are optional: the recorder detects conventional Android,
+    // Flutter, React Native, and exported Unity Android projects.
+    package: z.string().min(1).optional(),
     // Optional fully-qualified launch activity. When omitted, adb resolves
     // the package's launcher activity via `monkey`.
     activity: z.string().min(1).optional(),
     // adb serial. Omit when exactly one emulator/device is connected.
     serial: z.string().min(1).optional(),
+    // Existing AVD name. The first installed AVD is used when omitted.
+    avd: z.string().min(1).optional(),
+    // Existing or externally-built APK, relative to the source root.
+    apkPath: z.string().min(1).optional(),
+    // Override for projects without a conventional Gradle/Flutter build.
+    buildCommand: z.string().min(1).optional(),
+    // Android SDK root containing platform-tools/, emulator/, build-tools/.
+    // Falls back to ANDROID_SDK_ROOT / ANDROID_HOME / PATH.
+    sdkPath: z.string().min(1).optional(),
+    autoStartEmulator: z.boolean().default(true),
+    autoInstall: z.boolean().default(true),
   }).optional(),
 });
 

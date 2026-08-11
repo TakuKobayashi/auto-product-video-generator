@@ -35,7 +35,7 @@ export async function saveConfig(configPath: string, config: DvgConfig): Promise
   await writeFile(configPath, content, 'utf-8');
 }
 
-export function createDefaultConfig(name: string, url: string, source: SourceConfig): DvgConfig {
+export function createDefaultConfig(name: string, url: string, source: SourceConfig, autoDetectUrl = false): DvgConfig {
   // Pick a default that only references providers usable right now. Do not
   // add a cloud fallback without its API key: Ollama-only usage must remain
   // fully local and must never fail with an unrelated cloud-key error.
@@ -57,7 +57,7 @@ export function createDefaultConfig(name: string, url: string, source: SourceCon
   return DvgConfigSchema.parse({
     project: { name, description: '' },
     source,
-    target: { url, type: 'web' },
+    target: { url, autoDetectUrl, type: 'web' },
     video: {},
     llm,
     voicevox: {},

@@ -24,11 +24,12 @@ import {
   TimelineBuilder,
   recomputeScriptTimingFromAudio,
 } from '@demo-video-gen/ai';
-import { createPlatformRecorder } from '@demo-video-gen/recorder';
+import { createPlatformRecorder, isAndroidRecordingPlatform } from '@demo-video-gen/recorder';
 import { VoicevoxClient } from '@demo-video-gen/voicevox';
 import { FfmpegRenderer } from '@demo-video-gen/renderer';
-import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning, runSetupSteps } from '@demo-video-gen/source';
+import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning } from '@demo-video-gen/source';
 import { exportArtifacts } from '../utils/export-artifacts.js';
+import { applyInferredTargetUrl } from '../utils/inferred-target.js';
 
 interface BuildOptions {
   config?: string;
@@ -51,14 +52,17 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   let config = await loadConfig(configPath);
 
   // Apply overrides
-  if (options.url) config.target.url = options.url;
+  if (options.url) {
+    config.target.url = options.url;
+    config.target.autoDetectUrl = false;
+  }
   if (options.type) config.video.type = options.type as typeof config.video.type;
 
   const workDir = config.output.workDir;
   await ensureDir(workDir);
 
   logger.info(`Source:  ${config.source.repository ?? config.source.localPath}`);
-  logger.info(`Target:  ${config.target.url}`);
+  logger.info(`Target:  ${config.target.autoDetectUrl ? 'auto-detect from source' : config.target.url}`);
   logger.info(`Video:   ${config.video.type}, ~${config.video.duration}s`);
   logger.info(`LLM (analyze):  ${describeTaskLlm(config.llm, 'analyze')}`);
   logger.info(`LLM (scenario): ${describeTaskLlm(config.llm, 'scenario')}`);
@@ -96,7 +100,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       await writeJson(contextPath, sourceContext);
 
       if (!config.source.startCommand) {
-        const detected = detectStartCommand(sourceContext.packageJson);
+        const detected = detectStartCommand(sourceContext.packageJson, sourceContext.packageManager);
         if (detected) {
           config.source.startCommand = detected;
           await saveConfig(configPath, config);
@@ -105,7 +109,18 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       }
 
       const analyzer = new ProjectAnalyzer(analyzeLlm);
-      summary = await analyzer.analyze(sourceContext, config.target.url);
+      summary = await analyzer.analyze(
+        sourceContext,
+        config.target.autoDetectUrl ? undefined : config.target.url,
+      );
+      if (applyInferredTargetUrl(config, summary)) await saveConfig(configPath, config);
+      if (isAndroidRecordingPlatform(summary.platform)) {
+        summary.setupSteps = [];
+        config.target.type = 'android';
+        config.target.android ??= { autoStartEmulator: true, autoInstall: true };
+        await saveConfig(configPath, config);
+        logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
+      }
       await writeJson(summaryPath, summary);
       logger.success(`Saved: ${summaryPath}`);
     } else {
@@ -228,15 +243,9 @@ export async function runBuild(options: BuildOptions): Promise<void> {
           installDeps: config.source.installDeps,
           logPath: join(workDir, 'dev-server.log'),
         });
-      } else if (scenario.setup.length > 0) {
-        logger.step('setup', `Running ${scenario.meta.platform} build/setup plan (${scenario.setup.length} step(s))...`);
-        await runSetupSteps(scenario.setup, {
-          cwd: rootDir!,
-          logPath: join(workDir, 'device-setup.log'),
-        });
       }
     }
-    const recorder = createPlatformRecorder(scenario.meta.platform, config);
+    const recorder = createPlatformRecorder(scenario.meta.platform, config, { rootDir, workDir });
     for (const scene of scenario.scenes) {
       const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
       if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yaml.`);

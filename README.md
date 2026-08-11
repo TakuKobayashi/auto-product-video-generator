@@ -5,6 +5,14 @@ a real git-managed project; it reads the actual source, plans a recording,
 drives a browser or Android device, and produces a narrated video. Flutter,
 React Native, and Unity are supported when targeting an Android build.
 
+For conventional Android, Flutter, and React Native repositories, DVG can
+build a debug APK, reuse a connected device or start the first installed AVD,
+wait for Android to boot, detect the application id, install the APK, and
+record through adb. Create at least one AVD in Android Studio first. Unity and
+custom builds can provide `target.android.buildCommand` or an existing APK.
+Set the SDK root with `target.android.sdkPath`, `ANDROID_SDK_ROOT`, or
+`ANDROID_HOME`.
+
 日本語版: [README-ja.md](./README-ja.md) — より詳しいトラブルシューティング付き
 
 ---
@@ -24,8 +32,8 @@ task install          # one-time: installs everything (see task --list)
 task serve            # starts local services (VOICEVOX, Ollama)
 task doctor           # not sure something's set up right? check here
 
-# Point it at the project you want a video for, and where it'll be running:
-pnpm dvg project init --repo https://github.com/you/your-app.git --url http://localhost:3000
+# Point it at the project; its local URL/start command are inferred from source:
+pnpm dvg project init --repo https://github.com/you/your-app.git
 #   or: --source ../your-app   (for a project already checked out locally)
 
 pnpm dvg video generate # generate the video
@@ -34,6 +42,20 @@ pnpm dvg video generate # generate the video
 `init` generates `dvg.config.yaml`. Use `--repo` for a remote repository or
 `--source` for a local checkout. The non-technical, product-usage editorial
 direction is built in and does not need a config entry.
+When `--url` is omitted, the LLM reads package scripts and the README to infer
+the start command and loopback URL (including its port), then saves that URL to
+the config. Pass `--url http://localhost:3000` only when you want an explicit
+value; an explicit URL is never replaced by inference.
+
+Monorepos normally need no extra configuration. After every clone/update, DVG
+scans the workspace and prioritizes a runnable web application such as
+`apps/web`; its selected path is recorded as `projectPath` in
+`.dvg/source-context.json`. If the automatic choice is not the intended app,
+change `source.platformPriority` (web is first by default). To pin one app,
+use `--project-path apps/web` or set `source.projectPath`. Init also accepts a
+comma-separated order such as `--platform-priority web,android,flutter`.
+Dependencies run at the workspace root while the dev server runs in the
+selected application directory.
 
 If VOICEVOX Engine and Ollama are already running through your own
 `docker compose up -d`, skip `task serve`. Expose VOICEVOX on host port

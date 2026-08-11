@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { SourceConfig, logger } from '@demo-video-gen/core';
+import { selectProjectRoot } from './workspace-selector.js';
 
 export interface ResolveSourceOptions {
   source: SourceConfig;
@@ -22,11 +23,13 @@ export async function resolveProjectSource(options: ResolveSourceOptions): Promi
   const { source } = options;
 
   if (source.localPath) {
-    return resolveLocalPath(source.localPath);
+    const repositoryRoot = await resolveLocalPath(source.localPath);
+    return selectProjectRoot(repositoryRoot, source);
   }
 
   if (source.repository) {
-    return cloneOrUpdate(source.repository, source.ref, options.cloneDir);
+    const repositoryRoot = await cloneOrUpdate(source.repository, source.ref, options.cloneDir);
+    return selectProjectRoot(repositoryRoot, source);
   }
 
   throw new Error(

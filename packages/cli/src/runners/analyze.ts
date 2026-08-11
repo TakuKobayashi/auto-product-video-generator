@@ -2,6 +2,8 @@ import { join } from 'node:path';
 import { loadConfig, saveConfig, writeJson, logger, describeTaskLlm } from '@demo-video-gen/core';
 import { createLlmProviderForTask, ProjectAnalyzer } from '@demo-video-gen/ai';
 import { resolveProjectSource, inspectProject, detectStartCommand } from '@demo-video-gen/source';
+import { isAndroidRecordingPlatform } from '@demo-video-gen/recorder';
+import { applyInferredTargetUrl } from '../utils/inferred-target.js';
 
 interface AnalyzeOptions {
   config?: string;
@@ -16,13 +18,17 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   const configPath = options.config ?? 'dvg.config.yaml';
   const config = await loadConfig(configPath);
 
-  const targetUrl = options.url ?? config.target.url;
+  if (options.url) {
+    config.target.url = options.url;
+    config.target.autoDetectUrl = false;
+  }
+  const targetUrl = config.target.autoDetectUrl ? undefined : config.target.url;
   const cloneDir = join(config.output.workDir, 'source-repo');
   const contextPath = join(config.output.workDir, 'source-context.json');
   const summaryPath = join(config.output.workDir, 'project-summary.json');
 
   logger.info(`Source:     ${config.source.repository ?? config.source.localPath}`);
-  logger.info(`Target URL: ${targetUrl}`);
+  logger.info(`Target URL: ${targetUrl ?? 'auto-detect from source'}`);
   logger.info(`LLM:        ${describeTaskLlm(config.llm, 'analyze')}`);
 
   if (options.dryRun) {
@@ -53,7 +59,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   // will use it to start the app automatically instead of requiring it to
   // already be running.
   if (!config.source.startCommand) {
-    const detected = detectStartCommand(sourceContext.packageJson);
+    const detected = detectStartCommand(sourceContext.packageJson, sourceContext.packageManager);
     if (detected) {
       config.source.startCommand = detected;
       await saveConfig(configPath, config);
@@ -66,6 +72,18 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   const llm = createLlmProviderForTask(config.llm, 'analyze');
   const analyzer = new ProjectAnalyzer(llm);
   const summary = await analyzer.analyze(sourceContext, targetUrl);
+
+  if (applyInferredTargetUrl(config, summary)) await saveConfig(configPath, config);
+
+  if (isAndroidRecordingPlatform(summary.platform)) {
+    // Build/install/emulator setup is deterministic in AndroidRecorder; do
+    // not retain an LLM-guessed setup plan that would duplicate those steps.
+    summary.setupSteps = [];
+    config.target.type = 'android';
+    config.target.android ??= { autoStartEmulator: true, autoInstall: true };
+    await saveConfig(configPath, config);
+    logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
+  }
 
   await writeJson(summaryPath, summary);
 

@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { logger } from '@demo-video-gen/core';
+import { findRepositoryRoot } from './workspace-selector.js';
 
 export interface RouteInfo {
   /** URL path, e.g. "/dashboard/settings" or "/posts/[id]" */
@@ -30,6 +31,10 @@ export type DetectedFramework =
 
 export interface ProjectSourceContext {
   rootDir: string;
+  repositoryRoot: string;
+  /** Selected application directory, relative to repositoryRoot. */
+  projectPath: string;
+  packageManager: 'pnpm' | 'yarn' | 'npm' | 'bun';
   packageJson: PackageJsonSummary | null;
   readme: string | null;
   framework: DetectedFramework;
@@ -59,8 +64,11 @@ const MAX_WALK_DEPTH = 6;
 export async function inspectProject(rootDir: string): Promise<ProjectSourceContext> {
   logger.step('source', `Inspecting project at ${rootDir}...`);
 
+  const repositoryRoot = findRepositoryRoot(rootDir);
+  const packageManager = detectPackageManager(repositoryRoot);
   const packageJson = await readPackageJson(rootDir);
-  const readme = await readReadme(rootDir);
+  const readme = await readReadme(rootDir) ??
+    (rootDir !== repositoryRoot ? await readReadme(repositoryRoot) : null);
 
   const deps = new Set([...(packageJson?.dependencies ?? []), ...(packageJson?.devDependencies ?? [])]);
   const looksLikeNextProject = deps.has('next') || existsSync(join(rootDir, 'next.config.js')) || existsSync(join(rootDir, 'next.config.mjs')) || existsSync(join(rootDir, 'next.config.ts'));
@@ -109,7 +117,15 @@ export async function inspectProject(rootDir: string): Promise<ProjectSourceCont
     (platformHints.length > 0 ? `; platform hints: ${platformHints.length}` : ''),
   );
 
-  return { rootDir, packageJson, readme, framework, routes, fileTree, platformHints };
+  const projectPath = relative(repositoryRoot, rootDir) || '.';
+  return { rootDir, repositoryRoot, projectPath, packageManager, packageJson, readme, framework, routes, fileTree, platformHints };
+}
+
+function detectPackageManager(root: string): 'pnpm' | 'yarn' | 'npm' | 'bun' {
+  if (existsSync(join(root, 'pnpm-lock.yaml'))) return 'pnpm';
+  if (existsSync(join(root, 'yarn.lock'))) return 'yarn';
+  if (existsSync(join(root, 'bun.lock')) || existsSync(join(root, 'bun.lockb'))) return 'bun';
+  return 'npm';
 }
 
 async function readPackageJson(rootDir: string): Promise<PackageJsonSummary | null> {

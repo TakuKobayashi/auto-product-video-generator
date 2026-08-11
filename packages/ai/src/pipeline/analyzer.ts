@@ -1,5 +1,6 @@
 import { ProjectSummary, ProjectSummarySchema, isConcreteWebRoute, logger, withHeartbeat } from '@demo-video-gen/core';
 import { ProjectSourceContext } from '@demo-video-gen/source';
+import { relative } from 'node:path';
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
 import { buildPlatformClassificationPrompt } from './platform-classifier.js';
@@ -55,7 +56,7 @@ Hard rules:
 export class ProjectAnalyzer {
   constructor(private llm: LlmProvider) {}
 
-  async analyze(context: ProjectSourceContext, targetUrl: string): Promise<ProjectSummary> {
+  async analyze(context: ProjectSourceContext, targetUrl?: string): Promise<ProjectSummary> {
     logger.step('analyze', 'Calling LLM to analyze project source...');
     logger.info('  This can take a while, especially on local models — progress prints every few seconds.');
 
@@ -74,10 +75,28 @@ export class ProjectAnalyzer {
     // target.url — that's the only URL that actually matters, since it's
     // what Playwright will record against, regardless of what port the LLM
     // assumed from reading scripts.
-    if (summary.platform === 'web') {
+    if (summary.platform === 'web' && targetUrl) {
       summary.setupSteps = summary.setupSteps.map((step) =>
         step.background ? { ...step, readyUrl: targetUrl } : step,
       );
+    }
+
+    // Installation belongs at the workspace root so workspace:* dependencies
+    // can be resolved. Application start commands still run in the selected app.
+    if (context.projectPath !== '.') {
+      const workspaceCwd = relative(context.rootDir, context.repositoryRoot) || '.';
+      const installCommand = `${context.packageManager} install`;
+      summary.setupSteps = summary.setupSteps.map((step) =>
+        /(?:^|\s)(?:install|ci)(?:\s|$)/i.test(step.command) || /install dependencies/i.test(step.name)
+          ? { ...step, command: installCommand, cwd: workspaceCwd }
+          : step,
+      );
+      if (!summary.setupSteps.some((step) => step.command === installCommand && step.cwd === workspaceCwd)) {
+        summary.setupSteps.unshift({
+          name: 'Install workspace dependencies', command: installCommand,
+          cwd: workspaceCwd, background: false, readyTimeoutMs: 60000,
+        });
+      }
     }
 
     logger.success(
@@ -95,7 +114,7 @@ export class ProjectAnalyzer {
   }
 }
 
-function buildPrompt(context: ProjectSourceContext, targetUrl: string): string {
+function buildPrompt(context: ProjectSourceContext, targetUrl?: string): string {
   const pkg = context.packageJson;
   const concreteRoutes = context.routes.filter((route) => isConcreteWebRoute(route.path));
   const omittedTemplateCount = context.routes.length - concreteRoutes.length;
@@ -129,6 +148,8 @@ ${buildPlatformClassificationPrompt(context.platformHints)}
 Project name: ${pkg?.name ?? '(unknown)'}
 Description (from package.json): ${pkg?.description ?? '(none)'}
 Web framework detected (if any): ${context.framework}
+Selected application path: ${context.projectPath}
+Repository package manager: ${context.packageManager}
 
 package.json scripts: ${JSON.stringify(pkg?.scripts ?? {})}
 Key dependencies: ${(pkg?.dependencies ?? []).slice(0, 40).join(', ') || '(none listed)'}
@@ -138,6 +159,12 @@ ${context.readme ? `README:\n${context.readme}\n` : '(No README found)'}
 ${routesSection}
 
 ${buildSetupPlanningPrompt(targetUrl, platformHint)}
+
+Workspace rule: the source resolver has already selected the application shown above.
+Do not search for or start a different workspace package. If the selected path is not
+".", dependency installation must run at the repository root using
+"${context.packageManager} install"; the application start command runs in the selected
+application directory.
 
 Based on all of the above: first classify the platform (see "Platform classification"),
 then produce the setup plan (see "Setup plan"), then identify the features that are
