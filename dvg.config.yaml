@@ -2,11 +2,20 @@ project:
   name: auto-product-video-generator
   description: ""
 source:
-  repository: https://github.com/TakuKobayashi/tappunpages.git
+  repository: https://github.com/TakuKobayashi/fullstack-media-converter.git
   installDeps: false
-  startCommand: npm run dev
+  platformPriority:
+    - web
+    - android
+    - flutter
+    - react-native
+    - unity
+    - ios
+    - desktop
+    - other
 target:
   url: http://localhost:3000
+  autoDetectUrl: true
   type: web
 video:
   type: demo
