@@ -1,8 +1,8 @@
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { loadConfig, readYaml, logger, ScenarioSchema, ScriptSchema } from '@demo-video-gen/core';
-import { SceneRecorder } from '@demo-video-gen/playwright';
-import { resolveProjectSource, ensureAppRunning } from '@demo-video-gen/source';
+import { createPlatformRecorder } from '@demo-video-gen/recorder';
+import { resolveProjectSource, ensureAppRunning, runSetupSteps } from '@demo-video-gen/source';
 
 interface RecordOptions {
   config?: string;
@@ -35,15 +35,6 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   }
   const script = ScriptSchema.parse(await readYaml(scriptPath));
 
-  if (scenario.meta.platform !== 'web') {
-    logger.warn(
-      `scenario.yaml was generated for platform '${scenario.meta.platform}', but recording ` +
-      `currently only supports 'web' (via Playwright). Proceeding anyway, but the actions in ` +
-      `scenario.yaml (goto/click/etc.) likely won't apply to a ${scenario.meta.platform} app — ` +
-      `a dedicated recorder for that platform doesn't exist yet.`,
-    );
-  }
-
   const recordingsDir = join(workDir, 'recordings');
   const screenshotDir = join(workDir, 'screenshots');
 
@@ -65,17 +56,24 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   if (!options.dryRun) {
     const cloneDir = join(workDir, 'source-repo');
     const rootDir = await resolveProjectSource({ source: config.source, cloneDir });
-    await ensureAppRunning({
-      url: config.target.url,
-      setupSteps: scenario.setup,
-      startCommand: config.source.startCommand,
-      cwd: rootDir,
-      installDeps: config.source.installDeps,
-      logPath: join(workDir, 'dev-server.log'),
-    });
+    if (scenario.meta.platform === 'web') {
+      await ensureAppRunning({
+        url: config.target.url,
+        setupSteps: scenario.setup,
+        startCommand: config.source.startCommand,
+        cwd: rootDir,
+        installDeps: config.source.installDeps,
+        logPath: join(workDir, 'dev-server.log'),
+      });
+    } else if (scenario.setup.length > 0) {
+      await runSetupSteps(scenario.setup, {
+        cwd: rootDir,
+        logPath: join(workDir, 'device-setup.log'),
+      });
+    }
   }
 
-  const recorder = new SceneRecorder();
+  const recorder = createPlatformRecorder(scenario.meta.platform, config);
 
   for (const scene of scenesToRecord) {
     const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);

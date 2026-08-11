@@ -16,6 +16,12 @@ long-running/backgrounded (e.g. starting a dev server).
 Base this on package.json's "scripts" and any setup instructions in the README — prefer
 what the project's own scripts/README actually say over generic assumptions. ${platformHint}
 
+For non-web projects, build/install commands are valid setup steps when the project
+files support them. Examples of the intended shape are \`./gradlew installDebug\` for a
+standard Android app or the project's documented Flutter/React Native build-and-install
+command. For Unity, use its documented command-line build method only when that method
+actually exists in the repository; never invent a \`-executeMethod\` target.
+
 Each item in "setupSteps" must match:
 {
   name: string;            // short label, e.g. "Install dependencies", "Start dev server"

@@ -84,10 +84,10 @@ export class ProjectAnalyzer {
       `${summary.features.length} feature(s) identified.`,
     );
     if (summary.platform !== 'web') {
-      logger.warn(
-        `Platform classified as '${summary.platform}' — recording currently only supports 'web' ` +
-        `(via Playwright). The scenario will still be generated, but 'record'/'build' will warn ` +
-        `until a recorder for this platform exists.`,
+      logger.info(
+        `Platform classified as '${summary.platform}'. Android, Flutter, React Native, and Unity ` +
+        `Android builds can be recorded when target.android is configured; other targets report ` +
+        `their required recorder environment before recording.`,
       );
     }
     return summary;

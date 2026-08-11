@@ -9,9 +9,8 @@ export type VideoType = z.infer<typeof VideoTypeSchema>;
 // hints that ground that classification). Recorded in both
 // project-summary.json and scenario.yaml's meta.platform.
 //
-// Recording itself (Playwright) currently only supports "web" — other
-// values are still detected/recorded so the groundwork is in place, and
-// `record`/`build` warn (without blocking) if the platform isn't "web".
+// Recording is selected by platform. Web uses Playwright; Android and
+// Android builds from cross-platform projects use adb.
 //
 // To add a new platform: add it here, then add a one-line description to
 // PLATFORM_DESCRIPTIONS in packages/ai/src/pipeline/platform-classifier.ts
@@ -35,9 +34,8 @@ export const ProjectConfigSchema = z.object({
 
 // Where the AI-facing project *source* comes from — this is what `analyze`
 // reads (package.json, README, route/page files, platform signals) to
-// understand what the app actually does. Recording via Playwright is
-// web-only for now (see ProjectPlatformSchema above), but source analysis
-// itself already detects and records non-web platforms.
+// understand what the app actually does. Source analysis also detects
+// non-web platforms and selects a compatible recorder when available.
 //
 // Exactly one of `repository` / `localPath` must be set:
 //   - repository: a git remote (https:// or git@ form). Shallow-cloned into
@@ -71,8 +69,17 @@ export type SourceConfig = z.infer<typeof SourceConfigSchema>;
 // dev server yourself (e.g. `npm run dev`) before `record`/`build` run.
 export const TargetConfigSchema = z.object({
   url: z.string().url(),
-  type: z.enum(['web', 'cli']).default('web'),
+  type: z.enum(['web', 'cli', 'android', 'ios']).default('web'),
   credentials: z.record(z.string()).optional(),
+  android: z.object({
+    // Android application id installed on the selected emulator/device.
+    package: z.string().min(1),
+    // Optional fully-qualified launch activity. When omitted, adb resolves
+    // the package's launcher activity via `monkey`.
+    activity: z.string().min(1).optional(),
+    // adb serial. Omit when exactly one emulator/device is connected.
+    serial: z.string().min(1).optional(),
+  }).optional(),
 });
 
 export const VideoConfigSchema = z.object({

@@ -149,7 +149,11 @@ Respond with JSON only — just the scenario object, no "script" field, no other
     // project-summary.json.
     scenario.meta.platform = summary.platform;
     scenario.setup = summary.setupSteps;
-    groundScenarioActions(scenario, summary, baseUrl);
+    if (summary.platform === 'web') {
+      groundScenarioActions(scenario, summary, baseUrl);
+    } else {
+      groundDeviceScenarioActions(scenario);
+    }
 
     // script.yaml is derived deterministically from scenario.yaml's
     // narration text — no second LLM call, no risk of the two disagreeing.
@@ -161,6 +165,30 @@ Respond with JSON only — just the scenario object, no "script" field, no other
     );
     return { scenario, script };
   }
+}
+
+/**
+ * Until source inspection exposes a verified mobile accessibility tree, do
+ * not let the LLM guess labels or coordinates. Convert its safe pacing and
+ * scrolling intent into Android-executable actions. Users can then enrich
+ * scenario.yaml with verified tap/input actions before `video record`.
+ */
+function groundDeviceScenarioActions(scenario: Scenario): void {
+  scenario.scenes.forEach((scene, index) => {
+    const actions: Scenario['scenes'][number]['actions'] = [];
+    if (index === 0) actions.push({ type: 'launch_app' });
+    for (const action of scene.actions) {
+      if (action.type === 'wait' || action.type === 'screenshot') actions.push(action);
+      if (action.type === 'scroll') {
+        actions.push(action.direction === 'down'
+          ? { type: 'swipe', fromX: 540, fromY: 1500, toX: 540, toY: 500, durationMs: 450 }
+          : { type: 'swipe', fromX: 540, fromY: 500, toX: 540, toY: 1500, durationMs: 450 });
+      }
+    }
+    if (!actions.some((action) => action.type === 'wait')) actions.push({ type: 'wait', ms: 800 });
+    scene.actions = actions;
+  });
+  logger.info('[scenario] Generated a conservative device scenario; edit verified tap/input actions in scenario.yaml if needed.');
 }
 
 const TECHNICAL_TERMS = /\b(?:Next\.js|App Router|TypeScript|JavaScript|React|Cloudflare|Workers?|Hono|API(?:s| routes?)?|serverless|front-?end|back-?end|runtime|framework|deployment|database|architecture|static generation)\b|技術仕様|実装|フレームワーク|プログラミング言語|サーバーレス|アーキテクチャ|静的生成/iu;

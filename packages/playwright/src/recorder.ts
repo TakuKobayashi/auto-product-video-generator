@@ -201,6 +201,13 @@ export class SceneRecorder {
         break;
       }
 
+      case 'launch_app':
+      case 'tap':
+      case 'input_text':
+      case 'swipe':
+      case 'back':
+        throw new Error(`Action '${action.type}' is only valid for a device recorder.`);
+
       default:
         logger.warn(`Unknown action type: ${(action as Action).type}`);
     }
@@ -239,6 +246,11 @@ export class SceneRecorder {
       case 'scroll': return ` ${action.direction} ${action.amount}px`;
       case 'hover': return ` "${action.text ?? action.label ?? action.selector}"`;
       case 'screenshot': return ` "${action.name}"`;
+      case 'launch_app': return '';
+      case 'tap': return ` "${action.text ?? action.contentDescription ?? `${action.x},${action.y}`}"`;
+      case 'input_text': return ` "${action.value.slice(0, 20)}"`;
+      case 'swipe': return ` ${action.fromX},${action.fromY} → ${action.toX},${action.toY}`;
+      case 'back': return '';
       default: return '';
     }
   }

@@ -1,0 +1,14 @@
+{
+  "name": "@demo-video-gen/recorder",
+  "version": "0.1.0",
+  "description": "Platform recording drivers for demo-video-gen",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
+  "scripts": { "build": "tsc -b", "clean": "rm -rf dist" },
+  "dependencies": {
+    "@demo-video-gen/core": "workspace:*",
+    "@demo-video-gen/playwright": "workspace:*"
+  }
+}

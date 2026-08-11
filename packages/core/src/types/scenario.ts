@@ -55,6 +55,30 @@ export const ScreenshotActionSchema = z.object({
   name: z.string(),
 });
 
+// Device actions are intentionally based on coordinates or Android's visible
+// text/content-description. They can be executed with the Android SDK alone,
+// without introducing a second automation server.
+export const LaunchAppActionSchema = z.object({ type: z.literal('launch_app') });
+export const TapActionSchema = z.object({
+  type: z.literal('tap'),
+  x: z.number().int().nonnegative().optional(),
+  y: z.number().int().nonnegative().optional(),
+  text: z.string().min(1).optional(),
+  contentDescription: z.string().min(1).optional(),
+});
+export const InputTextActionSchema = z.object({
+  type: z.literal('input_text'),
+  value: z.string(),
+});
+export const SwipeActionSchema = z.object({
+  type: z.literal('swipe'),
+  fromX: z.number().int().nonnegative(),
+  fromY: z.number().int().nonnegative(),
+  toX: z.number().int().nonnegative(),
+  toY: z.number().int().nonnegative(),
+  durationMs: z.number().int().positive().default(400),
+});
+export const BackActionSchema = z.object({ type: z.literal('back') });
 export const ActionSchema = z.discriminatedUnion('type', [
   GotoActionSchema,
   ClickActionSchema,
@@ -64,7 +88,22 @@ export const ActionSchema = z.discriminatedUnion('type', [
   ScrollActionSchema,
   HoverActionSchema,
   ScreenshotActionSchema,
-]);
+  LaunchAppActionSchema,
+  TapActionSchema,
+  InputTextActionSchema,
+  SwipeActionSchema,
+  BackActionSchema,
+]).superRefine((action, ctx) => {
+  if (action.type === 'tap' && !(
+    (action.x !== undefined && action.y !== undefined) ||
+    action.text || action.contentDescription
+  )) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'tap requires x+y, text, or contentDescription',
+    });
+  }
+});
 
 // --- Effects ---
 
@@ -121,10 +160,7 @@ export const ScenarioMetaSchema = z.object({
   description: z.string().default(''),
   type: VideoTypeSchema,
   // What kind of project this recording plan is for (web/ios/android/...).
-  // Recording (Playwright) currently only supports "web" — `record`/`build`
-  // print a warning (without blocking) for any other value, since the
-  // corresponding recorder doesn't exist yet. Defaults to "web" for
-  // scenario.yaml files written before this field existed.
+  // Selects the recording driver. Defaults to web for older scenarios.
   platform: ProjectPlatformSchema.default('web'),
   duration: z.number().int().positive(),
   language: z.string().default('ja'),

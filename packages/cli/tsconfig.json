@@ -9,6 +9,7 @@
     { "path": "../core" },
     { "path": "../ai" },
     { "path": "../playwright" },
+    { "path": "../recorder" },
     { "path": "../voicevox" },
     { "path": "../renderer" },
     { "path": "../source" }

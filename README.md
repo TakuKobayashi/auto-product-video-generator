@@ -1,8 +1,9 @@
 # demo-video-gen
 
-AI-powered promotional video generator for web apps. Point it at a real
-git-managed project; it reads the actual source, plans a recording, drives
-a real browser through it, and produces a narrated video.
+AI-powered promotional video generator for web and Android apps. Point it at
+a real git-managed project; it reads the actual source, plans a recording,
+drives a browser or Android device, and produces a narrated video. Flutter,
+React Native, and Unity are supported when targeting an Android build.
 
 日本語版: [README-ja.md](./README-ja.md) — より詳しいトラブルシューティング付き
 

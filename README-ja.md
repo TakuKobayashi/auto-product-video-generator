@@ -1,14 +1,15 @@
 # demo-video-gen
 
-Webアプリ向けのAIプロモーション動画自動生成ツールです。実在するgit管理プロジェクトを
-指定すると、実際のソースコードを読み込み、録画計画を立て、実ブラウザを操作し、
+WebおよびAndroidアプリ向けのAIプロモーション動画自動生成ツールです。実在するgit管理プロジェクトを
+指定すると、実際のソースコードを読み込み、録画計画を立て、ブラウザまたはAndroid端末を操作し、
 ナレーション付きの動画を生成します。
 
 ---
 
 ## 必要な環境
 
-Node.js ≥ 20、pnpm ≥ 9、git、Docker（VOICEVOX用）。それ以外（ffmpeg、Playwright、
+Node.js ≥ 20、pnpm ≥ 9、git、Docker（VOICEVOX用）。Web録画にはPlaywright、Android録画には
+Android SDKの`adb`と起動済みのエミュレーターまたは端末が必要です。それ以外（ffmpeg、Playwright、
 Task、任意でOllama）は下のセットアップコマンドがまとめてインストールします。
 
 ## クイックスタート
@@ -26,6 +27,26 @@ pnpm dvg project init --repo https://github.com/you/your-app.git --url http://lo
 
 pnpm dvg video generate # 動画を作る
 ```
+
+Android、Flutter、React Native、UnityのAndroidビルドを録画する場合は、APKを端末へ
+インストールしたうえでapplication idを指定します。プラットフォーム自体はソースから自動判別されます。
+
+```bash
+pnpm dvg project init --source ../my-android-app \
+  --android-package com.example.app \
+  --android-serial emulator-5554
+adb devices
+pnpm dvg video generate
+```
+
+`target.android.activity`は省略可能です。省略時はランチャーActivityを自動起動します。
+生成された端末向けシナリオは、安全のため推測したボタン名をタップせず、起動・待機・スワイプを
+中心にします。実際のラベルが分かる場合は`.dvg/scenario.yaml`へ`tap`、`input_text`、
+`back`などを追加してから`pnpm dvg video record`を実行できます。
+
+Unityのバッチモードはプロジェクトのビルドには利用できますが、ヘッドレス実行だけでは
+プロモーション用の画面録画になりません。現段階ではUnityをAndroid Playerとしてビルド・
+インストールし、同じADB録画ドライバーを使う方式に対応します。iOSとUnity Desktopの録画は未対応です。
 
 `init`が`dvg.config.yaml`を生成します。動画化するソースがGitHub等にある場合は`--repo`、
 ローカルにある場合は`--source`を使います。非エンジニア向け・使い方中心という編集方針は
@@ -89,7 +110,7 @@ flowchart TD
         analyze(["<b>analyze</b><br/>ソースをclone/読込み、<br/>AIが機能・プラットフォーム・<br/>起動計画を抽出"])
         scenario(["<b>scenario generate</b><br/>AIが録画計画<br/>(scenario.yaml)を生成"])
         voice(["<b>voice</b><br/>VOICEVOXでナレーション合成"])
-        record(["<b>record</b><br/>音声の実時間に合わせて<br/>Playwrightが録画"])
+        record(["<b>record</b><br/>音声の実時間に合わせて<br/>プラットフォーム別に録画"])
         render(["<b>render</b><br/>ffmpegで合成"])
         analyze -->|project-summary.json| scenario
         scenario -->|scenario.yaml, script.yaml| voice
@@ -254,7 +275,8 @@ packages/
 ├── core/         共通の型定義（Zodスキーマ — 正確なフィールド定義はここを見てください）
 ├── source/       gitクローン/ローカル読込み、ルート・プラットフォーム検出
 ├── ai/           LLMプロバイダー + analyze/scenario-generateパイプライン
-├── playwright/   録画
+├── playwright/   Web録画
+├── recorder/     プラットフォーム選択 + Android/ADB録画
 ├── voicevox/     音声合成
 └── renderer/     ffmpegレンダリング
 

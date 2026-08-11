@@ -11,6 +11,9 @@ interface InitOptions {
   type?: string;
   url?: string;
   name?: string;
+  androidPackage?: string;
+  androidActivity?: string;
+  androidSerial?: string;
   force?: boolean;
   dryRun?: boolean;
 }
@@ -53,6 +56,14 @@ export async function runInit(directory: string, options: InitOptions): Promise<
     : { localPath: options.source, installDeps: options.installDeps ?? false, startCommand: options.serveCommand };
 
   const config = createDefaultConfig(name, url, source);
+  if (options.androidPackage) {
+    config.target.type = 'android';
+    config.target.android = {
+      package: options.androidPackage,
+      activity: options.androidActivity,
+      serial: options.androidSerial,
+    };
+  }
   config.video.type = (options.type as 'teaser' | 'shorts' | 'demo' | 'tutorial') ?? 'demo';
 
   if (options.dryRun) {
@@ -69,6 +80,7 @@ export async function runInit(directory: string, options: InitOptions): Promise<
     `Source: ${options.repo ? `git repository ${options.repo}${options.ref ? ` (ref: ${options.ref})` : ' (default branch)'}` : `local path ${resolve(options.source!)}`}`,
   );
   logger.info(`Target: ${url}`);
+  if (config.target.android) logger.info(`Android package: ${config.target.android.package}`);
   logger.info(
     `Serve:  ${
       source.startCommand

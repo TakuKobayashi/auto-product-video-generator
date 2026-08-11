@@ -15,7 +15,7 @@ import { ProjectPlatform } from '@demo-video-gen/core';
  * both just read `platform` off whatever this prompt returns.
  */
 export const PLATFORM_DESCRIPTIONS: Record<ProjectPlatform, string> = {
-  web: 'A website or web application (Next.js, React, Vue, Nuxt, SvelteKit, plain HTML/JS, etc.) — navigable via a browser URL. This is the only platform demo-video-gen can currently record automatically (via Playwright).',
+  web: 'A website or web application (Next.js, React, Vue, Nuxt, SvelteKit, plain HTML/JS, etc.) — navigable via a browser URL and recordable with Playwright.',
   ios: 'A native iOS (or macOS) app — Swift/SwiftUI/UIKit, an Xcode project/workspace, CocoaPods (Podfile), or Swift Package Manager.',
   android: 'A native Android app — Kotlin or Java, a Gradle build (build.gradle/build.gradle.kts), AndroidManifest.xml.',
   unity: 'A Unity game or interactive app — has Assets/ and ProjectSettings/ directories, .unity scene files.',

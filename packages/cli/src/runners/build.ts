@@ -24,10 +24,10 @@ import {
   TimelineBuilder,
   recomputeScriptTimingFromAudio,
 } from '@demo-video-gen/ai';
-import { SceneRecorder } from '@demo-video-gen/playwright';
+import { createPlatformRecorder } from '@demo-video-gen/recorder';
 import { VoicevoxClient } from '@demo-video-gen/voicevox';
 import { FfmpegRenderer } from '@demo-video-gen/renderer';
-import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning } from '@demo-video-gen/source';
+import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning, runSetupSteps } from '@demo-video-gen/source';
 import { exportArtifacts } from '../utils/export-artifacts.js';
 
 interface BuildOptions {
@@ -211,12 +211,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
 
   // ── Step 4: Record ───────────────────────────────────────────────────────
   if (!options.skipRecord) {
-    logger.step('4/5', 'Recording browser interactions...');
-    if (scenario.meta.platform !== 'web') {
-      throw new Error(
-        `Recording platform '${scenario.meta.platform}' is not supported. Playwright recording requires 'web'.`,
-      );
-    }
+    logger.step('4/5', `Recording ${scenario.meta.platform} interactions...`);
     if (!dryRun) {
       for (const scriptScene of script.scenes) {
         const voicePath = join(workDir, scriptScene.voiceFile);
@@ -224,16 +219,24 @@ export async function runBuild(options: BuildOptions): Promise<void> {
           throw new Error(`Voice file not found: ${voicePath}. Voice must run before recording.`);
         }
       }
-      await ensureAppRunning({
-        url: config.target.url,
-        setupSteps: scenario.setup,
-        startCommand: config.source.startCommand,
-        cwd: rootDir!,
-        installDeps: config.source.installDeps,
-        logPath: join(workDir, 'dev-server.log'),
-      });
+      if (scenario.meta.platform === 'web') {
+        await ensureAppRunning({
+          url: config.target.url,
+          setupSteps: scenario.setup,
+          startCommand: config.source.startCommand,
+          cwd: rootDir!,
+          installDeps: config.source.installDeps,
+          logPath: join(workDir, 'dev-server.log'),
+        });
+      } else if (scenario.setup.length > 0) {
+        logger.step('setup', `Running ${scenario.meta.platform} build/setup plan (${scenario.setup.length} step(s))...`);
+        await runSetupSteps(scenario.setup, {
+          cwd: rootDir!,
+          logPath: join(workDir, 'device-setup.log'),
+        });
+      }
     }
-    const recorder = new SceneRecorder();
+    const recorder = createPlatformRecorder(scenario.meta.platform, config);
     for (const scene of scenario.scenes) {
       const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
       if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yaml.`);

@@ -30,6 +30,13 @@ source:
 target:
   url: "http://localhost:3000"
   type: "web"
+  # Android / Flutter / React Native / Unity Android recording:
+  # Start an emulator/device and install the app first. `package` is required;
+  # activity is optional, and serial is only needed with multiple devices.
+  # android:
+  #   package: "com.example.app"
+  #   activity: ".MainActivity"
+  #   serial: "emulator-5554"
 
 video:
   type: "demo"       # teaser | shorts | demo | tutorial

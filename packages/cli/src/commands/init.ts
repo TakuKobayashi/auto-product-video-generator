@@ -16,6 +16,9 @@ export function initCommand(): Command {
     .option('-u, --url <url>', 'URL where the app can be reached once running, e.g. http://localhost:3000', 'http://localhost:3000')
     .option('-t, --type <type>', 'video type: teaser|shorts|demo|tutorial', 'demo')
     .option('-n, --name <name>', 'project name')
+    .option('--android-package <id>', 'Android application id to launch and record with adb')
+    .option('--android-activity <name>', 'optional Android launch activity')
+    .option('--android-serial <serial>', 'optional adb device/emulator serial')
     .option('--force', 'overwrite an existing dvg.config.yaml')
     .option('--dry-run', 'preview config without writing files')
     .action(async (directory: string, options: Record<string, string | boolean>) => {
