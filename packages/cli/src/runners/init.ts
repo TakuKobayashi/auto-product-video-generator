@@ -16,15 +16,15 @@ interface InitOptions {
 }
 
 export async function runInit(directory: string, options: InitOptions): Promise<void> {
-  logger.header('demo-video-gen init');
+  logger.header('dvg project init');
 
   if (!options.repo && !options.source) {
     logger.error('You must specify exactly one of --repo <git-url> or --source <local-path>.');
     logger.error('');
-    logger.error('demo-video-gen analyzes an actual (version-controlled) project to plan the');
+    logger.error('dvg analyzes an actual (version-controlled) project to plan the');
     logger.error('recording, so it needs to know where that project lives:');
-    logger.error('  demo-video-gen init --repo https://github.com/user/repo.git');
-    logger.error('  demo-video-gen init --source ../my-local-project');
+    logger.error('  pnpm dvg project init --repo https://github.com/user/repo.git');
+    logger.error('  pnpm dvg project init --source ../my-local-project');
     process.exit(1);
   }
 
@@ -84,10 +84,10 @@ export async function runInit(directory: string, options: InitOptions): Promise<
   logger.info('Video:  non-technical, product-usage-focused promotion (built-in default)');
   logger.info('');
   logger.info('Next steps:');
-  logger.dim(`  1. Run: pnpm dev -- analyze`);
-  logger.dim(`  2. Run: pnpm dev -- scenario generate`);
-  logger.dim(`  3. Run: pnpm dev -- voice`);
-  logger.dim(`  4. Run: pnpm dev -- record`);
-  logger.dim(`  5. Run: pnpm dev -- render`);
-  logger.dim(`  Or run all five at once: pnpm dev -- build`);
+  logger.dim(`  1. Run: pnpm dvg project analyze`);
+  logger.dim(`  2. Run: pnpm dvg video scenario generate`);
+  logger.dim(`  3. Run: pnpm dvg video voice`);
+  logger.dim(`  4. Run: pnpm dvg video record`);
+  logger.dim(`  5. Run: pnpm dvg video render`);
+  logger.dim(`  Or run all five at once: pnpm dvg video generate`);
 }

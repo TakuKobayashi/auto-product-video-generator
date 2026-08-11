@@ -8,6 +8,8 @@ import { recordCommand } from './commands/record.js';
 import { voiceCommand } from './commands/voice.js';
 import { renderCommand } from './commands/render.js';
 import { buildCommand } from './commands/build.js';
+import { projectCommand } from './commands/project.js';
+import { videoCommand } from './commands/video.js';
 
 // Every command's action handler is async; an unhandled rejection there
 // (network errors, missing files, etc.) would otherwise print a raw Node.js
@@ -25,23 +27,27 @@ process.on('unhandledRejection', (err) => {
 const program = new Command();
 
 program
-  .name('demo-video-gen')
+  .name('dvg')
   .description('AI-powered promotional video generator for web apps and CLI tools')
   .version('0.1.0');
 
-program.addCommand(initCommand());
-program.addCommand(analyzeCommand());
-program.addCommand(scenarioCommand());
-program.addCommand(recordCommand());
-program.addCommand(voiceCommand());
-program.addCommand(renderCommand());
-program.addCommand(buildCommand());
+// Primary, organized interface.
+program.addCommand(projectCommand());
+program.addCommand(videoCommand());
 
-// Some pnpm versions forward a literal `--` separator instead of stripping
-// it (e.g. `pnpm dev -- init --url ...`). Commander treats a bare "--" as
-// "end of options", which breaks flag parsing for everything after it. We
-// never use "--" as an intentional CLI convention ourselves, so strip a
-// single leading one defensively.
+// Backward-compatible legacy commands. Existing scripts keep working while
+// documentation and init output use the grouped interface above.
+program.addCommand(initCommand(), { hidden: true });
+program.addCommand(analyzeCommand(), { hidden: true });
+program.addCommand(scenarioCommand(), { hidden: true });
+program.addCommand(recordCommand(), { hidden: true });
+program.addCommand(voiceCommand(), { hidden: true });
+program.addCommand(renderCommand(), { hidden: true });
+program.addCommand(buildCommand(), { hidden: true });
+
+// Keep accepting a forwarded `--` for backward compatibility with the old
+// `pnpm dev -- ...` interface. The primary interface (`pnpm dvg ...`) does
+// not require this separator.
 const argv = process.argv.slice();
 if (argv[2] === '--') {
   argv.splice(2, 1);

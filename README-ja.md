@@ -21,10 +21,10 @@ task serve            # ローカルサービスを起動（VOICEVOX、Ollama）
 task doctor           # 何か足りてるか不安なら実行
 
 # 動画化したいプロジェクトと、それが動くURLを指定
-pnpm dev -- init --repo https://github.com/you/your-app.git --url http://localhost:3000
+pnpm dvg project init --repo https://github.com/you/your-app.git --url http://localhost:3000
 #   ローカルに既にある場合は: --source ../your-app
 
-pnpm dev -- build       # 動画を作る
+pnpm dvg video generate # 動画を作る
 ```
 
 `init`が`dvg.config.yaml`を生成します。動画化するソースがGitHub等にある場合は`--repo`、
@@ -59,7 +59,7 @@ timeline、分析結果、ログ、使用した設定が保存されます。`GE
 flowchart TD
     init(["<b>init</b><br/>--repo / --source"]) -->|生成| cfg[(dvg.config.yaml)]
 
-    subgraph build["pnpm dev -- build （下の5つをまとめて実行）"]
+    subgraph build["pnpm dvg video generate （下の5つをまとめて実行）"]
         direction TB
         analyze(["<b>analyze</b><br/>ソースをclone/読込み、<br/>AIが機能・プラットフォーム・<br/>起動計画を抽出"])
         scenario(["<b>scenario generate</b><br/>AIが録画計画<br/>(scenario.yaml)を生成"])
@@ -84,17 +84,17 @@ flowchart TD
 通常は次の一括実行だけで構いません。
 
 ```bash
-pnpm dev -- build
+pnpm dvg video generate
 ```
 
 内容を途中で確認・編集したい場合は、必ず次の順番で個別実行します。
 
 ```bash
-pnpm dev -- analyze
-pnpm dev -- scenario generate
-pnpm dev -- voice     # WAV生成後、実音声の長さでscript/subtitlesを更新
-pnpm dev -- record    # 更新済みscriptとWAVが必須
-pnpm dev -- render
+pnpm dvg project analyze
+pnpm dvg video scenario generate
+pnpm dvg video voice     # WAV生成後、実音声の長さでscript/subtitlesを更新
+pnpm dvg video record    # 更新済みscriptとWAVが必須
+pnpm dvg video render
 ```
 
 各コマンドは直前の生成物を使います。途中で止まった場合、成功済みの工程を繰り返す必要は
@@ -102,27 +102,27 @@ pnpm dev -- render
 
 | 最後に成功した工程／変更内容 | 再開コマンド |
 |---|---|
-| `analyze`まで成功 | `pnpm dev -- scenario generate` |
-| `scenario generate`まで成功 | `pnpm dev -- voice` |
-| `voice`まで成功 | `pnpm dev -- record` |
-| `record`まで成功 | `pnpm dev -- render` |
-| narration・テロップ文言を変更 | `pnpm dev -- voice`から |
-| 画面操作だけを変更 | `pnpm dev -- record`から |
-| 録画・音声は完成済みで合成設定だけ変更 | `pnpm dev -- render`のみ |
+| `analyze`まで成功 | `pnpm dvg video scenario generate` |
+| `scenario generate`まで成功 | `pnpm dvg video voice` |
+| `voice`まで成功 | `pnpm dvg video record` |
+| `record`まで成功 | `pnpm dvg video render` |
+| narration・テロップ文言を変更 | `pnpm dvg video voice`から |
+| 画面操作だけを変更 | `pnpm dvg video record`から |
+| 録画・音声は完成済みで合成設定だけ変更 | `pnpm dvg video render`のみ |
 
 | コマンド | 生成物 | 補足 |
 |---|---|---|
-| `demo-video-gen init --repo <URL>` | `dvg.config.yaml` | 初回のみ。ローカルの場合は`--source <パス>` |
-| `demo-video-gen analyze` | `.dvg/source-context.json`、`.dvg/project-summary.json` | 決定論的なソース走査 + AIによる分類 |
-| `demo-video-gen scenario generate` | `.dvg/scenario.yaml`、`.dvg/script.yaml`、`.dvg/subtitles.srt` | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
-| `demo-video-gen voice` | `.dvg/voice/*.wav` | 実音声の長さでscript/subtitlesの時刻も更新 |
-| `demo-video-gen record` | `.dvg/recordings/*.mp4` | 音声の実時間に合わせて操作し、到達不能なら停止 |
-| `demo-video-gen render` | `output/final.mp4`、`output/artifacts/` | 完成動画と途中生成物一式を出力 |
+| `pnpm dvg project init --repo <URL>` | `dvg.config.yaml` | 初回のみ。ローカルの場合は`--source <パス>` |
+| `pnpm dvg project analyze` | `.dvg/source-context.json`、`.dvg/project-summary.json` | 決定論的なソース走査 + AIによる分類 |
+| `pnpm dvg video scenario generate` | `.dvg/scenario.yaml`、`.dvg/script.yaml`、`.dvg/subtitles.srt` | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
+| `pnpm dvg video voice` | `.dvg/voice/*.wav` | 実音声の長さでscript/subtitlesの時刻も更新 |
+| `pnpm dvg video record` | `.dvg/recordings/*.mp4` | 音声の実時間に合わせて操作し、到達不能なら停止 |
+| `pnpm dvg video render` | `output/final.mp4`、`output/artifacts/` | 完成動画と途中生成物一式を出力 |
 
-`demo-video-gen build [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
+`pnpm dvg video generate [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
 は上記5つをまとめて実行し、指定したステップだけ既存の生成物を使って
 スキップできます。各コマンドの全オプションは`--help`で確認できます
-（例: `pnpm dev -- analyze --help`）。
+（例: `pnpm dvg project analyze --help`）。CLI全体は`pnpm dvg --help`で確認できます。
 
 `--skip-voice`と録画を組み合わせる場合も、既存の`.dvg/voice/*.wav`が必要です。
 録画前に既存WAVを測り直すため、音声なしの状態で録画だけを先行することはできません。
@@ -175,17 +175,17 @@ postinstallスクリプトを持っており、社内プロキシ等でブロッ
 （`winget install ffmpeg` / `brew install ffmpeg` / `apt install ffmpeg`）。`task`が
 無くても`pnpm run <name>`側で代替できます。
 
-### `pnpm run build`や`pnpm dev`が`ERR_PNPM_IGNORED_BUILDS`で失敗する
+### `pnpm run build`や`pnpm dvg`が`ERR_PNPM_IGNORED_BUILDS`で失敗する
 
 ```bash
 pnpm approve-builds
 ```
 を実行し、`ffmpeg-static` / `@go-task/cli` / `esbuild`を承認してください。
 
-### `demo-video-gen init`が「--repo か --source が必要」と言う
+### `pnpm dvg project init`が「--repo か --source が必要」と言う
 
 `analyze`が実際のソースコードを読む設計のため、`init`の時点で対象を指定する必要が
-あります: `demo-video-gen init --repo <URL>` または `--source <パス>`（gitリポジトリ
+あります: `pnpm dvg project init --repo <URL>` または `--source <パス>`（gitリポジトリ
 である必要あり）。
 
 ### `scenario.yaml`のURLが実際のページと合っていない
@@ -210,8 +210,8 @@ Ollamaもコンテナで動かす場合は`11434:11434`が必要です。`voice`
 
 まず`target.url`を通常のブラウザで開けるか確認してください。次に`.dvg/scenario.yaml`の
 `goto`、`click`、`wait_visible`が実際の画面と合っているか確認します。修正後は音声を
-変えていなければ`pnpm dev -- record`、ナレーションも変えた場合は
-`pnpm dev -- voice`から再実行してください。
+変えていなければ`pnpm dvg video record`、ナレーションも変えた場合は
+`pnpm dvg video voice`から再実行してください。
 
 ### とにかく何もわからない
 
@@ -239,7 +239,7 @@ Taskfile.yml        環境構築・サーバー起動
 
 ```bash
 task build          # または: pnpm run build
-task dev -- <args>  # または: pnpm dev -- <args>  （先にビルドしてからCLIを実行）
+pnpm dvg --help     # 整理されたCLIのコマンド一覧
 ```
 
 ## ライセンス

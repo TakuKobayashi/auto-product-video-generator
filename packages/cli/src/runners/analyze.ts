@@ -11,7 +11,7 @@ interface AnalyzeOptions {
 }
 
 export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
-  logger.header('demo-video-gen analyze');
+  logger.header('dvg project analyze');
 
   const configPath = options.config ?? 'dvg.config.yaml';
   const config = await loadConfig(configPath);
@@ -78,5 +78,5 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
     logger.dim(`  ${mark} [${f.priority}] ${f.title}  ${f.route ? `(${f.route})` : ''}`);
   }
   logger.info('');
-  logger.info('Next: demo-video-gen scenario generate');
+  logger.info('Next: pnpm dvg video scenario generate');
 }

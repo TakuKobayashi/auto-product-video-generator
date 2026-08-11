@@ -13,7 +13,7 @@ interface VoiceOptions {
 }
 
 export async function runVoice(options: VoiceOptions): Promise<void> {
-  logger.header('demo-video-gen voice');
+  logger.header('dvg video voice');
 
   const configPath = options.config ?? 'dvg.config.yaml';
   const config = await loadConfig(configPath);
@@ -22,7 +22,7 @@ export async function runVoice(options: VoiceOptions): Promise<void> {
   const scriptPath = join(workDir, 'script.yaml');
 
   if (!existsSync(scriptPath)) {
-    logger.error(`script.yaml not found. Run 'demo-video-gen scenario generate' first.`);
+    logger.error(`script.yaml not found. Run 'pnpm dvg video scenario generate' first.`);
     process.exit(1);
   }
 
@@ -72,6 +72,6 @@ export async function runVoice(options: VoiceOptions): Promise<void> {
   logger.info('');
   logger.success('Voice synthesis complete.');
   if (!options.dryRun) {
-    logger.info('Next: demo-video-gen record');
+    logger.info('Next: pnpm dvg video record');
   }
 }

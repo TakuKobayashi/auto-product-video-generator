@@ -13,7 +13,7 @@ interface RecordOptions {
 }
 
 export async function runRecord(options: RecordOptions): Promise<void> {
-  logger.header('demo-video-gen record');
+  logger.header('dvg video record');
 
   const configPath = options.config ?? 'dvg.config.yaml';
   const config = await loadConfig(configPath);
@@ -23,7 +23,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   const scriptPath = join(workDir, 'script.yaml');
 
   if (!existsSync(scenarioPath)) {
-    logger.error(`scenario.yaml not found. Run 'demo-video-gen scenario generate' first.`);
+    logger.error(`scenario.yaml not found. Run 'pnpm dvg video scenario generate' first.`);
     process.exit(1);
   }
 
@@ -31,7 +31,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   const scenario = ScenarioSchema.parse(rawScenario);
 
   if (!existsSync(scriptPath)) {
-    throw new Error(`script.yaml not found. Run 'demo-video-gen voice' before recording.`);
+    throw new Error(`script.yaml not found. Run 'pnpm dvg video voice' before recording.`);
   }
   const script = ScriptSchema.parse(await readYaml(scriptPath));
 
@@ -83,7 +83,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
     const scriptScene = script.scenes[scriptIndex];
     const voicePath = join(workDir, scriptScene.voiceFile);
     if (!options.dryRun && !existsSync(voicePath)) {
-      throw new Error(`Voice file not found: ${voicePath}. Run 'demo-video-gen voice' before recording.`);
+      throw new Error(`Voice file not found: ${voicePath}. Run 'pnpm dvg video voice' before recording.`);
     }
     const nextScene = script.scenes[scriptIndex + 1];
     const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
@@ -100,6 +100,6 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   logger.info('');
   logger.success('Recording complete.');
   if (!options.dryRun) {
-    logger.info('Next: demo-video-gen render');
+    logger.info('Next: pnpm dvg video render');
   }
 }

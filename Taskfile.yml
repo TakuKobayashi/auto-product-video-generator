@@ -191,10 +191,10 @@ tasks:
 
   dev:
     desc: >
-      CLIをビルドなしで直接実行します (tsx)。`--` 以降の引数はそのままCLIに渡されます。
-      例: task dev -- init --url http://localhost:3000
+      互換用エイリアス。整理されたCLIは `pnpm dvg --help` を使用してください。
+      例: task dev -- video generate
     cmds:
-      - pnpm dev -- {{.CLI_ARGS}}
+      - pnpm dvg {{.CLI_ARGS}}
 
   clean:
     desc: "全パッケージの dist/ を削除します"
@@ -210,5 +210,5 @@ tasks:
       - task: serve
       - 'echo ""'
       - 'echo "セットアップ完了。次のコマンドで動画生成を始められます:"'
-      - 'echo "  pnpm dev -- init --url http://localhost:3000"'
-      - 'echo "  pnpm dev -- build"'
+      - 'echo "  pnpm dvg project init --repo <git-url> --url http://localhost:3000"'
+      - 'echo "  pnpm dvg video generate"'

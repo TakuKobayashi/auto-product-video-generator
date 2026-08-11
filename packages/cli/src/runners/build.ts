@@ -45,7 +45,7 @@ interface BuildOptions {
 }
 
 export async function runBuild(options: BuildOptions): Promise<void> {
-  logger.header('demo-video-gen build');
+  logger.header('dvg video generate');
 
   const configPath = options.config ?? 'dvg.config.yaml';
   let config = await loadConfig(configPath);

@@ -24,10 +24,10 @@ task serve            # starts local services (VOICEVOX, Ollama)
 task doctor           # not sure something's set up right? check here
 
 # Point it at the project you want a video for, and where it'll be running:
-pnpm dev -- init --repo https://github.com/you/your-app.git --url http://localhost:3000
+pnpm dvg project init --repo https://github.com/you/your-app.git --url http://localhost:3000
 #   or: --source ../your-app   (for a project already checked out locally)
 
-pnpm dev -- build       # go make the video
+pnpm dvg video generate # generate the video
 ```
 
 `init` generates `dvg.config.yaml`. Use `--repo` for a remote repository or
@@ -59,7 +59,7 @@ option (each one is commented inline, not duplicated here).
 flowchart TD
     init(["<b>init</b><br/>--repo / --source"]) -->|writes| cfg[(dvg.config.yaml)]
 
-    subgraph build["pnpm dev -- build  (one command runs all five ↓)"]
+    subgraph build["pnpm dvg video generate  (one command runs all five ↓)"]
         direction TB
         analyze(["<b>analyze</b><br/>clone/read source,<br/>AI extracts features<br/>+ platform + setup plan"])
         scenario(["<b>scenario generate</b><br/>AI writes the recording<br/>plan (scenario.yaml)"])
@@ -80,42 +80,42 @@ flowchart TD
 
 Each box above is its own CLI command, reading/writing files under `.dvg/`
 — so `build` isn't a black box, it's just those five in a row. Run them
-`pnpm dev -- build` for the normal all-in-one path. To inspect or edit
+`pnpm dvg video generate` for the normal all-in-one path. To inspect or edit
 intermediate results, run these commands in this exact order:
 
 ```bash
-pnpm dev -- analyze
-pnpm dev -- scenario generate
-pnpm dev -- voice     # synthesizes WAVs and applies their actual timing
-pnpm dev -- record    # requires the timed script and WAVs
-pnpm dev -- render
+pnpm dvg project analyze
+pnpm dvg video scenario generate
+pnpm dvg video voice     # synthesizes WAVs and applies their actual timing
+pnpm dvg video record    # requires the timed script and WAVs
+pnpm dvg video render
 ```
 
 Resume from the first unfinished or affected step:
 
 | Last successful step / change | Resume with |
 |---|---|
-| analyze completed | `pnpm dev -- scenario generate` |
-| scenario completed | `pnpm dev -- voice` |
-| voice completed | `pnpm dev -- record` |
-| recording completed | `pnpm dev -- render` |
-| narration/subtitle text changed | start from `pnpm dev -- voice` |
-| browser actions only changed | start from `pnpm dev -- record` |
-| only render settings changed | run `pnpm dev -- render` |
+| analyze completed | `pnpm dvg video scenario generate` |
+| scenario completed | `pnpm dvg video voice` |
+| voice completed | `pnpm dvg video record` |
+| recording completed | `pnpm dvg video render` |
+| narration/subtitle text changed | start from `pnpm dvg video voice` |
+| browser actions only changed | start from `pnpm dvg video record` |
+| only render settings changed | run `pnpm dvg video render` |
 
 | Command | Produces | Notes |
 |---|---|---|
-| `demo-video-gen init --repo <url>` | `dvg.config.yaml` | one-time; `--source <path>` for a local checkout instead |
-| `demo-video-gen analyze` | `.dvg/source-context.json`, `.dvg/project-summary.json` | deterministic source scan + AI classification |
-| `demo-video-gen scenario generate` | `.dvg/scenario.yaml`, `.dvg/script.yaml`, `.dvg/subtitles.srt` | scenario is AI; script/subtitles are derived deterministically from it |
-| `demo-video-gen voice` | `.dvg/voice/*.wav` | also updates script/subtitle timing from actual audio |
-| `demo-video-gen record` | `.dvg/recordings/*.mp4` | paces actions to audio timing; fails if the target is unreachable |
-| `demo-video-gen render` | `output/final.mp4`, `output/artifacts/` | final video plus intermediate artifacts |
+| `pnpm dvg project init --repo <url>` | `dvg.config.yaml` | one-time; `--source <path>` for a local checkout instead |
+| `pnpm dvg project analyze` | `.dvg/source-context.json`, `.dvg/project-summary.json` | deterministic source scan + AI classification |
+| `pnpm dvg video scenario generate` | `.dvg/scenario.yaml`, `.dvg/script.yaml`, `.dvg/subtitles.srt` | scenario is AI; script/subtitles are derived deterministically from it |
+| `pnpm dvg video voice` | `.dvg/voice/*.wav` | also updates script/subtitle timing from actual audio |
+| `pnpm dvg video record` | `.dvg/recordings/*.mp4` | paces actions to audio timing; fails if the target is unreachable |
+| `pnpm dvg video render` | `output/final.mp4`, `output/artifacts/` | final video plus intermediate artifacts |
 
-`demo-video-gen build [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
+`pnpm dvg video generate [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
 runs all five, skipping (reusing existing output for) whichever steps you
 name. Every command's full option list is in `--help`
-(e.g. `pnpm dev -- analyze --help`).
+(e.g. `pnpm dvg project analyze --help`). Run `pnpm dvg --help` for the complete hierarchy.
 
 Recording cannot run before voice synthesis. When combining
 `--skip-voice` with recording, existing `.dvg/voice/*.wav` files are still
@@ -190,7 +190,7 @@ Taskfile.yml        environment setup & service orchestration
 
 ```bash
 task build          # or: pnpm run build
-task dev -- <args>  # or: pnpm dev -- <args>  (builds first, then runs the CLI)
+pnpm dvg --help     # show the organized CLI command hierarchy
 ```
 
 ## License

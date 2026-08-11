@@ -4,6 +4,7 @@
   "description": "AI-powered promotional video generator for web apps and CLI tools",
   "type": "module",
   "bin": {
+    "dvg": "./bin/demo-video-gen.js",
     "demo-video-gen": "./bin/demo-video-gen.js"
   },
   "main": "./dist/index.js",

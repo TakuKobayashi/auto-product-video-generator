@@ -25,7 +25,7 @@ interface RenderOptions {
 }
 
 export async function runRender(options: RenderOptions): Promise<void> {
-  logger.header('demo-video-gen render');
+  logger.header('dvg video render');
 
   const configPath = options.config ?? 'dvg.config.yaml';
   const config = await loadConfig(configPath);
@@ -40,7 +40,7 @@ export async function runRender(options: RenderOptions): Promise<void> {
   for (const [label, p] of [['scenario.yaml', scenarioPath], ['script.yaml', scriptPath]] as const) {
     if (!existsSync(p)) {
       logger.error(`${label} not found: ${p}`);
-      logger.error(`Run 'demo-video-gen scenario generate' first.`);
+      logger.error(`Run 'pnpm dvg video scenario generate' first.`);
       process.exit(1);
     }
   }

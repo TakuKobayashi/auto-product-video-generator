@@ -21,7 +21,7 @@ interface ScenarioGenerateOptions {
 }
 
 export async function runScenarioGenerate(options: ScenarioGenerateOptions): Promise<void> {
-  logger.header('demo-video-gen scenario generate');
+  logger.header('dvg video scenario generate');
 
   const configPath = options.config ?? 'dvg.config.yaml';
   const config = await loadConfig(configPath);
@@ -33,7 +33,7 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
   const srtPath = join(workDir, 'subtitles.srt');
 
   if (!existsSync(summaryPath)) {
-    logger.error(`project-summary.json not found. Run 'demo-video-gen analyze' first.`);
+    logger.error(`project-summary.json not found. Run 'pnpm dvg project analyze' first.`);
     process.exit(1);
   }
 
@@ -84,11 +84,11 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
   }
   logger.info('');
   logger.info('Review and edit the files above, then run:');
-  logger.dim('  demo-video-gen voice');
+  logger.dim('  pnpm dvg video voice');
 }
 
 export async function runScenarioValidate(filePath: string): Promise<void> {
-  logger.header('demo-video-gen scenario validate');
+  logger.header('dvg video scenario validate');
 
   if (!existsSync(filePath)) {
     logger.error(`File not found: ${filePath}`);
