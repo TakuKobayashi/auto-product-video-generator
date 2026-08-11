@@ -129,6 +129,10 @@ Three things worth knowing up front:
 - **Scene gaps**: `video.sceneGapSeconds` (default: `1`) controls the silent
   interval between narration clips/scenes. Voice synthesis applies it to
   script, subtitle, and recording timing.
+- **Audience**: `video.audience` defines the intended viewer. By default the
+  video teaches non-technical viewers how to use the product and what they
+  gain from it. Implementation terms such as frameworks, programming
+  languages, hosting, and APIs are rejected from narration and regenerated.
 
 ---
 

@@ -20,6 +20,17 @@ import { buildScriptFromScenario } from './script-builder.js';
 const SYSTEM_PROMPT = `You are a video director creating promotional demo videos.
 Generate a scenario (the recording plan) for a web application demo.
 
+## Audience and editorial goal
+
+This is a product-usage video for non-engineers. Show what the viewer can do,
+how they move through the product, and why it is useful. Use friendly everyday
+language. Do NOT discuss or name implementation details such as frameworks,
+programming languages, App Router, TypeScript, Cloudflare, Workers, Hono, APIs,
+serverless, frontend/backend, runtime, deployment, static generation, databases,
+or architecture. Source-code details are evidence for understanding the product,
+not promotional content. Every narration sentence must describe a visible action,
+user outcome, use case, or benefit.
+
 Respond ONLY with valid JSON matching this exact shape — no markdown, no
 explanation, no extra top-level fields, JSON only:
 
@@ -54,16 +65,9 @@ translated labels such as "トップページ" or generic labels such as "Previo
 will make the recording fail.
 
 - {"type":"goto","url":"https://example.com/page"}
-- {"type":"click","text":"Sign up"}                         (or "label" or "selector" instead of "text")
-- {"type":"type","label":"Email","value":"user@example.com"}
-- {"type":"wait_visible","text":"Dashboard","timeout":5000}  ("timeout" optional)
 - {"type":"wait","ms":1000}
 - {"type":"scroll","direction":"down","amount":300}          (direction and amount are BOTH REQUIRED)
-- {"type":"hover","text":"Settings"}
 - {"type":"screenshot","name":"final-view"}                  ("name" is REQUIRED)
-
-For click/type/hover: prefer "text" or "label" over "selector". Never use CSS
-class selectors.
 
 For "goto" actions, ONLY use the exact URLs given to you in the feature list
 below (already the real target URL + a real discovered route). Never invent
@@ -75,7 +79,7 @@ or guess a URL.
   "meta": {"title": "Acme Demo", "description": "A quick tour of Acme", "type": "demo", "duration": 45, "language": "ja"},
   "scenes": [
     {"id": "intro", "title": "Intro", "narration": "Acmeへようこそ。", "actions": [{"type":"goto","url":"https://example.com/"}]},
-    {"id": "feature", "title": "Feature", "narration": "ダッシュボードでタスクを管理できます。", "actions": [{"type":"goto","url":"https://example.com/dashboard"},{"type":"wait_visible","text":"Dashboard"},{"type":"click","text":"New Task"}]}
+    {"id": "feature", "title": "Feature", "narration": "制作実績を一覧で確認し、興味のある内容を詳しく見られます。", "actions": [{"type":"goto","url":"https://example.com/projects"},{"type":"wait","ms":800},{"type":"scroll","direction":"down","amount":300}]}
   ]
 }`;
 
@@ -110,6 +114,13 @@ App base URL: ${baseUrl}
 Video type: ${config.type}
 Target duration: ~${config.duration} seconds
 Language: ${config.language}
+Intended audience: ${config.audience}
+
+Editorial direction:
+- Introduce the product through realistic user tasks and visible screens.
+- Explain what the viewer can accomplish and the benefit they receive.
+- Assume the viewer has no software-development knowledge.
+- Never mention implementation technology, technical specifications, or source-code structure.
 
 The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
 demonstrate a specific feature should "goto" that feature's URL from the list above.
@@ -121,7 +132,7 @@ Respond with JSON only — just the scenario object, no "script" field, no other
 
     const scenario = await withHeartbeat(
       'scenario generation',
-      generateValidatedJson<Scenario>(this.llm, ScenarioSchema, prompt, SYSTEM_PROMPT, {
+      generateValidatedJson<Scenario>(this.llm, PromotionalScenarioSchema, prompt, SYSTEM_PROMPT, {
         label: 'scenario',
         maxRetries: 3,
         repair: repairCommonActionMistakes,
@@ -148,6 +159,21 @@ Respond with JSON only — just the scenario object, no "script" field, no other
     return { scenario, script };
   }
 }
+
+const TECHNICAL_TERMS = /\b(?:Next\.js|App Router|TypeScript|JavaScript|React|Cloudflare|Workers?|Hono|API(?:s| routes?)?|serverless|front-?end|back-?end|runtime|framework|deployment|database|architecture|static generation)\b|技術仕様|実装|フレームワーク|プログラミング言語|サーバーレス|アーキテクチャ|静的生成/iu;
+
+const PromotionalScenarioSchema = ScenarioSchema.superRefine((scenario, ctx) => {
+  scenario.scenes.forEach((scene, index) => {
+    const match = scene.narration.match(TECHNICAL_TERMS);
+    if (match) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['scenes', index, 'narration'],
+        message: `Technical term "${match[0]}" is not allowed. Rewrite as a plain user action or benefit.`,
+      });
+    }
+  });
+});
 
 /**
  * Enforce executable actions after LLM generation. ProjectSummary currently

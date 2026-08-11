@@ -8,6 +8,14 @@ import { buildSetupPlanningPrompt } from './setup-planner.js';
 const SYSTEM_PROMPT = `You are a video production expert analyzing a project's source code
 to plan a promotional demo video.
 
+The resulting video is for general, non-technical viewers. Treat frameworks,
+programming languages, hosting services, APIs, architecture, and implementation
+details only as internal evidence. NEVER present them as product features or
+customer value. Features, descriptions, targetAudience, and keyValueProps must
+describe what a person can do, the problem it solves, and the visible benefit in
+plain language. Prefer user workflows such as "browse work", "find information",
+"submit a request", or "manage items" over how the software was built.
+
 You will be given: the project's package.json (name/description/scripts/dependencies),
 its README, deterministic platform signals, the detected web framework (if any), and
 either a list of discovered routes (URL paths mapped from actual page/route files) or a
@@ -127,6 +135,11 @@ then produce the setup plan (see "Setup plan"), then identify the features that 
 visually demonstrable in a recording, each anchored to a real discovered route where
 possible (web only). Also determine the target audience, key value propositions, and
 which video types suit this project.
+
+IMPORTANT: setupSteps may contain technical commands because they are only executed
+internally. All viewer-facing fields (description, features, targetAudience,
+keyValueProps) must use plain, benefit-focused language and must not advertise the
+framework, programming language, API, hosting provider, or architecture.
 
 Respond with JSON only.`;
 }
