@@ -16,7 +16,7 @@ source:
     - other
 target:
   url: http://localhost:3000
-  autoDetectUrl: true
+  autoDetectUrl: false
   type: web
 video:
   type: demo
@@ -24,6 +24,7 @@ video:
   resolution: 1920x1080
   fps: 30
   language: ja
+  pageReadyWaitSeconds: 2
   sceneGapSeconds: 1
 llm:
   provider: ollama

@@ -20,10 +20,9 @@ jobs:
     timeout-minutes: 360
 
     env:
-      TARGET_REPOSITORY: https://github.com/TakuKobayashi/tappunpages.git
-      TARGET_URL: http://127.0.0.1:3000
+      # Used only when this repository does not already contain dvg.config.yaml.
+      TARGET_REPOSITORY: https://github.com/TakuKobayashi/fullstack-media-converter.git
       OLLAMA_HOST: http://127.0.0.1:11434
-      OLLAMA_MODEL: qwen2.5:14b-instruct
       OLLAMA_KEEP_ALIVE: -1
       OLLAMA_NUM_PARALLEL: 1
       VOICEVOX_IMAGE: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
@@ -48,6 +47,39 @@ jobs:
       - name: Install project dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Use existing configuration or initialize it
+        run: |
+          if [ -f dvg.config.yaml ]; then
+            echo "Using the existing dvg.config.yaml without overwriting it"
+          else
+            echo "dvg.config.yaml was not found; generating it from $TARGET_REPOSITORY"
+            pnpm dvg project init \
+              --repo "$TARGET_REPOSITORY" \
+              --type demo
+          fi
+
+      - name: Read Ollama models from configuration
+        run: |
+          models=$(node -e '
+            const fs = require("node:fs");
+            const yaml = require("js-yaml");
+            const config = yaml.load(fs.readFileSync("dvg.config.yaml", "utf8"));
+            const llm = config?.llm ?? {};
+            const models = new Set();
+            const add = (provider, model) => {
+              if (provider === "ollama" && model) models.add(model);
+            };
+            add(llm.provider, llm.model);
+            add(llm.fallbackProvider, llm.fallbackModel ?? llm.model);
+            for (const task of Object.values(llm.tasks ?? {})) {
+              add(task.provider ?? llm.provider, task.model ?? llm.model);
+            }
+            if (models.size === 0) throw new Error("No Ollama model is configured in dvg.config.yaml");
+            process.stdout.write([...models].join(" "));
+          ')
+          echo "OLLAMA_MODELS=$models" >> "$GITHUB_ENV"
+          echo "Using configured Ollama model(s): $models"
+
       - name: Remove stale generated build files
         run: pnpm clean
 
@@ -66,23 +98,6 @@ jobs:
       - name: Install Ollama
         run: curl -fsSL https://ollama.com/install.sh | sh
 
-      - name: Select Ollama model for runner memory
-        run: |
-          memory_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
-          disk_kb=$(df --output=avail "$GITHUB_WORKSPACE" | tail -1 | tr -d ' ')
-          if [ "$memory_kb" -ge 15000000 ] && [ "$disk_kb" -ge 11000000 ]; then
-            echo "OLLAMA_MODEL=qwen2.5:14b-instruct" >> "$GITHUB_ENV"
-            echo "Runner resources allow the 14B model; using qwen2.5:14b-instruct"
-          elif [ "$memory_kb" -ge 10000000 ] && [ "$disk_kb" -ge 7000000 ]; then
-            echo "OLLAMA_MODEL=qwen2.5:7b-instruct" >> "$GITHUB_ENV"
-            echo "Runner resources allow the 7B model; using qwen2.5:7b-instruct"
-          else
-            echo "OLLAMA_MODEL=qwen2.5:3b-instruct" >> "$GITHUB_ENV"
-            echo "Runner resources are constrained; using qwen2.5:3b-instruct"
-          fi
-          free -h
-          df -h "$GITHUB_WORKSPACE"
-
       - name: Start Ollama and download CI model
         run: |
           nohup ollama serve > ollama.log 2>&1 &
@@ -96,16 +111,9 @@ jobs:
             fi
             sleep 2
           done
-          ollama pull "$OLLAMA_MODEL"
-
-      - name: Create CI configuration for the fixed target repository
-        run: |
-          pnpm dvg project init \
-            --repo "$TARGET_REPOSITORY" \
-            --url "$TARGET_URL" \
-            --type demo \
-            --force
-          sed -i "s/model: qwen2.5:7b-instruct/model: $OLLAMA_MODEL/" dvg.config.yaml
+          for model in $OLLAMA_MODELS; do
+            ollama pull "$model"
+          done
 
       - name: Analyze project
         run: pnpm dvg project analyze
@@ -115,8 +123,10 @@ jobs:
 
       - name: Release Ollama resources before media processing
         run: |
-          ollama stop "$OLLAMA_MODEL" || true
-          ollama rm "$OLLAMA_MODEL" || true
+          for model in $OLLAMA_MODELS; do
+            ollama stop "$model" || true
+            ollama rm "$model" || true
+          done
 
       - name: Start VOICEVOX Engine
         run: |
