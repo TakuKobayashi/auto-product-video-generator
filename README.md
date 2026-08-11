@@ -65,9 +65,12 @@ GitHub-hosted `ubuntu-latest` runner. It starts automatically on every push to
 
 The target is currently fixed to
 `https://github.com/TakuKobayashi/tappunpages.git`. The job installs Node.js,
-pnpm, Playwright Chromium, Ollama with the CPU-sized
-`qwen2.5:3b-instruct` model, and VOICEVOX Engine, then runs
-`pnpm dvg video generate`. No Gemini secret is required. Successful runs upload
+pnpm, Playwright Chromium, Ollama, and VOICEVOX Engine. It selects
+`qwen2.5:14b-instruct` with at least 15 GB RAM and 11 GB free disk, then falls
+back through 7B to 3B as resources decrease. Pipeline stages run separately;
+the Ollama model is removed after scenario generation to release both RAM and
+disk before VOICEVOX and browser media processing.
+No Gemini secret is required. Successful runs upload
 `output/` as `promotional-video-<run number>`; failed runs upload `.dvg/` and
 service logs for diagnosis. The job allows up to six hours because local LLM
 generation is CPU-bound on GitHub-hosted runners.

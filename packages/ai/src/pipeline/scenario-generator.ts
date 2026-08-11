@@ -11,6 +11,7 @@ import {
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
 import { buildScriptFromScenario } from './script-builder.js';
+import { SCENARIO_OUTPUT_SCHEMA } from './output-schemas.js';
 
 const DEFAULT_AUDIENCE =
   'General, non-technical viewers who want to understand how to use the product';
@@ -139,6 +140,7 @@ Respond with JSON only — just the scenario object, no "script" field, no other
       generateValidatedJson<Scenario>(this.llm, PromotionalScenarioSchema, prompt, SYSTEM_PROMPT, {
         label: 'scenario',
         maxRetries: 3,
+        jsonSchema: SCENARIO_OUTPUT_SCHEMA,
       }),
     );
 

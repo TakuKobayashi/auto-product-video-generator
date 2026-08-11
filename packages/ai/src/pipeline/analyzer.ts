@@ -4,6 +4,7 @@ import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
 import { buildPlatformClassificationPrompt } from './platform-classifier.js';
 import { buildSetupPlanningPrompt } from './setup-planner.js';
+import { PROJECT_SUMMARY_OUTPUT_SCHEMA } from './output-schemas.js';
 
 const SYSTEM_PROMPT = `You are a video production expert analyzing a project's source code
 to plan a promotional demo video.
@@ -64,6 +65,7 @@ export class ProjectAnalyzer {
       'project analysis',
       generateValidatedJson<ProjectSummary>(this.llm, ProjectSummarySchema, prompt, SYSTEM_PROMPT, {
         label: 'analyze',
+        jsonSchema: PROJECT_SUMMARY_OUTPUT_SCHEMA,
       }),
     );
 

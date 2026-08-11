@@ -1,8 +1,10 @@
 import { LlmConfig, LlmProviderName, logger } from '@demo-video-gen/core';
 
+export type JsonSchema = Record<string, unknown>;
+
 export interface LlmProvider {
   generate(prompt: string, systemPrompt?: string): Promise<string>;
-  generateJson<T>(prompt: string, systemPrompt?: string): Promise<T>;
+  generateJson<T>(prompt: string, systemPrompt?: string, schema?: JsonSchema): Promise<T>;
 }
 
 // --- Gemini ---
@@ -24,7 +26,7 @@ export class GeminiProvider implements LlmProvider {
     return result.response.text();
   }
 
-  async generateJson<T>(prompt: string, systemPrompt?: string): Promise<T> {
+  async generateJson<T>(prompt: string, systemPrompt?: string, _schema?: JsonSchema): Promise<T> {
     const raw = await this.generate(prompt, systemPrompt);
     const cleaned = stripCodeFence(raw);
     return JSON.parse(cleaned) as T;
@@ -49,8 +51,8 @@ export class OllamaProvider implements LlmProvider {
     return this.call(prompt, systemPrompt);
   }
 
-  async generateJson<T>(prompt: string, systemPrompt?: string): Promise<T> {
-    const raw = await this.call(prompt, systemPrompt, 'json');
+  async generateJson<T>(prompt: string, systemPrompt?: string, schema?: JsonSchema): Promise<T> {
+    const raw = await this.call(prompt, systemPrompt, schema ?? 'json');
     const cleaned = stripCodeFence(raw);
     return JSON.parse(cleaned) as T;
   }
@@ -64,7 +66,7 @@ export class OllamaProvider implements LlmProvider {
     }
   }
 
-  private async call(prompt: string, systemPrompt?: string, format?: 'json'): Promise<string> {
+  private async call(prompt: string, systemPrompt?: string, format?: 'json' | JsonSchema): Promise<string> {
     const body: Record<string, unknown> = {
       model: this.model,
       prompt,
@@ -74,6 +76,10 @@ export class OllamaProvider implements LlmProvider {
       // generation finishes; Node's fetch then aborts after its ~300 second
       // headers timeout and reports the misleading generic "fetch failed".
       stream: true,
+      // Structured extraction should be deterministic. Together with a JSON
+      // Schema in `format`, this prevents missing required keys rather than
+      // trying to repair malformed output afterwards.
+      options: { temperature: 0 },
     };
     if (format) body.format = format;
 
@@ -146,7 +152,7 @@ export class OpenAIProvider implements LlmProvider {
     throw new Error('OpenAI provider not yet implemented. PRs welcome!');
   }
 
-  async generateJson<T>(_prompt: string, _systemPrompt?: string): Promise<T> {
+  async generateJson<T>(_prompt: string, _systemPrompt?: string, _schema?: JsonSchema): Promise<T> {
     throw new Error('OpenAI provider not yet implemented. PRs welcome!');
   }
 }
@@ -158,7 +164,7 @@ export class ClaudeProvider implements LlmProvider {
     throw new Error('Claude provider not yet implemented. PRs welcome!');
   }
 
-  async generateJson<T>(_prompt: string, _systemPrompt?: string): Promise<T> {
+  async generateJson<T>(_prompt: string, _systemPrompt?: string, _schema?: JsonSchema): Promise<T> {
     throw new Error('Claude provider not yet implemented. PRs welcome!');
   }
 }
@@ -170,7 +176,7 @@ export class GroqProvider implements LlmProvider {
     throw new Error('Groq provider not yet implemented. PRs welcome!');
   }
 
-  async generateJson<T>(_prompt: string, _systemPrompt?: string): Promise<T> {
+  async generateJson<T>(_prompt: string, _systemPrompt?: string, _schema?: JsonSchema): Promise<T> {
     throw new Error('Groq provider not yet implemented. PRs welcome!');
   }
 }
@@ -211,13 +217,13 @@ export class FallbackLlmProvider implements LlmProvider {
     }
   }
 
-  async generateJson<T>(prompt: string, systemPrompt?: string): Promise<T> {
+  async generateJson<T>(prompt: string, systemPrompt?: string, schema?: JsonSchema): Promise<T> {
     try {
-      return await this.primary.generateJson<T>(prompt, systemPrompt);
+      return await this.primary.generateJson<T>(prompt, systemPrompt, schema);
     } catch (err) {
       logger.warn(`[llm] ${this.primaryLabel} failed (${(err as Error).message})`);
       logger.warn(`[llm] falling back to ${this.fallbackLabel}...`);
-      return this.getFallback().generateJson<T>(prompt, systemPrompt);
+      return this.getFallback().generateJson<T>(prompt, systemPrompt, schema);
     }
   }
 }

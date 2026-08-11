@@ -1,6 +1,6 @@
 import { ZodError, ZodIssue } from 'zod';
 import { logger } from '@demo-video-gen/core';
-import { LlmProvider } from '../llm/provider.js';
+import { JsonSchema, LlmProvider } from '../llm/provider.js';
 
 /**
  * Minimal structural type for "something with a zod-like safeParse method".
@@ -28,7 +28,7 @@ export async function generateValidatedJson<T>(
   schema: ParseableSchema<T>,
   prompt: string,
   systemPrompt: string,
-  options: { label: string; maxRetries?: number } = { label: 'response' },
+  options: { label: string; maxRetries?: number; jsonSchema?: JsonSchema } = { label: 'response' },
 ): Promise<T> {
   const maxRetries = options.maxRetries ?? 2;
   let lastErrorText = '';
@@ -42,7 +42,7 @@ export async function generateValidatedJson<T>(
 
     let raw: unknown;
     try {
-      raw = await llm.generateJson<unknown>(effectivePrompt, systemPrompt);
+      raw = await llm.generateJson<unknown>(effectivePrompt, systemPrompt, options.jsonSchema);
     } catch (err) {
       // A parse error (invalid JSON syntax) or transport error — same retry
       // treatment, but we don't have a "previous response" to show back.

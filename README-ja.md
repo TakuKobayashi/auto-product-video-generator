@@ -88,13 +88,16 @@ Actions画面の`Run workflow`から手動実行することもできます。
 https://github.com/TakuKobayashi/tappunpages.git
 ```
 
-runner内でNode.js、pnpm、Playwright Chromium、Ollama、CI向け
-`qwen2.5:3b-instruct`、VOICEVOX Engineを準備し、`pnpm dvg video generate`を実行します。
+runner内でNode.js、pnpm、Playwright Chromium、Ollama、VOICEVOX Engineを準備します。
+RAM 15 GB以上かつ空きディスク11 GB以上なら`qwen2.5:14b-instruct`、次に7B、
+リソースが少ない場合だけ3Bを選び、各CLI工程を順番に実行します。LLM工程後はモデルを
+メモリーとディスクから削除してからVOICEVOXを起動します。
 Gemini APIキーなどのsecretは不要です。成功するとActions runのArtifactsに
 `promotional-video-<run番号>`が追加され、`final.mp4`と`output/artifacts/`一式を
 ダウンロードできます。失敗時も`.dvg/`、Ollama、VOICEVOXのログを診断Artifactとして保存します。
 
-GitHub-hosted runnerではOllamaをCPU実行するため時間がかかります。workflowのtimeoutは
+GitHub-hosted runnerではOllamaをCPU実行するため時間がかかります。公開リポジトリの
+`ubuntu-latest`（16 GB RAM）では、空きディスクも条件を満たせば14Bが選択されます。workflowのtimeoutは
 6時間に設定しています。同じブランチへ続けてpushした場合は、古い生成runをキャンセルして
 新しいrunを優先します。
 
