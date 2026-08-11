@@ -69,7 +69,11 @@ export class OllamaProvider implements LlmProvider {
       model: this.model,
       prompt,
       system: systemPrompt,
-      stream: false,
+      // Keep the HTTP connection active while a CPU-only local model is
+      // generating. With stream:false Ollama sends no response headers until
+      // generation finishes; Node's fetch then aborts after its ~300 second
+      // headers timeout and reports the misleading generic "fetch failed".
+      stream: true,
     };
     if (format) body.format = format;
 
@@ -81,8 +85,9 @@ export class OllamaProvider implements LlmProvider {
         body: JSON.stringify(body),
       });
     } catch (err) {
+      const detail = describeFetchError(err);
       throw new Error(
-        `Could not reach Ollama at ${this.host} (${(err as Error).message}).\n` +
+        `Ollama request to ${this.host} failed (${detail}).\n` +
         `Run 'task serve:ollama' (or 'ollama serve') first.`,
       );
     }
@@ -95,9 +100,41 @@ export class OllamaProvider implements LlmProvider {
       );
     }
 
-    const data = (await res.json()) as { response: string };
-    return data.response;
+    return readOllamaStream(res);
   }
+}
+
+async function readOllamaStream(res: Response): Promise<string> {
+  if (!res.body) throw new Error('Ollama returned an empty response body.');
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let pending = '';
+  let output = '';
+
+  const consumeLine = (line: string) => {
+    if (!line.trim()) return;
+    const chunk = JSON.parse(line) as { response?: string; error?: string };
+    if (chunk.error) throw new Error(`Ollama generation failed: ${chunk.error}`);
+    output += chunk.response ?? '';
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    pending += decoder.decode(value, { stream: !done });
+    const lines = pending.split('\n');
+    pending = lines.pop() ?? '';
+    for (const line of lines) consumeLine(line);
+    if (done) break;
+  }
+  consumeLine(pending);
+  return output;
+}
+
+function describeFetchError(err: unknown): string {
+  const error = err as Error & { cause?: { code?: string; message?: string } };
+  const cause = error.cause;
+  return [error.message, cause?.code, cause?.message].filter(Boolean).join(': ');
 }
 
 // --- Stub providers for future implementation ---
