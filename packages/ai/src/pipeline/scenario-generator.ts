@@ -46,10 +46,12 @@ Each scene: { "id": "string", "title": "string", "narration": "string", "actions
 
 ## Action types — use ONLY these, and copy the exact field names shown
 
-Prefer goto / click / type / wait_visible / wait for almost everything — they
-cover most demos. Only reach for scroll or screenshot when truly needed, and
-when you do, include EVERY field shown in their example below (both are
-required for scroll; "name" is required for screenshot):
+The feature list provides verified URLs, but it does NOT provide verified UI
+text, labels, selectors, or form fields. Therefore use ONLY goto / wait /
+scroll / screenshot. NEVER generate click, type, hover, or wait_visible unless
+the prompt explicitly gives you the exact visible UI text or selector. Guessing
+translated labels such as "トップページ" or generic labels such as "Previous"
+will make the recording fail.
 
 - {"type":"goto","url":"https://example.com/page"}
 - {"type":"click","text":"Sign up"}                         (or "label" or "selector" instead of "text")
@@ -88,8 +90,8 @@ export class ScenarioGenerator {
     logger.step('scenario', `Generating ${config.type} scenario via LLM...`);
 
     const baseUrl = targetUrl.replace(/\/$/, '');
-    const highPriorityFeatures = summary.features
-      .filter((f) => f.priority === 'high')
+    const demoableFeatures = summary.features
+      .filter((f) => f.demoable)
       .map((f) => `- ${f.title}: ${f.description}\n  URL: ${resolveFeatureUrl(baseUrl, f.route)}`)
       .join('\n');
 
@@ -101,8 +103,8 @@ Target audience: ${summary.targetAudience}
 Key value props:
 ${summary.keyValueProps.map((v) => `- ${v}`).join('\n')}
 
-High-priority features to demonstrate (each with its real URL — use these exact URLs for goto actions):
-${highPriorityFeatures || `- (no high-priority features identified; use ${baseUrl} as a general intro)`}
+Features to demonstrate (each with its verified URL — use only these URLs for goto actions):
+${demoableFeatures || `- (no demoable features identified; use ${baseUrl} as a general intro)`}
 
 App base URL: ${baseUrl}
 Video type: ${config.type}
@@ -133,6 +135,7 @@ Respond with JSON only — just the scenario object, no "script" field, no other
     // project-summary.json.
     scenario.meta.platform = summary.platform;
     scenario.setup = summary.setupSteps;
+    groundScenarioActions(scenario, summary, baseUrl);
 
     // script.yaml is derived deterministically from scenario.yaml's
     // narration text — no second LLM call, no risk of the two disagreeing.
@@ -143,6 +146,54 @@ Respond with JSON only — just the scenario object, no "script" field, no other
       `${scenario.scenes.length} scene(s).`,
     );
     return { scenario, script };
+  }
+}
+
+/**
+ * Enforce executable actions after LLM generation. ProjectSummary currently
+ * grounds routes but does not contain DOM text/selectors, so text-dependent
+ * actions are unsafe even when they happen to pass schema validation.
+ */
+function groundScenarioActions(
+  scenario: Scenario,
+  summary: ProjectSummary,
+  baseUrl: string,
+): void {
+  const featureUrls = summary.features
+    .filter((feature) => feature.demoable)
+    .map((feature) => resolveFeatureUrl(baseUrl, feature.route));
+  const allowedUrls = new Set([baseUrl, `${baseUrl}/`, ...featureUrls]);
+  let removed = 0;
+
+  scenario.scenes.forEach((scene, index) => {
+    const safeActions = scene.actions.filter((action) => {
+      if (action.type === 'goto') {
+        const allowed = allowedUrls.has(action.url);
+        if (!allowed) removed++;
+        return allowed;
+      }
+      const safe = action.type === 'wait' || action.type === 'scroll' || action.type === 'screenshot';
+      if (!safe) removed++;
+      return safe;
+    });
+
+    const firstGotoIndex = safeActions.findIndex((action) => action.type === 'goto');
+    const existingGoto = firstGotoIndex >= 0 ? safeActions.splice(firstGotoIndex, 1)[0] : undefined;
+    const targetUrl = index === 0
+      ? `${baseUrl}/`
+      : existingGoto?.type === 'goto'
+        ? existingGoto.url
+        : featureUrls[index % Math.max(featureUrls.length, 1)] ?? `${baseUrl}/`;
+    scene.actions = [
+      { type: 'goto', url: targetUrl },
+      ...safeActions,
+    ];
+  });
+
+  if (removed > 0) {
+    logger.warn(
+      `[scenario] Removed ${removed} ungrounded action(s) that depended on guessed UI text/selectors.`,
+    );
   }
 }
 
