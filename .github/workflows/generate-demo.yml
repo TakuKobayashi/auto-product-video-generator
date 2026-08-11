@@ -46,6 +46,9 @@ jobs:
       - name: Install project dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Remove stale generated build files
+        run: pnpm clean
+
       - name: Install Playwright Chromium and Linux dependencies
         run: pnpm exec playwright install --with-deps chromium
 

@@ -62,7 +62,8 @@ curl http://localhost:50021/version
 curl http://localhost:11434/api/tags  # Ollamaを使う場合のみ
 ```
 
-`pnpm dvg`は`tsx`をNode.jsへ読み込ませてTypeScriptソースを直接実行するため、事前の
+`pnpm dvg`は`development`条件付きexportsと`tsx`を使って、すべてのワークスペースの
+TypeScriptソースを直接実行するため、クリーンなcheckoutでも事前の
 `pnpm build`は不要です。`pnpm build`はCI・配布前の型チェックとJavaScript生成にだけ使います。
 
 `task`コマンドが無くても、下記はすべて`pnpm install`だけで動きます — 各`task`コマンドが
@@ -78,7 +79,7 @@ timeline、分析結果、ログ、使用した設定が保存されます。`GE
 ## GitHub Actionsで自動生成
 
 [generate-demo.yml](./.github/workflows/generate-demo.yml)はGitHub-hostedの
-`ubuntu-latest` runnerだけで動画生成を完結します。`master`ブランチへのpushで自動実行され、
+`ubuntu-latest` runnerだけで動画生成を完結します。`main`ブランチへのpushで自動実行され、
 Actions画面の`Run workflow`から手動実行することもできます。
 
 現在の動画化対象はworkflow内で次へ固定しています。

@@ -41,9 +41,10 @@ If VOICEVOX Engine and Ollama are already running through your own
 `task doctor`, `curl http://localhost:50021/version`, and optionally
 `curl http://localhost:11434/api/tags`.
 
-`pnpm dvg` runs the TypeScript source directly through Node.js and `tsx`, so
-no pre-build is required. `pnpm build` is only for CI/release type-checking
-and JavaScript output.
+`pnpm dvg` uses development-condition package exports and `tsx` to run every
+workspace package from TypeScript source, even in a clean checkout, so no
+pre-build is required. `pnpm build` is only for CI/release type-checking and
+JavaScript output.
 
 No `task` binary? `pnpm install` alone still works for everything below —
 see [Taskfile.yml](./Taskfile.yml) for what each `task` command actually
@@ -60,7 +61,7 @@ option (each one is commented inline, not duplicated here).
 
 [generate-demo.yml](./.github/workflows/generate-demo.yml) runs entirely on a
 GitHub-hosted `ubuntu-latest` runner. It starts automatically on every push to
-`master` and can also be started manually with `Run workflow`.
+`main` and can also be started manually with `Run workflow`.
 
 The target is currently fixed to
 `https://github.com/TakuKobayashi/tappunpages.git`. The job installs Node.js,
