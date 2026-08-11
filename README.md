@@ -41,8 +41,10 @@ see [Taskfile.yml](./Taskfile.yml) for what each `task` command actually
 runs, or just use the plain `pnpm run <name>` equivalents in
 [package.json](./package.json).
 
-Output: `output/final.mp4`. First run without `GEMINI_API_KEY` set uses
-Ollama automatically — see `examples/dvg.config.yaml` for every config
+Output: `output/final.mp4`, with intermediate files under `output/artifacts/`
+(scenario/script, subtitles, WAV narration, scene recordings, screenshots,
+timeline, analysis results, logs, and the effective config). First run without
+`GEMINI_API_KEY` set uses Ollama automatically — see `examples/dvg.config.yaml` for every config
 option (each one is commented inline, not duplicated here).
 
 ---
@@ -90,7 +92,7 @@ pnpm dev -- render
 | `demo-video-gen scenario generate` | `.dvg/scenario.yaml`, `.dvg/script.yaml`, `.dvg/subtitles.srt` | scenario is AI; script/subtitles are derived deterministically from it |
 | `demo-video-gen voice` | `.dvg/voice/*.wav` | also updates script/subtitle timing from actual audio |
 | `demo-video-gen record` | `.dvg/recordings/*.mp4` | paces actions to audio timing; fails if the target is unreachable |
-| `demo-video-gen render` | `output/final.mp4` | |
+| `demo-video-gen render` | `output/final.mp4`, `output/artifacts/` | final video plus intermediate artifacts |
 
 `demo-video-gen build [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
 runs all five, skipping (reusing existing output for) whichever steps you

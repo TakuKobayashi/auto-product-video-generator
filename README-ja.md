@@ -41,8 +41,10 @@ curl http://localhost:11434/api/tags  # Ollamaを使う場合のみ
 実際に何をしているかは[Taskfile.yml](./Taskfile.yml)に、`pnpm run <name>`という
 素のエイリアスは[package.json](./package.json)にあります。
 
-出力先: `output/final.mp4`。`GEMINI_API_KEY`を設定していない場合は自動的にOllamaが
-使われます。設定項目の全リストは`examples/dvg.config.yaml`を見てください（各項目に
+出力先は完成動画が`output/final.mp4`、途中生成物が`output/artifacts/`です。
+`artifacts/`にはscenario/script、字幕、WAV音声、シーン録画、スクリーンショット、
+timeline、分析結果、ログ、使用した設定が保存されます。`GEMINI_API_KEY`を設定して
+いない場合は自動的にOllamaが使われます。設定項目の全リストは`examples/dvg.config.yaml`を見てください（各項目に
 コメントで説明が書いてあるので、ここでは重複させません）。
 
 ---
@@ -90,7 +92,7 @@ pnpm dev -- render
 | `demo-video-gen scenario generate` | `.dvg/scenario.yaml`、`.dvg/script.yaml`、`.dvg/subtitles.srt` | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
 | `demo-video-gen voice` | `.dvg/voice/*.wav` | 実音声の長さでscript/subtitlesの時刻も更新 |
 | `demo-video-gen record` | `.dvg/recordings/*.mp4` | 音声の実時間に合わせて操作し、到達不能なら停止 |
-| `demo-video-gen render` | `output/final.mp4` | |
+| `demo-video-gen render` | `output/final.mp4`、`output/artifacts/` | 完成動画と途中生成物一式を出力 |
 
 `demo-video-gen build [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
 は上記5つをまとめて実行し、指定したステップだけ既存の生成物を使って

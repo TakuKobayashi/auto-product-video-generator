@@ -28,6 +28,7 @@ import { SceneRecorder } from '@demo-video-gen/playwright';
 import { VoicevoxClient } from '@demo-video-gen/voicevox';
 import { FfmpegRenderer } from '@demo-video-gen/renderer';
 import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning } from '@demo-video-gen/source';
+import { exportArtifacts } from '../utils/export-artifacts.js';
 
 interface BuildOptions {
   config?: string;
@@ -266,6 +267,10 @@ export async function runBuild(options: BuildOptions): Promise<void> {
     ffmpegPath: resolveFfmpegPath(),
     workDir,
   });
+
+  if (!dryRun) {
+    await exportArtifacts(workDir, config.output.dir, configPath);
+  }
 
   logger.info('');
   logger.success(dryRun ? 'Dry-run complete.' : `Build complete! → ${outputPath}`);

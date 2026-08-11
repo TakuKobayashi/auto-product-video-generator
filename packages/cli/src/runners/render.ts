@@ -13,6 +13,7 @@ import {
 } from '@demo-video-gen/core';
 import { TimelineBuilder } from '@demo-video-gen/ai';
 import { FfmpegRenderer } from '@demo-video-gen/renderer';
+import { exportArtifacts } from '../utils/export-artifacts.js';
 
 interface RenderOptions {
   config?: string;
@@ -80,6 +81,7 @@ export async function runRender(options: RenderOptions): Promise<void> {
   });
 
   if (!options.dryRun) {
+    await exportArtifacts(workDir, config.output.dir, configPath);
     logger.info('');
     logger.success(`Done! Video saved to: ${outputPath}`);
   }
