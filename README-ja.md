@@ -88,7 +88,7 @@ Actions画面の`Run workflow`から手動実行することもできます。
 https://github.com/TakuKobayashi/tappunpages.git
 ```
 
-runner内でNode.js、pnpm、Playwright Chromium、Ollama、VOICEVOX Engineを準備します。
+runner内でNode.js、pnpm、Playwright Chromium、システム版ffmpeg、Ollama、VOICEVOX Engineを準備します。
 RAM 15 GB以上かつ空きディスク11 GB以上なら`qwen2.5:14b-instruct`、次に7B、
 リソースが少ない場合だけ3Bを選び、各CLI工程を順番に実行します。LLM工程後はモデルを
 メモリーとディスクから削除してからVOICEVOXを起動します。

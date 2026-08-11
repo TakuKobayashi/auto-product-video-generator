@@ -65,7 +65,7 @@ GitHub-hosted `ubuntu-latest` runner. It starts automatically on every push to
 
 The target is currently fixed to
 `https://github.com/TakuKobayashi/tappunpages.git`. The job installs Node.js,
-pnpm, Playwright Chromium, Ollama, and VOICEVOX Engine. It selects
+pnpm, Playwright Chromium, system ffmpeg, Ollama, and VOICEVOX Engine. It selects
 `qwen2.5:14b-instruct` with at least 15 GB RAM and 11 GB free disk, then falls
 back through 7B to 3B as resources decrease. Pipeline stages run separately;
 the Ollama model is removed after scenario generation to release both RAM and

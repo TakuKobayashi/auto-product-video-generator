@@ -27,6 +27,8 @@ jobs:
       OLLAMA_KEEP_ALIVE: -1
       OLLAMA_NUM_PARALLEL: 1
       VOICEVOX_IMAGE: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+      FFMPEG_PATH: /usr/bin/ffmpeg
+      FFPROBE_PATH: /usr/bin/ffprobe
 
     steps:
       - name: Check out video generator
@@ -51,6 +53,15 @@ jobs:
 
       - name: Install Playwright Chromium and Linux dependencies
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install system ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+          test -x "$FFMPEG_PATH"
+          test -x "$FFPROBE_PATH"
+          "$FFMPEG_PATH" -version | head -1
+          "$FFPROBE_PATH" -version | head -1
 
       - name: Install Ollama
         run: curl -fsSL https://ollama.com/install.sh | sh
