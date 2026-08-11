@@ -27,6 +27,10 @@ pnpm dev -- init --repo https://github.com/you/your-app.git --url http://localho
 pnpm dev -- build       # 動画を作る
 ```
 
+`init`が`dvg.config.yaml`を生成します。動画化するソースがGitHub等にある場合は`--repo`、
+ローカルにある場合は`--source`を使います。非エンジニア向け・使い方中心という編集方針は
+ツール本体のデフォルトなので、設定ファイルへの追記は不要です。
+
 VOICEVOX EngineやOllamaを別の`docker compose up -d`で起動している場合、`task serve`は
 省略できます。その場合もホスト側からVOICEVOXの`http://localhost:50021`とOllamaの
 `http://localhost:11434`へ到達できるよう、Composeでポートを公開してください。
@@ -72,10 +76,18 @@ flowchart TD
     render -->|output/final.mp4| done(["🎬 完成"])
 ```
 
+## 実行方法：一括実行と個別実行
+
 上図の各箱はそれぞれ独立したCLIコマンドで、すべて`.dvg/`配下のファイルを読み書きします。
 つまり`build`はブラックボックスではなく、単にこの5つを順番に実行しているだけです。
-個別に実行すれば好きな地点から再開できます（例: `scenario.yaml`を手で編集した後、
-`voice`以降だけ再実行すればOK）。
+
+通常は次の一括実行だけで構いません。
+
+```bash
+pnpm dev -- build
+```
+
+内容を途中で確認・編集したい場合は、必ず次の順番で個別実行します。
 
 ```bash
 pnpm dev -- analyze
@@ -84,6 +96,19 @@ pnpm dev -- voice     # WAV生成後、実音声の長さでscript/subtitlesを�
 pnpm dev -- record    # 更新済みscriptとWAVが必須
 pnpm dev -- render
 ```
+
+各コマンドは直前の生成物を使います。途中で止まった場合、成功済みの工程を繰り返す必要は
+ありません。再開位置の目安は次のとおりです。
+
+| 最後に成功した工程／変更内容 | 再開コマンド |
+|---|---|
+| `analyze`まで成功 | `pnpm dev -- scenario generate` |
+| `scenario generate`まで成功 | `pnpm dev -- voice` |
+| `voice`まで成功 | `pnpm dev -- record` |
+| `record`まで成功 | `pnpm dev -- render` |
+| narration・テロップ文言を変更 | `pnpm dev -- voice`から |
+| 画面操作だけを変更 | `pnpm dev -- record`から |
+| 録画・音声は完成済みで合成設定だけ変更 | `pnpm dev -- render`のみ |
 
 | コマンド | 生成物 | 補足 |
 |---|---|---|
@@ -112,7 +137,7 @@ pnpm dev -- render
 フォールバック/タスク別モデル、VOICEVOX等）。ここでは意図的に重複させていません
 — あのファイル自体がドキュメントです。
 
-最初に知っておくとよいのは以下の3点です。
+最初に知っておくとよいのは以下の4点です。
 
 - **LLMプロバイダー**: `gemini`（`GEMINI_API_KEY`が必要）か`ollama`（完全ローカル、
   キー不要）。`init`はその時点で使えるほうを自動選択します。APIキーが設定済みの
@@ -126,8 +151,8 @@ pnpm dev -- render
   失敗した場合は、白画面や部分録画を完成品にせずエラーで停止します。
 - **シーン間の無音**: `video.sceneGapSeconds`（デフォルト`1`秒）で、ナレーションと
   シーンの間隔を調整できます。この値は音声合成後のscript、字幕、録画時間へ反映されます。
-- **視聴者**: `video.audience`で想定視聴者を指定できます。デフォルトでは非エンジニアを
-  対象に、技術仕様ではなく実際の使い方、できること、利用者のメリットを紹介します。
+- **編集方針**: 設定不要の組み込みデフォルトとして、非エンジニアを対象に、技術仕様では
+  なく実際の使い方、できること、利用者のメリットを紹介します。
   App Router、TypeScript、Cloudflare、Hono、APIなどの実装用語がナレーションへ
   入った場合は検証エラーとして再生成されます。
 

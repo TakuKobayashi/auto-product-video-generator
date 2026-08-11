@@ -81,9 +81,13 @@ export async function runInit(directory: string, options: InitOptions): Promise<
       config.llm.provider === 'gemini' ? 'GEMINI_API_KEY was set' : 'GEMINI_API_KEY was not set'
     }), fallbackProvider=${config.llm.fallbackProvider}`,
   );
+  logger.info('Video:  non-technical, product-usage-focused promotion (built-in default)');
   logger.info('');
   logger.info('Next steps:');
-  logger.dim(`  1. Run: demo-video-gen analyze`);
-  logger.dim(`  2. Run: demo-video-gen scenario generate`);
-  logger.dim(`  3. Run: demo-video-gen build`);
+  logger.dim(`  1. Run: pnpm dev -- analyze`);
+  logger.dim(`  2. Run: pnpm dev -- scenario generate`);
+  logger.dim(`  3. Run: pnpm dev -- voice`);
+  logger.dim(`  4. Run: pnpm dev -- record`);
+  logger.dim(`  5. Run: pnpm dev -- render`);
+  logger.dim(`  Or run all five at once: pnpm dev -- build`);
 }

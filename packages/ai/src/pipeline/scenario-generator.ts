@@ -11,6 +11,9 @@ import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
 import { buildScriptFromScenario } from './script-builder.js';
 
+const DEFAULT_AUDIENCE =
+  'General, non-technical viewers who want to understand how to use the product';
+
 // Every action type gets a concrete example here, not just a name — smaller
 // models are much more reliable when shown the exact required fields for
 // each type than when given a prose description. "scroll" and "screenshot"
@@ -114,7 +117,7 @@ App base URL: ${baseUrl}
 Video type: ${config.type}
 Target duration: ~${config.duration} seconds
 Language: ${config.language}
-Intended audience: ${config.audience}
+Intended audience: ${DEFAULT_AUDIENCE}
 
 Editorial direction:
 - Introduce the product through realistic user tasks and visible screens.

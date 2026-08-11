@@ -30,6 +30,10 @@ pnpm dev -- init --repo https://github.com/you/your-app.git --url http://localho
 pnpm dev -- build       # go make the video
 ```
 
+`init` generates `dvg.config.yaml`. Use `--repo` for a remote repository or
+`--source` for a local checkout. The non-technical, product-usage editorial
+direction is built in and does not need a config entry.
+
 If VOICEVOX Engine and Ollama are already running through your own
 `docker compose up -d`, skip `task serve`. Expose VOICEVOX on host port
 `50021` and, when using Ollama, expose it on `11434`. Verify them with
@@ -72,10 +76,12 @@ flowchart TD
     render -->|output/final.mp4| done(["🎬 done"])
 ```
 
+## Running all at once or step by step
+
 Each box above is its own CLI command, reading/writing files under `.dvg/`
 — so `build` isn't a black box, it's just those five in a row. Run them
-individually to resume from anywhere (e.g. hand-edit `scenario.yaml`, then
-just re-run from `voice`):
+`pnpm dev -- build` for the normal all-in-one path. To inspect or edit
+intermediate results, run these commands in this exact order:
 
 ```bash
 pnpm dev -- analyze
@@ -84,6 +90,18 @@ pnpm dev -- voice     # synthesizes WAVs and applies their actual timing
 pnpm dev -- record    # requires the timed script and WAVs
 pnpm dev -- render
 ```
+
+Resume from the first unfinished or affected step:
+
+| Last successful step / change | Resume with |
+|---|---|
+| analyze completed | `pnpm dev -- scenario generate` |
+| scenario completed | `pnpm dev -- voice` |
+| voice completed | `pnpm dev -- record` |
+| recording completed | `pnpm dev -- render` |
+| narration/subtitle text changed | start from `pnpm dev -- voice` |
+| browser actions only changed | start from `pnpm dev -- record` |
+| only render settings changed | run `pnpm dev -- render` |
 
 | Command | Produces | Notes |
 |---|---|---|
@@ -129,9 +147,9 @@ Three things worth knowing up front:
 - **Scene gaps**: `video.sceneGapSeconds` (default: `1`) controls the silent
   interval between narration clips/scenes. Voice synthesis applies it to
   script, subtitle, and recording timing.
-- **Audience**: `video.audience` defines the intended viewer. By default the
-  video teaches non-technical viewers how to use the product and what they
-  gain from it. Implementation terms such as frameworks, programming
+- **Editorial direction**: the built-in default teaches non-technical viewers
+  how to use the product and what they gain from it; no config entry is needed.
+  Implementation terms such as frameworks, programming
   languages, hosting, and APIs are rejected from narration and regenerated.
 
 ---

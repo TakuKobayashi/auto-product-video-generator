@@ -14,7 +14,6 @@ video:
   resolution: 1920x1080
   fps: 30
   language: ja
-  audience: ITに詳しくない一般の視聴者。製品で何ができ、どう使うかを知りたい人
   sceneGapSeconds: 1
 llm:
   provider: ollama
