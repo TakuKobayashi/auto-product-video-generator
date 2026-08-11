@@ -41,6 +41,9 @@ curl http://localhost:50021/version
 curl http://localhost:11434/api/tags  # Ollamaを使う場合のみ
 ```
 
+`pnpm dvg`は`tsx`をNode.jsへ読み込ませてTypeScriptソースを直接実行するため、事前の
+`pnpm build`は不要です。`pnpm build`はCI・配布前の型チェックとJavaScript生成にだけ使います。
+
 `task`コマンドが無くても、下記はすべて`pnpm install`だけで動きます — 各`task`コマンドが
 実際に何をしているかは[Taskfile.yml](./Taskfile.yml)に、`pnpm run <name>`という
 素のエイリアスは[package.json](./package.json)にあります。
@@ -238,7 +241,7 @@ Taskfile.yml        環境構築・サーバー起動
 ```
 
 ```bash
-task build          # または: pnpm run build
+task build          # または: pnpm run build（CI・配布前の型チェック／JS生成）
 pnpm dvg --help     # 整理されたCLIのコマンド一覧
 ```
 

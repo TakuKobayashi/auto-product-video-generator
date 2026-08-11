@@ -151,7 +151,7 @@ async function main(): Promise<void> {
   check(
     'dvg.config.yaml present in current directory',
     existsSync('dvg.config.yaml'),
-    'Run: pnpm dev -- init --repo <git-url> --url http://localhost:3000',
+    'Run: pnpm dvg project init --repo <git-url> --url http://localhost:3000',
   );
 
   console.log();

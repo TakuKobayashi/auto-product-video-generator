@@ -182,19 +182,12 @@ tasks:
     cmds:
       - npx tsx scripts/doctor.ts
 
-  # ── Build / dev ────────────────────────────────────────────────────────
+  # ── Build ──────────────────────────────────────────────────────────────
 
   build:
     desc: "全パッケージを TypeScript でビルドします"
     cmds:
       - pnpm build
-
-  dev:
-    desc: >
-      互換用エイリアス。整理されたCLIは `pnpm dvg --help` を使用してください。
-      例: task dev -- video generate
-    cmds:
-      - pnpm dvg {{.CLI_ARGS}}
 
   clean:
     desc: "全パッケージの dist/ を削除します"

@@ -6,7 +6,7 @@ import { DvgConfig, DvgConfigSchema, SourceConfig } from '../types/config.js';
 
 export async function loadConfig(configPath: string): Promise<DvgConfig> {
   if (!existsSync(configPath)) {
-    throw new Error(`Config file not found: ${configPath}\nRun 'demo-video-gen init' first.`);
+    throw new Error(`Config file not found: ${configPath}\nRun 'pnpm dvg project init' first.`);
   }
   const raw = await readFile(configPath, 'utf-8');
   const parsed = yaml.load(raw);
@@ -24,8 +24,8 @@ function formatConfigError(configPath: string, error: ZodError): string {
   const hint = missingSource
     ? `\nThis usually means ${configPath} predates the 'source' field (added so 'analyze' can read real ` +
       `project source instead of guessing from a URL). Re-run:\n` +
-      `  demo-video-gen init --repo <git-url> --url <target-url> --force\n` +
-      `  demo-video-gen init --source <local-path> --url <target-url> --force`
+      `  pnpm dvg project init --repo <git-url> --url <target-url> --force\n` +
+      `  pnpm dvg project init --source <local-path> --url <target-url> --force`
     : '';
   return `Invalid ${configPath}:\n${lines.join('\n')}${hint}`;
 }

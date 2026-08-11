@@ -40,6 +40,10 @@ If VOICEVOX Engine and Ollama are already running through your own
 `task doctor`, `curl http://localhost:50021/version`, and optionally
 `curl http://localhost:11434/api/tags`.
 
+`pnpm dvg` runs the TypeScript source directly through Node.js and `tsx`, so
+no pre-build is required. `pnpm build` is only for CI/release type-checking
+and JavaScript output.
+
 No `task` binary? `pnpm install` alone still works for everything below —
 see [Taskfile.yml](./Taskfile.yml) for what each `task` command actually
 runs, or just use the plain `pnpm run <name>` equivalents in
@@ -189,7 +193,7 @@ Taskfile.yml        environment setup & service orchestration
 ```
 
 ```bash
-task build          # or: pnpm run build
+task build          # or: pnpm run build (CI/release type-check + JS output)
 pnpm dvg --help     # show the organized CLI command hierarchy
 ```
 

@@ -4,8 +4,7 @@
   "description": "AI-powered promotional video generator for web apps and CLI tools",
   "type": "module",
   "bin": {
-    "dvg": "./bin/demo-video-gen.js",
-    "demo-video-gen": "./bin/demo-video-gen.js"
+    "dvg": "./bin/dvg.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -21,7 +20,6 @@
   ],
   "scripts": {
     "build": "tsc -b",
-    "dev": "tsx src/index.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {

@@ -51,7 +51,8 @@ export const SourceConfigSchema = z
     ref: z.string().optional(), // branch / tag / commit; only meaningful with `repository`
     installDeps: z.boolean().default(false),
     // Command to start the app's dev server, run from the source root
-    // (e.g. "npm run dev", "pnpm dev"). If set, `record`/`build` will
+    // (e.g. "npm run dev", "pnpm run dev"). If set, the video recording
+    // and generation commands will
     // automatically run it (installing deps first if `installDeps` is
     // true) whenever `target.url` isn't already reachable, instead of
     // requiring you to start it yourself in another terminal. Left unset

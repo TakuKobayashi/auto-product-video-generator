@@ -4,8 +4,8 @@ packages:
 # pnpm blocks postinstall/build scripts for dependencies by default as a
 # security measure (this is *not* something a project's own .npmrc/config
 # is allowed to bypass — it's intentionally global-config-only). Any
-# unapproved ("ignored") build script also makes `pnpm run <script>` /
-# `pnpm dev` etc. fail outright (pnpm's implicit pre-run dependency check),
+# unapproved ("ignored") build script also makes `pnpm run <script>` such as
+# `pnpm dvg` fail outright (pnpm's implicit pre-run dependency check),
 # not just `pnpm install` — so everything with a required build script must
 # be listed here.
 #

@@ -45,7 +45,7 @@ async function resolveLocalPath(localPath: string): Promise<string> {
   if (!isRepo) {
     throw new Error(
       `source.localPath is not a git repository: ${absPath}\n` +
-      `demo-video-gen analyzes version-controlled projects. Run 'git init' there first, or point ` +
+      `dvg analyzes version-controlled projects. Run 'git init' there first, or point ` +
       `source.repository at a remote instead.`,
     );
   }
