@@ -1,145 +1,128 @@
-name: Generate Demo Video
+name: Generate promotional video
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      repo_url:
-        description: "Git repository URL to analyze (the project the video is about)"
-        required: true
-      repo_ref:
-        description: "Branch/tag/commit to check out (optional)"
-        required: false
-        default: ""
-      target_url:
-        description: "URL where the app will be running (started by a step you add below, or a deployed URL)"
-        required: true
-        default: "http://localhost:3000"
-      video_type:
-        description: "Video type"
-        required: true
-        default: "demo"
-        type: choice
-        options: [teaser, shorts, demo, tutorial]
-      preview:
-        description: "Render preview quality (faster)"
-        required: false
-        default: "false"
-        type: boolean
-      llm_provider:
-        description: "LLM provider to use"
-        required: true
-        default: "gemini"
-        type: choice
-        options: [gemini, ollama]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: generate-video-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   generate:
+    name: Generate video on GitHub-hosted runner
     runs-on: ubuntu-latest
+    timeout-minutes: 360
 
-    services:
-      voicevox:
-        image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
-        ports:
-          - 50021:50021
-        options: >-
-          --health-cmd "curl -sf http://localhost:50021/version"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+    env:
+      TARGET_REPOSITORY: https://github.com/TakuKobayashi/tappunpages.git
+      TARGET_URL: http://127.0.0.1:3000
+      OLLAMA_HOST: http://127.0.0.1:11434
+      OLLAMA_MODEL: qwen2.5:3b-instruct
+      OLLAMA_KEEP_ALIVE: -1
+      OLLAMA_NUM_PARALLEL: 1
+      VOICEVOX_IMAGE: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out video generator
+        uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: 22
+          package-manager-cache: false
 
-      - name: Enable corepack (pnpm)
-        run: corepack enable
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.1 --activate
 
-      # Installs the `task` binary via the official GitHub Action rather
-      # than relying on @go-task/cli's npm postinstall — more reliable in
-      # CI, and doesn't require pnpm's build-script allowlist for it.
-      - uses: arduino/setup-task@v2
+      - name: Install project dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium and Linux dependencies
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama and download CI model
+        run: |
+          nohup ollama serve > ollama.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              echo "Ollama did not become ready" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          ollama pull "$OLLAMA_MODEL"
+
+      - name: Start VOICEVOX Engine
+        run: |
+          docker run -d --rm \
+            --name dvg-voicevox \
+            -p 50021:50021 \
+            "$VOICEVOX_IMAGE"
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:50021/version >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 90 ]; then
+              echo "VOICEVOX Engine did not become ready" >&2
+              docker logs dvg-voicevox
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Create CI configuration for the fixed target repository
+        run: |
+          pnpm dvg project init \
+            --repo "$TARGET_REPOSITORY" \
+            --url "$TARGET_URL" \
+            --type demo \
+            --force
+          sed -i "s/model: qwen2.5:7b-instruct/model: $OLLAMA_MODEL/" dvg.config.yaml
+
+      - name: Verify generation environment
+        run: node --import tsx scripts/doctor.ts
+
+      - name: Generate promotional video
+        run: pnpm dvg video generate
+
+      - name: Upload final video and intermediate artifacts
+        uses: actions/upload-artifact@v7
         with:
-          version: 3.x
-
-      # Single command sets up Node deps + ffmpeg/ffprobe (bundled via
-      # ffmpeg-static/ffprobe-static) + Playwright Chromium. Ollama is only
-      # installed/pulled when the workflow was dispatched with
-      # llm_provider: ollama, using the "ci" machine profile (a smaller
-      # model sized for CPU-only runners — see Taskfile.yml).
-      - name: Install environment
-        run: |
-          task install \
-            PROFILE=ci \
-            WITH_OLLAMA=${{ inputs.llm_provider == 'ollama' && 'true' || 'false' }}
-
-      # demo-video-gen's bin/ loads packages/cli/dist/index.js — it has to
-      # be built before `pnpm demo-video-gen ...` will work.
-      - name: Build demo-video-gen
-        run: task build
-
-      - name: Start local services
-        run: |
-          task serve \
-            PROFILE=ci \
-            WITH_OLLAMA=${{ inputs.llm_provider == 'ollama' && 'true' || 'false' }}
-        # Note: the `voicevox` service container above already provides
-        # VOICEVOX on :50021, so this will detect it's healthy and only
-        # start Ollama (if requested) here.
-
-      # NOTE: this only analyzes and records against `target_url` — it does
-      # NOT start your app for you. If the app being demoed needs to be
-      # running (e.g. a Next.js dev server) add a step here to start it
-      # in the background before "Analyze & build video" runs, and make
-      # sure `target_url` matches wherever it ends up listening.
-
-      - name: Initialize project config
-        run: |
-          pnpm demo-video-gen init \
-            --repo "${{ inputs.repo_url }}" \
-            ${{ inputs.repo_ref != '' && format('--ref "{0}"', inputs.repo_ref) || '' }} \
-            --url "${{ inputs.target_url }}" \
-            --type "${{ inputs.video_type }}"
-
-      - name: Set LLM provider in config
-        if: inputs.llm_provider == 'ollama'
-        run: |
-          sed -i 's/provider: ollama/provider: ollama/; s/provider: gemini/provider: ollama/' dvg.config.yaml
-          sed -i 's/model: gemini-2.5-pro/model: qwen2.5:3b-instruct/' dvg.config.yaml
-
-      - name: Analyze & build video
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          PREVIEW_FLAG=""
-          if [ "${{ inputs.preview }}" = "true" ]; then
-            PREVIEW_FLAG="--preview"
-          fi
-          pnpm demo-video-gen build \
-            --url "${{ inputs.target_url }}" \
-            --type "${{ inputs.video_type }}" \
-            $PREVIEW_FLAG
-
-      - name: Upload video artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: demo-video-${{ inputs.video_type }}-${{ github.run_id }}
-          path: output/final.mp4
-          retention-days: 14
+          name: promotional-video-${{ github.run_number }}
+          path: output/
           if-no-files-found: error
+          retention-days: 14
 
-      - name: Upload intermediate files
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: Collect service logs after failure
+        if: failure()
+        run: |
+          docker logs dvg-voicevox > voicevox.log 2>&1 || true
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
         with:
-          name: dvg-workdir-${{ github.run_id }}
+          name: video-generation-diagnostics-${{ github.run_number }}
           path: |
-            .dvg/source-context.json
-            .dvg/project-summary.json
-            .dvg/scenario.yaml
-            .dvg/script.yaml
-            .dvg/subtitles.srt
-            .dvg/timeline.json
+            .dvg/
+            dvg.config.yaml
+            ollama.log
+            voicevox.log
+          include-hidden-files: true
+          if-no-files-found: warn
           retention-days: 7

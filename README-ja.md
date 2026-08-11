@@ -54,6 +54,28 @@ timeline、分析結果、ログ、使用した設定が保存されます。`GE
 いない場合は自動的にOllamaが使われます。設定項目の全リストは`examples/dvg.config.yaml`を見てください（各項目に
 コメントで説明が書いてあるので、ここでは重複させません）。
 
+## GitHub Actionsで自動生成
+
+[generate-demo.yml](./.github/workflows/generate-demo.yml)はGitHub-hostedの
+`ubuntu-latest` runnerだけで動画生成を完結します。`master`ブランチへのpushで自動実行され、
+Actions画面の`Run workflow`から手動実行することもできます。
+
+現在の動画化対象はworkflow内で次へ固定しています。
+
+```text
+https://github.com/TakuKobayashi/tappunpages.git
+```
+
+runner内でNode.js、pnpm、Playwright Chromium、Ollama、CI向け
+`qwen2.5:3b-instruct`、VOICEVOX Engineを準備し、`pnpm dvg video generate`を実行します。
+Gemini APIキーなどのsecretは不要です。成功するとActions runのArtifactsに
+`promotional-video-<run番号>`が追加され、`final.mp4`と`output/artifacts/`一式を
+ダウンロードできます。失敗時も`.dvg/`、Ollama、VOICEVOXのログを診断Artifactとして保存します。
+
+GitHub-hosted runnerではOllamaをCPU実行するため時間がかかります。workflowのtimeoutは
+6時間に設定しています。同じブランチへ続けてpushした場合は、古い生成runをキャンセルして
+新しいrunを優先します。
+
 ---
 
 ## 全体の流れ

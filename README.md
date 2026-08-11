@@ -55,6 +55,21 @@ timeline, analysis results, logs, and the effective config). First run without
 `GEMINI_API_KEY` set uses Ollama automatically — see `examples/dvg.config.yaml` for every config
 option (each one is commented inline, not duplicated here).
 
+## GitHub Actions generation
+
+[generate-demo.yml](./.github/workflows/generate-demo.yml) runs entirely on a
+GitHub-hosted `ubuntu-latest` runner. It starts automatically on every push to
+`master` and can also be started manually with `Run workflow`.
+
+The target is currently fixed to
+`https://github.com/TakuKobayashi/tappunpages.git`. The job installs Node.js,
+pnpm, Playwright Chromium, Ollama with the CPU-sized
+`qwen2.5:3b-instruct` model, and VOICEVOX Engine, then runs
+`pnpm dvg video generate`. No Gemini secret is required. Successful runs upload
+`output/` as `promotional-video-<run number>`; failed runs upload `.dvg/` and
+service logs for diagnosis. The job allows up to six hours because local LLM
+generation is CPU-bound on GitHub-hosted runners.
+
 ---
 
 ## How it works
