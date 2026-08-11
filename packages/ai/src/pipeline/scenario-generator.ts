@@ -4,6 +4,7 @@ import {
   Script,
   VideoConfig,
   ProjectSummary,
+  isConcreteWebRoute,
   logger,
   withHeartbeat,
 } from '@demo-video-gen/core';
@@ -98,7 +99,7 @@ export class ScenarioGenerator {
 
     const baseUrl = targetUrl.replace(/\/$/, '');
     const demoableFeatures = summary.features
-      .filter((f) => f.demoable)
+      .filter((f) => f.demoable && isConcreteWebRoute(f.route))
       .map((f) => `- ${f.title}: ${f.description}\n  URL: ${resolveFeatureUrl(baseUrl, f.route)}`)
       .join('\n');
 
@@ -217,7 +218,7 @@ function groundScenarioActions(
   baseUrl: string,
 ): void {
   const featureUrls = summary.features
-    .filter((feature) => feature.demoable)
+    .filter((feature) => feature.demoable && isConcreteWebRoute(feature.route))
     .map((feature) => resolveFeatureUrl(baseUrl, feature.route));
   const allowedUrls = new Set([baseUrl, `${baseUrl}/`, ...featureUrls]);
   let removed = 0;
@@ -255,8 +256,8 @@ function groundScenarioActions(
 }
 
 function resolveFeatureUrl(baseUrl: string, route?: string): string {
-  if (!route || route === '/') return baseUrl + '/';
-  return baseUrl + (route.startsWith('/') ? route : `/${route}`);
+  if (!isConcreteWebRoute(route) || route === '/') return baseUrl + '/';
+  return baseUrl + (route!.startsWith('/') ? route : `/${route}`);
 }
 
 function describeProvider(llm: LlmProvider): string {

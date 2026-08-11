@@ -8,3 +8,4 @@ export * from './utils/logger.js';
 export * from './utils/bin-resolver.js';
 export * from './utils/llm-describe.js';
 export * from './utils/audio-duration.js';
+export * from './utils/web-route.js';

@@ -1,4 +1,4 @@
-import { ProjectSummary, ProjectSummarySchema, logger, withHeartbeat } from '@demo-video-gen/core';
+import { ProjectSummary, ProjectSummarySchema, isConcreteWebRoute, logger, withHeartbeat } from '@demo-video-gen/core';
 import { ProjectSourceContext } from '@demo-video-gen/source';
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
@@ -126,15 +126,23 @@ function firstReadmeParagraph(readme: string | null): string | undefined {
 
 function buildPrompt(context: ProjectSourceContext, targetUrl: string): string {
   const pkg = context.packageJson;
+  const concreteRoutes = context.routes.filter((route) => isConcreteWebRoute(route.path));
+  const omittedTemplateCount = context.routes.length - concreteRoutes.length;
 
   const routesSection =
-    context.routes.length > 0
+    concreteRoutes.length > 0
       ? `Discovered routes (use these exact paths for the "route" field — do not invent others):\n` +
-        context.routes.map((r) => `- ${r.path}  (from ${r.file})`).join('\n')
-      : `No routes could be auto-discovered for this framework (${context.framework}).\n` +
-        `Here is a partial file listing instead — infer likely pages/routes from it, and use ` +
-        `"/" for the route field if genuinely unsure:\n` +
-        context.fileTree.slice(0, 150).map((f) => `- ${f}`).join('\n');
+        concreteRoutes.map((r) => `- ${r.path}  (from ${r.file})`).join('\n') +
+        (omittedTemplateCount > 0
+          ? `\n${omittedTemplateCount} dynamic route template(s) were omitted because paths such as [slug] cannot be opened directly.`
+          : '')
+      : context.routes.length > 0
+        ? `Only dynamic route templates were discovered. They cannot be opened directly. ` +
+          `Use "/" for every feature route; never copy [slug], [...parts], :id, or * into a URL.`
+        : `No routes could be auto-discovered for this framework (${context.framework}).\n` +
+          `Here is a partial file listing instead. Use "/" unless a concrete path is explicitly present; ` +
+          `never invent parameter values:\n` +
+          context.fileTree.slice(0, 150).map((f) => `- ${f}`).join('\n');
 
   const platformHint =
     context.platformHints.length > 0
