@@ -21,6 +21,9 @@
     "doctor": "task doctor",
     "task": "task"
   },
+  "dependencies": {
+    "tsx": "^4.23.1"
+  },
   "devDependencies": {
     "@go-task/cli": "^3.52.0",
     "@types/node": "^20.19.43",
@@ -30,7 +33,6 @@
     "ffmpeg-static": "^5.3.0",
     "ffprobe-static": "^3.1.0",
     "playwright": "^1.61.1",
-    "tsx": "^4.23.1",
     "typescript": "^5.9.3",
     "vitest": "^2.1.9"
   }
