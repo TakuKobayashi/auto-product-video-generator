@@ -21,36 +21,35 @@ its README, deterministic platform signals, the detected web framework (if any),
 either a list of discovered routes (URL paths mapped from actual page/route files) or a
 general file listing when routes couldn't be auto-discovered.
 
-Respond ONLY with a JSON object matching this TypeScript type:
+Respond ONLY with one valid JSON object. This is strict JSON, not TypeScript.
+Every top-level key shown below is REQUIRED. NEVER output null anywhere.
+
+Copy this structure exactly and replace the example values:
 {
-  name: string;
-  description: string;
-  platform: string;            // REQUIRED. One of the exact platform keys given to you
-                                // in the "Platform classification" section below.
-  setupSteps: Array<{          // see "Setup plan" section below. Can be an empty array.
-    name: string;
-    command: string;
-    background: boolean;
-    readyUrl?: string;
-  }>;
-  features: Array<{
-    id: string;                 // a short slug string, e.g. "dashboard-overview"
-    title: string;
-    description: string;
-    route: string;              // A real URL path from the provided routes list
-                                 // (e.g. "/dashboard"), or "/" if no specific route
-                                 // applies. Never invent a route that wasn't given to
-                                 // you. Only meaningful when platform is "web" — for
-                                 // other platforms, just use "/".
-    demoable: boolean;          // true only if this is something that can be visually
-                                 // demonstrated in a recording
-    priority: 'high' | 'medium' | 'low';
-  }>;
-  targetAudience: string;
-  keyValueProps: string[];
-  suggestedVideoTypes: Array<'teaser' | 'shorts' | 'demo' | 'tutorial'>;
+  "name": "Example Product",
+  "description": "A plain-language description of what the product helps people do.",
+  "platform": "web",
+  "setupSteps": [
+    {"name":"Install dependencies","command":"npm install","background":false},
+    {"name":"Start application","command":"npm run dev","background":true,"readyUrl":"http://localhost:3000"}
+  ],
+  "features": [
+    {"id":"browse-items","title":"Browse items","description":"Find useful items quickly.","route":"/items","demoable":true,"priority":"high"}
+  ],
+  "targetAudience": "People who want to use the product",
+  "keyValueProps": ["Find what you need quickly"],
+  "suggestedVideoTypes": ["demo"]
 }
-No markdown, no explanation. JSON only.`;
+
+Hard rules:
+- "description" is always required, even when package.json has no description.
+- Use exactly one allowed platform key from the platform section.
+- setupSteps and features may be empty arrays, but must always be present.
+- Every feature must contain every key shown in the example.
+- Optional setup fields must be OMITTED when unused. NEVER write null.
+- A foreground setup step has no readyUrl key.
+- A background web-server step has readyUrl as a real URL string.
+- No markdown, comments, trailing commas, or explanation. JSON only.`;
 
 export class ProjectAnalyzer {
   constructor(private llm: LlmProvider) {}
@@ -65,7 +64,6 @@ export class ProjectAnalyzer {
       'project analysis',
       generateValidatedJson<ProjectSummary>(this.llm, ProjectSummarySchema, prompt, SYSTEM_PROMPT, {
         label: 'analyze',
-        repair: (raw) => repairProjectSummary(raw, context),
       }),
     );
 
@@ -93,35 +91,6 @@ export class ProjectAnalyzer {
     }
     return summary;
   }
-}
-
-/**
- * Small local models occasionally omit the top-level description even though
- * they produce the rest of the analysis correctly. Re-querying the model for
- * this deterministic field is slow on CPU CI runners, so recover it from the
- * inspected package metadata/README instead. This deliberately repairs only
- * the missing description; semantic analysis fields still require valid LLM
- * output and retain the normal retry behavior.
- */
-export function repairProjectSummary(raw: unknown, context: ProjectSourceContext): unknown {
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return raw;
-  const summary = raw as Record<string, unknown>;
-  if (typeof summary.description === 'string') return raw;
-
-  summary.description =
-    context.packageJson?.description?.trim() ||
-    firstReadmeParagraph(context.readme) ||
-    `${context.packageJson?.name ?? 'This product'} promotional overview`;
-  logger.info('[analyze] Filled missing description from inspected project metadata.');
-  return summary;
-}
-
-function firstReadmeParagraph(readme: string | null): string | undefined {
-  if (!readme) return undefined;
-  return readme
-    .split(/\r?\n\s*\r?\n/)
-    .map((paragraph) => paragraph.replace(/^#+\s+.*(?:\r?\n|$)/, '').trim())
-    .find((paragraph) => paragraph.length > 0 && !paragraph.startsWith('![') && !paragraph.startsWith('```'));
 }
 
 function buildPrompt(context: ProjectSourceContext, targetUrl: string): string {

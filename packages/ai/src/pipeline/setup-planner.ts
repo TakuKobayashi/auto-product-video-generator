@@ -22,20 +22,20 @@ standard Android app or the project's documented Flutter/React Native build-and-
 command. For Unity, use its documented command-line build method only when that method
 actually exists in the repository; never invent a \`-executeMethod\` target.
 
-Each item in "setupSteps" must match:
-{
-  name: string;            // short label, e.g. "Install dependencies", "Start dev server"
-  command: string;         // a single shell command, e.g. "npm install" or "npm run dev"
-  background: boolean;     // false = run to completion and wait (installs, builds);
-                            // true = long-running process that keeps running (dev servers) —
-                            // there should be at most ONE background: true step, and it
-                            // should be the LAST step in the list
-  readyUrl?: string;       // only for the background step, if platform is "web": the URL
-                            // it will end up serving on. The app should end up reachable at
-                            // roughly ${targetUrl} — if you're not sure it'll be exactly that
-                            // port, still set readyUrl to ${targetUrl} (it gets normalized
-                            // afterward regardless).
-}
+Use these exact JSON shapes. Do not use TypeScript notation and NEVER output null.
+
+Foreground step (install/build):
+{"name":"Install dependencies","command":"npm install","background":false}
+
+Background web-server step:
+{"name":"Start application","command":"npm run dev","background":true,"readyUrl":"${targetUrl}"}
+
+Rules:
+- name, command, and background are required on every step.
+- A foreground step MUST OMIT readyUrl, cwd, and readyTimeoutMs unless they have real values.
+- A background web-server step MUST use "readyUrl":"${targetUrl}".
+- Never write "readyUrl":null. Never write null for any optional field.
+- There may be at most one background step and it must be last.
 
 If you can't determine a reliable setup command (e.g. no scripts, unfamiliar tooling,
 non-web platform with no clear single command), return an empty array for "setupSteps"

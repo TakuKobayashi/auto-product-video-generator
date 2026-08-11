@@ -139,7 +139,6 @@ Respond with JSON only — just the scenario object, no "script" field, no other
       generateValidatedJson<Scenario>(this.llm, PromotionalScenarioSchema, prompt, SYSTEM_PROMPT, {
         label: 'scenario',
         maxRetries: 3,
-        repair: repairCommonActionMistakes,
       }),
     );
 
@@ -264,47 +263,4 @@ function describeProvider(llm: LlmProvider): string {
   // LlmProvider doesn't expose its name/model directly; this is best-effort
   // for a friendlier log line and falls back gracefully.
   return (llm as { constructor?: { name?: string } }).constructor?.name ?? 'LLM';
-}
-
-/**
- * Fixes a small set of known-safe, common near-misses in generated action
- * JSON before validation — cosmetic defaults only, never anything that
- * changes an action's meaning. This is specifically for the two action
- * types that models most often get wrong in practice: "scroll" (missing
- * direction/amount) and "screenshot" (missing name). Anything else is left
- * untouched and, if invalid, still goes through the normal retry-with-
- * feedback path in generateValidatedJson.
- */
-function repairCommonActionMistakes(raw: unknown): unknown {
-  if (typeof raw !== 'object' || raw === null || !('scenes' in raw)) return raw;
-
-  const scenes = (raw as { scenes: unknown }).scenes;
-  if (!Array.isArray(scenes)) return raw;
-
-  let sceneIndex = 0;
-  for (const scene of scenes) {
-    sceneIndex++;
-    if (typeof scene !== 'object' || scene === null || !('actions' in scene)) continue;
-
-    const actions = (scene as { actions: unknown }).actions;
-    if (!Array.isArray(actions)) continue;
-
-    let actionIndex = 0;
-    for (const action of actions) {
-      actionIndex++;
-      if (typeof action !== 'object' || action === null) continue;
-      const a = action as Record<string, unknown>;
-
-      if (a.type === 'scroll') {
-        if (a.direction !== 'up' && a.direction !== 'down') a.direction = 'down';
-        if (typeof a.amount !== 'number' || a.amount <= 0) a.amount = 300;
-      } else if (a.type === 'screenshot') {
-        if (typeof a.name !== 'string' || a.name.trim() === '') {
-          a.name = `scene-${sceneIndex}-shot-${actionIndex}`;
-        }
-      }
-    }
-  }
-
-  return raw;
 }
