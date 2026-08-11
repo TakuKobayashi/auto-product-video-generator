@@ -28,7 +28,7 @@ describe('ScenarioGenerator route grounding', () => {
     };
     const video: VideoConfig = {
       type: 'demo', duration: 30, resolution: '1280x720', fps: 30,
-      language: 'ja', sceneGapSeconds: 1,
+      language: 'ja', pageReadyWaitSeconds: 2, sceneGapSeconds: 1,
     };
 
     const { scenario } = await new ScenarioGenerator(llm).generate(

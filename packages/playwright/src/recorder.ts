@@ -1,5 +1,6 @@
 import { chromium, Page, BrowserContext } from 'playwright';
-import { rename, mkdir } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { rename, mkdir, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -8,6 +9,7 @@ import {
   Scenario,
   VideoConfig,
   logger,
+  resolveFfmpegPath,
 } from '@demo-video-gen/core';
 
 export interface RecordOptions {
@@ -74,14 +76,27 @@ export class SceneRecorder {
       },
     });
 
+    const recordingStartedAt = Date.now();
     const page = await context.newPage();
     let recordingError: unknown;
-    const startedAt = Date.now();
+    let warmupSeconds = 0;
 
     try {
+      let actions = scene.actions;
+      const firstAction = actions[0];
+      if (firstAction?.type === 'goto') {
+        await this.executeAction(page, firstAction, options.screenshotDir);
+        await this.waitForPageReady(page, config.pageReadyWaitSeconds);
+        warmupSeconds = (Date.now() - recordingStartedAt) / 1000;
+        actions = actions.slice(1);
+        logger.dim(`  Page ready; trimming ${warmupSeconds.toFixed(1)}s warm-up from the recording`);
+      }
+
+      // Narration and subtitle timing starts here, after the page is ready.
+      const startedAt = Date.now();
       await this.executeActions(
         page,
-        scene.actions,
+        actions,
         options.screenshotDir,
         actionDurationSeconds,
         startedAt,
@@ -107,7 +122,12 @@ export class SceneRecorder {
 
       // Playwright writes video after context.close()
       if (videoPath && existsSync(videoPath)) {
-        await rename(videoPath, outputPath);
+        if (warmupSeconds > 0) {
+          await this.trimWarmup(videoPath, outputPath, warmupSeconds, targetDurationSeconds);
+          await unlink(videoPath).catch(() => undefined);
+        } else {
+          await rename(videoPath, outputPath);
+        }
         logger.success(`Saved: ${outputPath}`);
       } else {
         logger.warn(`Video file not found for scene '${scene.id}'`);
@@ -121,6 +141,47 @@ export class SceneRecorder {
     }
 
     return outputPath;
+  }
+
+  private async waitForPageReady(page: Page, extraWaitSeconds: number): Promise<void> {
+    await page.waitForLoadState('networkidle');
+    // Use a string expression because this package intentionally compiles
+    // without DOM globals; the expression itself runs inside the page.
+    await page.evaluate(`async () => {
+      await document.fonts?.ready;
+      await Promise.all(Array.from(document.images)
+        .filter((image) => !image.complete)
+        .map((image) => new Promise((resolve) => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', resolve, { once: true });
+        })));
+    }`);
+    if (extraWaitSeconds > 0) {
+      logger.dim(`  Waiting ${extraWaitSeconds.toFixed(1)}s for the page to settle`);
+      await page.waitForTimeout(extraWaitSeconds * 1000);
+    }
+  }
+
+  private trimWarmup(
+    inputPath: string,
+    outputPath: string,
+    warmupSeconds: number,
+    targetDurationSeconds?: number,
+  ): Promise<void> {
+    const args = [
+      '-y', '-ss', warmupSeconds.toFixed(3), '-i', inputPath,
+      ...(targetDurationSeconds ? ['-t', targetDurationSeconds.toFixed(3)] : []),
+      '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', outputPath,
+    ];
+    return new Promise((resolvePromise, reject) => {
+      const child = spawn(resolveFfmpegPath(), args, { stdio: ['ignore', 'ignore', 'pipe'] });
+      let stderr = '';
+      child.stderr.on('data', (chunk) => { stderr += String(chunk); });
+      child.on('error', reject);
+      child.on('close', (code) => code === 0
+        ? resolvePromise()
+        : reject(new Error(`Could not trim browser warm-up (${code}): ${stderr.trim()}`)));
+    });
   }
 
   private async executeActions(

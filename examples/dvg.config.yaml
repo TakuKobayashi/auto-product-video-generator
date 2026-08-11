@@ -61,6 +61,7 @@ video:
   resolution: "1920x1080"
   fps: 30
   language: "ja"
+  pageReadyWaitSeconds: 2 # extra wait after the first web page is fully loaded
   sceneGapSeconds: 1 # silence between narration clips/scenes, in seconds
 
 llm:

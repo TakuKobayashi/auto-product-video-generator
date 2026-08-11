@@ -193,6 +193,9 @@ Three things worth knowing up front:
 - **Scene gaps**: `video.sceneGapSeconds` (default: `1`) controls the silent
   interval between narration clips/scenes. Voice synthesis applies it to
   script, subtitle, and recording timing.
+- **Web page settling**: `video.pageReadyWaitSeconds` (default: `2`) adds a
+  delay after the initial page finishes loading. The loading/settling section
+  is trimmed, so narration and subtitles begin on a ready page.
 - **Editorial direction**: the built-in default teaches non-technical viewers
   how to use the product and what they gain from it; no config entry is needed.
   Implementation terms such as frameworks, programming

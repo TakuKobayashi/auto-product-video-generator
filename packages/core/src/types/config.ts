@@ -110,6 +110,9 @@ export const VideoConfigSchema = z.object({
   resolution: z.enum(['1920x1080', '1280x720', '1080x1920']).default('1920x1080'),
   fps: z.union([z.literal(30), z.literal(60)]).default(30),
   language: z.string().default('ja'),
+  // Extra settling time after the first web page has loaded. This warm-up
+  // section is removed before narration and subtitles are rendered.
+  pageReadyWaitSeconds: z.number().nonnegative().default(2),
   // Silence inserted between narration clips. Recording and subtitle timing
   // are derived from the synthesized audio using this same value.
   sceneGapSeconds: z.number().nonnegative().default(1),

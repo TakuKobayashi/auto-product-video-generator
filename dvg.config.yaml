@@ -4,6 +4,7 @@ project:
 source:
   repository: https://github.com/TakuKobayashi/fullstack-media-converter.git
   installDeps: false
+  startCommand: pnpm run dev
   platformPriority:
     - web
     - android
