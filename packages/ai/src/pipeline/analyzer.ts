@@ -65,6 +65,7 @@ export class ProjectAnalyzer {
       'project analysis',
       generateValidatedJson<ProjectSummary>(this.llm, ProjectSummarySchema, prompt, SYSTEM_PROMPT, {
         label: 'analyze',
+        repair: (raw) => repairProjectSummary(raw, context),
       }),
     );
 
@@ -92,6 +93,35 @@ export class ProjectAnalyzer {
     }
     return summary;
   }
+}
+
+/**
+ * Small local models occasionally omit the top-level description even though
+ * they produce the rest of the analysis correctly. Re-querying the model for
+ * this deterministic field is slow on CPU CI runners, so recover it from the
+ * inspected package metadata/README instead. This deliberately repairs only
+ * the missing description; semantic analysis fields still require valid LLM
+ * output and retain the normal retry behavior.
+ */
+export function repairProjectSummary(raw: unknown, context: ProjectSourceContext): unknown {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return raw;
+  const summary = raw as Record<string, unknown>;
+  if (typeof summary.description === 'string') return raw;
+
+  summary.description =
+    context.packageJson?.description?.trim() ||
+    firstReadmeParagraph(context.readme) ||
+    `${context.packageJson?.name ?? 'This product'} promotional overview`;
+  logger.info('[analyze] Filled missing description from inspected project metadata.');
+  return summary;
+}
+
+function firstReadmeParagraph(readme: string | null): string | undefined {
+  if (!readme) return undefined;
+  return readme
+    .split(/\r?\n\s*\r?\n/)
+    .map((paragraph) => paragraph.replace(/^#+\s+.*(?:\r?\n|$)/, '').trim())
+    .find((paragraph) => paragraph.length > 0 && !paragraph.startsWith('![') && !paragraph.startsWith('```'));
 }
 
 function buildPrompt(context: ProjectSourceContext, targetUrl: string): string {
