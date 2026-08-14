@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, openSync, readdirSync } from 'node:fs';
 import { mkdir, readFile, readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { logger } from '@demo-video-gen/core';
+import { logger } from '@auto-product-video-generator/core';
 
 export interface AndroidProjectOptions {
   package?: string;
@@ -69,7 +69,7 @@ export async function prepareAndroidProject(
   if (!packageName) {
     throw new Error(
       `Could not detect the Android application id from source or ${apkPath}. ` +
-      'Set target.android.package in dvg.config.yaml.',
+      'Set target.android.package in apvg.config.yaml.',
     );
   }
 

@@ -1,4 +1,4 @@
-import { Timeline, Script, Scenario, VideoConfig, logger } from '@demo-video-gen/core';
+import { Timeline, Script, Scenario, VideoConfig, logger } from '@auto-product-video-generator/core';
 
 /**
  * Deterministically builds timeline.json from scenario + script.

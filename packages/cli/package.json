@@ -1,10 +1,10 @@
 {
-  "name": "demo-video-gen",
+  "name": "auto-product-video-generator",
   "version": "0.1.0",
   "description": "AI-powered promotional video generator for web apps and CLI tools",
   "type": "module",
   "bin": {
-    "dvg": "./bin/dvg.js"
+    "apvg": "./bin/apvg.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -29,13 +29,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@demo-video-gen/ai": "workspace:*",
-    "@demo-video-gen/core": "workspace:*",
-    "@demo-video-gen/playwright": "workspace:*",
-    "@demo-video-gen/recorder": "workspace:*",
-    "@demo-video-gen/renderer": "workspace:*",
-    "@demo-video-gen/source": "workspace:*",
-    "@demo-video-gen/voicevox": "workspace:*",
+    "@auto-product-video-generator/ai": "workspace:*",
+    "@auto-product-video-generator/core": "workspace:*",
+    "@auto-product-video-generator/playwright": "workspace:*",
+    "@auto-product-video-generator/recorder": "workspace:*",
+    "@auto-product-video-generator/renderer": "workspace:*",
+    "@auto-product-video-generator/source": "workspace:*",
+    "@auto-product-video-generator/voicevox": "workspace:*",
     "commander": "^12.1.0"
   },
   "keywords": [

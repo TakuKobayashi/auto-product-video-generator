@@ -10,8 +10,8 @@ import {
   describeTaskLlm,
   ProjectSummary,
   ScenarioSchema,
-} from '@demo-video-gen/core';
-import { createLlmProviderForTask, ScenarioGenerator, SubtitleGenerator } from '@demo-video-gen/ai';
+} from '@auto-product-video-generator/core';
+import { createLlmProviderForTask, ScenarioGenerator, SubtitleGenerator } from '@auto-product-video-generator/ai';
 
 interface ScenarioGenerateOptions {
   config?: string;
@@ -21,9 +21,9 @@ interface ScenarioGenerateOptions {
 }
 
 export async function runScenarioGenerate(options: ScenarioGenerateOptions): Promise<void> {
-  logger.header('dvg video scenario generate');
+  logger.header('apvg video scenario generate');
 
-  const configPath = options.config ?? 'dvg.config.yaml';
+  const configPath = options.config ?? 'apvg.config.yaml';
   const config = await loadConfig(configPath);
 
   const workDir = config.output.workDir;
@@ -33,7 +33,7 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
   const srtPath = join(workDir, 'subtitles.srt');
 
   if (!existsSync(summaryPath)) {
-    logger.error(`project-summary.json not found. Run 'pnpm dvg project analyze' first.`);
+    logger.error(`project-summary.json not found. Run 'pnpm apvg project analyze' first.`);
     process.exit(1);
   }
 
@@ -84,18 +84,18 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
   }
   logger.info('');
   logger.info('Review and edit the files above, then run:');
-  logger.dim('  pnpm dvg video voice');
+  logger.dim('  pnpm apvg video voice');
 }
 
 export async function runScenarioValidate(filePath: string): Promise<void> {
-  logger.header('dvg video scenario validate');
+  logger.header('apvg video scenario validate');
 
   if (!existsSync(filePath)) {
     logger.error(`File not found: ${filePath}`);
     process.exit(1);
   }
 
-  const { readYaml } = await import('@demo-video-gen/core');
+  const { readYaml } = await import('@auto-product-video-generator/core');
   const raw = await readYaml(filePath);
 
   const result = ScenarioSchema.safeParse(raw);

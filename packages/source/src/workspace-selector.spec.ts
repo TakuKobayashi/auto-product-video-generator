@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PLATFORM_PRIORITY } from '@demo-video-gen/core';
+import { DEFAULT_PLATFORM_PRIORITY } from '@auto-product-video-generator/core';
 import { selectProjectRoot } from './workspace-selector.js';
 
 async function packageJson(root: string, path: string, value: object): Promise<void> {
@@ -13,7 +13,7 @@ async function packageJson(root: string, path: string, value: object): Promise<v
 
 describe('selectProjectRoot', () => {
   it('selects the runnable web application in a mixed monorepo', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dvg-monorepo-'));
+    const root = await mkdtemp(join(tmpdir(), 'apvg-monorepo-'));
     await packageJson(root, '.', { scripts: { dev: 'pnpm --filter @sample/web dev' } });
     await packageJson(root, 'apps/cli', { scripts: { dev: 'tsx src.ts' } });
     await packageJson(root, 'apps/web-ui', { dependencies: { react: '^19.0.0' } });
@@ -29,7 +29,7 @@ describe('selectProjectRoot', () => {
   });
 
   it('honors an explicit projectPath override', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dvg-monorepo-'));
+    const root = await mkdtemp(join(tmpdir(), 'apvg-monorepo-'));
     await packageJson(root, 'apps/web', { scripts: { dev: 'vite' }, dependencies: { vite: '^7.0.0' } });
     await packageJson(root, 'apps/admin', { scripts: { dev: 'vite' }, dependencies: { vite: '^7.0.0' } });
 
@@ -40,7 +40,7 @@ describe('selectProjectRoot', () => {
   });
 
   it('uses configured platform priority before candidate score', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dvg-monorepo-'));
+    const root = await mkdtemp(join(tmpdir(), 'apvg-monorepo-'));
     await packageJson(root, 'apps/web', {
       scripts: { dev: 'vite' }, dependencies: { vite: '^7.0.0' },
     });

@@ -1,7 +1,7 @@
 import { cp, copyFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
-import { logger } from '@demo-video-gen/core';
+import { logger } from '@auto-product-video-generator/core';
 
 const GENERATED_FILES = [
   'project-summary.json',

@@ -1,5 +1,5 @@
-import type { DvgConfig, ProjectPlatform } from '@demo-video-gen/core';
-import { SceneRecorder } from '@demo-video-gen/playwright';
+import type { ApvgConfig, ProjectPlatform } from '@auto-product-video-generator/core';
+import { SceneRecorder } from '@auto-product-video-generator/playwright';
 import { AndroidRecorder } from './android-recorder.js';
 import type { PlatformRecorder } from './types.js';
 
@@ -15,7 +15,7 @@ export function isAndroidRecordingPlatform(platform: ProjectPlatform): boolean {
 
 export function createPlatformRecorder(
   platform: ProjectPlatform,
-  config: DvgConfig,
+  config: ApvgConfig,
   options: RecorderFactoryOptions,
 ): PlatformRecorder {
   if (platform === 'web') return new SceneRecorder();

@@ -1,4 +1,4 @@
-import { ProjectPlatform } from '@demo-video-gen/core';
+import { ProjectPlatform } from '@auto-product-video-generator/core';
 
 /**
  * One-line description of each recognized platform, shown to the LLM as its

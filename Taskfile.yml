@@ -1,4 +1,4 @@
-# Taskfile for demo-video-gen — https://taskfile.dev
+# Taskfile for auto-product-video-generator — https://taskfile.dev
 #
 # This file is the single entry point for environment setup and local
 # service orchestration. Sequencing (what runs in what order, per-OS
@@ -32,8 +32,8 @@ vars:
   PROFILE: '{{.PROFILE | default "local"}}'
   WITH_OLLAMA: '{{.WITH_OLLAMA | default "true"}}'
   VOICEVOX_IMAGE: '{{.VOICEVOX_IMAGE | default "voicevox/voicevox_engine:cpu-latest"}}'
-  VOICEVOX_CONTAINER: dvg-voicevox
-  OLLAMA_LOG: '.dvg-ollama-serve.log'
+  VOICEVOX_CONTAINER: apvg-voicevox
+  OLLAMA_LOG: '.apvg-ollama-serve.log'
 
   # Both models are Qwen2.5-Instruct (reliable JSON-schema output, which the
   # `analyze` / `scenario generate` pipelines require), sized per profile:
@@ -203,5 +203,5 @@ tasks:
       - task: serve
       - 'echo ""'
       - 'echo "セットアップ完了。次のコマンドで動画生成を始められます:"'
-      - 'echo "  pnpm dvg project init --repo <git-url> --url http://localhost:3000"'
-      - 'echo "  pnpm dvg video generate"'
+      - 'echo "  pnpm apvg project init --repo <git-url> --url http://localhost:3000"'
+      - 'echo "  pnpm apvg video generate"'

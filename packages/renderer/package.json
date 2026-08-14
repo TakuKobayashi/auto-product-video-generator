@@ -1,7 +1,7 @@
 {
-  "name": "@demo-video-gen/renderer",
+  "name": "@auto-product-video-generator/renderer",
   "version": "0.1.0",
-  "description": "ffmpeg-based video rendering for demo-video-gen",
+  "description": "ffmpeg-based video rendering for auto-product-video-generator",
   "files": ["dist/"],
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/TakuKobayashi/auto-product-video-generator.git", "directory": "packages/renderer" },
@@ -25,6 +25,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@demo-video-gen/core": "workspace:*"
+    "@auto-product-video-generator/core": "workspace:*"
   }
 }

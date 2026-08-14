@@ -1,7 +1,7 @@
 {
-  "name": "@demo-video-gen/playwright",
+  "name": "@auto-product-video-generator/playwright",
   "version": "0.1.0",
-  "description": "Playwright-based browser recording for demo-video-gen",
+  "description": "Playwright-based browser recording for auto-product-video-generator",
   "files": ["dist/"],
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/TakuKobayashi/auto-product-video-generator.git", "directory": "packages/playwright" },
@@ -25,7 +25,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@demo-video-gen/core": "workspace:*",
+    "@auto-product-video-generator/core": "workspace:*",
     "playwright": "^1.47.0"
   }
 }

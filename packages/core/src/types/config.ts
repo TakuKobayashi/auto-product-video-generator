@@ -4,8 +4,8 @@ export const VideoTypeSchema = z.enum(['teaser', 'shorts', 'demo', 'tutorial']);
 export type VideoType = z.infer<typeof VideoTypeSchema>;
 
 // What kind of project this is, as classified by AI from the actual source
-// (see @demo-video-gen/ai's platform-classifier.ts for the prompt, and
-// @demo-video-gen/source's inspector.ts for the deterministic file-based
+// (see @auto-product-video-generator/ai's platform-classifier.ts for the prompt, and
+// @auto-product-video-generator/source's inspector.ts for the deterministic file-based
 // hints that ground that classification). Recorded in both
 // project-summary.json and scenario.yaml's meta.platform.
 //
@@ -59,7 +59,7 @@ export const SourceConfigSchema = z
     // requiring you to start it yourself in another terminal. Left unset
     // by default — `analyze` will suggest one it detects from
     // package.json's scripts (prefers "dev", falls back to "start") and
-    // save it into dvg.config.yaml for you to confirm/edit.
+    // save it into apvg.config.yaml for you to confirm/edit.
     startCommand: z.string().optional(),
     // Monorepo application selection. projectPath wins; otherwise runnable
     // workspace packages are ranked by this platform order, then app quality.
@@ -174,10 +174,10 @@ export const VoicevoxConfigSchema = z.object({
 
 export const OutputConfigSchema = z.object({
   dir: z.string().default('./output'),
-  workDir: z.string().default('./.dvg'),
+  workDir: z.string().default('./.apvg'),
 });
 
-export const DvgConfigSchema = z.object({
+export const ApvgConfigSchema = z.object({
   project: ProjectConfigSchema,
   source: SourceConfigSchema,
   target: TargetConfigSchema,
@@ -193,4 +193,4 @@ export type VideoConfig = z.infer<typeof VideoConfigSchema>;
 export type LlmConfig = z.infer<typeof LlmConfigSchema>;
 export type VoicevoxConfig = z.infer<typeof VoicevoxConfigSchema>;
 export type OutputConfig = z.infer<typeof OutputConfigSchema>;
-export type DvgConfig = z.infer<typeof DvgConfigSchema>;
+export type ApvgConfig = z.infer<typeof ApvgConfigSchema>;

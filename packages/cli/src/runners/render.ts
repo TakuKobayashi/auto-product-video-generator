@@ -10,9 +10,9 @@ import {
   ScenarioSchema,
   ScriptSchema,
   TimelineSchema,
-} from '@demo-video-gen/core';
-import { TimelineBuilder } from '@demo-video-gen/ai';
-import { FfmpegRenderer } from '@demo-video-gen/renderer';
+} from '@auto-product-video-generator/core';
+import { TimelineBuilder } from '@auto-product-video-generator/ai';
+import { FfmpegRenderer } from '@auto-product-video-generator/renderer';
 import { exportArtifacts } from '../utils/export-artifacts.js';
 
 interface RenderOptions {
@@ -25,9 +25,9 @@ interface RenderOptions {
 }
 
 export async function runRender(options: RenderOptions): Promise<void> {
-  logger.header('dvg video render');
+  logger.header('apvg video render');
 
-  const configPath = options.config ?? 'dvg.config.yaml';
+  const configPath = options.config ?? 'apvg.config.yaml';
   const config = await loadConfig(configPath);
 
   const workDir = config.output.workDir;
@@ -40,7 +40,7 @@ export async function runRender(options: RenderOptions): Promise<void> {
   for (const [label, p] of [['scenario.yaml', scenarioPath], ['script.yaml', scriptPath]] as const) {
     if (!existsSync(p)) {
       logger.error(`${label} not found: ${p}`);
-      logger.error(`Run 'pnpm dvg video scenario generate' first.`);
+      logger.error(`Run 'pnpm apvg video scenario generate' first.`);
       process.exit(1);
     }
   }

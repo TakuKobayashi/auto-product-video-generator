@@ -191,7 +191,7 @@ export const ScenarioSchema = z.object({
   meta: ScenarioMetaSchema,
   // Ordered setup/start commands — see SetupStepSchema above. Empty by
   // default so scenario.yaml files from before this field existed still
-  // validate; `record`/`build` fall back to dvg.config.yaml's
+  // validate; `record`/`build` fall back to apvg.config.yaml's
   // source.startCommand (or manual startup) when this is empty.
   setup: z.array(SetupStepSchema).default([]),
   scenes: z.array(SceneSchema).min(1),

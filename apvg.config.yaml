@@ -35,4 +35,4 @@ voicevox:
   speakerId: 3
 output:
   dir: ./output
-  workDir: ./.dvg
+  workDir: ./.apvg

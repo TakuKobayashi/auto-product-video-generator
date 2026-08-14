@@ -3,7 +3,7 @@ import { Command } from 'commander';
 export function buildCommand(name = 'build'): Command {
   return new Command(name)
     .description('Run the full pipeline: analyze → scenario → voice → record → render')
-    .option('-c, --config <path>', 'path to dvg.config.yaml', 'dvg.config.yaml')
+    .option('-c, --config <path>', 'path to apvg.config.yaml', 'apvg.config.yaml')
     .option('-t, --type <type>', 'video type: teaser|shorts|demo|tutorial', 'demo')
     .option('-u, --url <url>', 'target application URL (overrides config)')
     .option('--skip-analyze', 'skip analyze step (use existing project-summary.json)')

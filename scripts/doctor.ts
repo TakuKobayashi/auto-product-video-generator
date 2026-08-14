@@ -1,5 +1,5 @@
 #!/usr/bin/env -S npx tsx
-// Prints a checklist of everything demo-video-gen needs, so "it doesn't
+// Prints a checklist of everything auto-product-video-generator needs, so "it doesn't
 // work" turns into a clear list of what's missing. Run via `task doctor`.
 //
 // This is the one piece of the setup tooling written as an actual script
@@ -45,7 +45,7 @@ async function httpOk(url: string, timeoutMs = 2000): Promise<boolean> {
 
 async function main(): Promise<void> {
   console.log();
-  console.log('demo-video-gen doctor — environment check');
+  console.log('auto-product-video-generator doctor — environment check');
   console.log();
 
   // Node
@@ -164,9 +164,9 @@ async function main(): Promise<void> {
 
   // Config file
   check(
-    'dvg.config.yaml present in current directory',
-    existsSync('dvg.config.yaml'),
-    'Run: pnpm dvg project init --repo <git-url> --url http://localhost:3000',
+    'apvg.config.yaml present in current directory',
+    existsSync('apvg.config.yaml'),
+    'Run: pnpm apvg project init --repo <git-url> --url http://localhost:3000',
   );
 
   console.log();
@@ -195,11 +195,11 @@ async function main(): Promise<void> {
 
 function readConfiguredOllamaModels(): string[] {
   const defaults = ['qwen2.5:7b-instruct'];
-  if (!existsSync('dvg.config.yaml')) return defaults;
+  if (!existsSync('apvg.config.yaml')) return defaults;
 
   try {
     const yaml = require('js-yaml') as { load(input: string): unknown };
-    const raw = yaml.load(readFileSync('dvg.config.yaml', 'utf-8')) as {
+    const raw = yaml.load(readFileSync('apvg.config.yaml', 'utf-8')) as {
       llm?: {
         provider?: string;
         model?: string;
@@ -229,10 +229,10 @@ function normalizeModelName(name: string): string {
 }
 
 function configuredTargetType(): string | undefined {
-  if (!existsSync('dvg.config.yaml')) return undefined;
+  if (!existsSync('apvg.config.yaml')) return undefined;
   try {
     const yaml = require('js-yaml') as { load(input: string): unknown };
-    return (yaml.load(readFileSync('dvg.config.yaml', 'utf8')) as { target?: { type?: string } })?.target?.type;
+    return (yaml.load(readFileSync('apvg.config.yaml', 'utf8')) as { target?: { type?: string } })?.target?.type;
   } catch { return undefined; }
 }
 

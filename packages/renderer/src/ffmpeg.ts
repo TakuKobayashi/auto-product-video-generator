@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { Timeline, VideoTrack, AudioTrack, SubtitleTrack, logger } from '@demo-video-gen/core';
+import { Timeline, VideoTrack, AudioTrack, SubtitleTrack, logger } from '@auto-product-video-generator/core';
 
 export interface RenderOptions {
   noSubtitles: boolean;

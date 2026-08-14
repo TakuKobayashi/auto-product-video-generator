@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ProjectSummary, VideoConfig } from '@demo-video-gen/core';
+import type { ProjectSummary, VideoConfig } from '@auto-product-video-generator/core';
 import type { LlmProvider } from '../llm/provider.js';
 import { ScenarioGenerator } from './scenario-generator.js';
 

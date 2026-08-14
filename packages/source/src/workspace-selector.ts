@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
 import { relative, resolve, sep } from 'node:path';
-import type { ProjectPlatform, SourceConfig } from '@demo-video-gen/core';
-import { DEFAULT_PLATFORM_PRIORITY, logger } from '@demo-video-gen/core';
+import type { ProjectPlatform, SourceConfig } from '@auto-product-video-generator/core';
+import { DEFAULT_PLATFORM_PRIORITY, logger } from '@auto-product-video-generator/core';
 
 interface Candidate {
   path: string;
@@ -58,7 +58,7 @@ export function findRepositoryRoot(projectRoot: string): string {
 
 async function discoverCandidates(root: string): Promise<Candidate[]> {
   const results: Candidate[] = [];
-  const excluded = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.dvg']);
+  const excluded = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.apvg']);
   async function walk(dir: string, depth: number): Promise<void> {
     if (depth > 3) return;
     const packagePath = resolve(dir, 'package.json');

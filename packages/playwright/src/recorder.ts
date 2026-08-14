@@ -10,7 +10,7 @@ import {
   VideoConfig,
   logger,
   resolveFfmpegPath,
-} from '@demo-video-gen/core';
+} from '@auto-product-video-generator/core';
 
 export interface RecordOptions {
   headed: boolean;

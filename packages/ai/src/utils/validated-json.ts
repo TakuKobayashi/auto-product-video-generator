@@ -1,5 +1,5 @@
 import { ZodError, ZodIssue } from 'zod';
-import { logger } from '@demo-video-gen/core';
+import { logger } from '@auto-product-video-generator/core';
 import { JsonSchema, LlmProvider } from '../llm/provider.js';
 
 /**

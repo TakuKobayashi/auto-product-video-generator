@@ -15,7 +15,7 @@ import {
   ProjectSummary,
   ScenarioSchema,
   ScriptSchema,
-} from '@demo-video-gen/core';
+} from '@auto-product-video-generator/core';
 import {
   createLlmProviderForTask,
   ProjectAnalyzer,
@@ -23,11 +23,11 @@ import {
   SubtitleGenerator,
   TimelineBuilder,
   recomputeScriptTimingFromAudio,
-} from '@demo-video-gen/ai';
-import { createPlatformRecorder, isAndroidRecordingPlatform } from '@demo-video-gen/recorder';
-import { VoicevoxClient } from '@demo-video-gen/voicevox';
-import { FfmpegRenderer } from '@demo-video-gen/renderer';
-import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning } from '@demo-video-gen/source';
+} from '@auto-product-video-generator/ai';
+import { createPlatformRecorder, isAndroidRecordingPlatform } from '@auto-product-video-generator/recorder';
+import { VoicevoxClient } from '@auto-product-video-generator/voicevox';
+import { FfmpegRenderer } from '@auto-product-video-generator/renderer';
+import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning } from '@auto-product-video-generator/source';
 import { exportArtifacts } from '../utils/export-artifacts.js';
 import { applyInferredTargetUrl } from '../utils/inferred-target.js';
 
@@ -46,9 +46,9 @@ interface BuildOptions {
 }
 
 export async function runBuild(options: BuildOptions): Promise<void> {
-  logger.header('dvg video generate');
+  logger.header('apvg video generate');
 
-  const configPath = options.config ?? 'dvg.config.yaml';
+  const configPath = options.config ?? 'apvg.config.yaml';
   let config = await loadConfig(configPath);
 
   // Apply overrides

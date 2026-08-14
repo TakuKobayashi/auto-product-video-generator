@@ -1,8 +1,8 @@
-import type { DvgConfig, ProjectSummary } from '@demo-video-gen/core';
-import { logger } from '@demo-video-gen/core';
+import type { ApvgConfig, ProjectSummary } from '@auto-product-video-generator/core';
+import { logger } from '@auto-product-video-generator/core';
 
 /** Adopt only loopback ready URLs produced by source analysis. */
-export function applyInferredTargetUrl(config: DvgConfig, summary: ProjectSummary): boolean {
+export function applyInferredTargetUrl(config: ApvgConfig, summary: ProjectSummary): boolean {
   if (!config.target.autoDetectUrl || summary.platform !== 'web') return false;
   const candidate = summary.setupSteps.find((step) => step.background)?.readyUrl;
   if (!candidate || !isLoopbackUrl(candidate)) {

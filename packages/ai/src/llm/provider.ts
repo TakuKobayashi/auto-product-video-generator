@@ -1,4 +1,4 @@
-import { LlmConfig, LlmProviderName, logger } from '@demo-video-gen/core';
+import { LlmConfig, LlmProviderName, logger } from '@auto-product-video-generator/core';
 
 export type JsonSchema = Record<string, unknown>;
 
@@ -188,7 +188,7 @@ export class GroqProvider implements LlmProvider {
 // invalid JSON, etc.) the fallback provider is used transparently. This is
 // how Ollama (free/offline) and Gemini (cloud/higher quality) can back each
 // other up, in either direction, depending on `llm.provider` /
-// `llm.fallbackProvider` in dvg.config.yaml.
+// `llm.fallbackProvider` in apvg.config.yaml.
 
 export class FallbackLlmProvider implements LlmProvider {
   private cachedFallback: LlmProvider | null = null;
@@ -323,7 +323,7 @@ function requiredApiKeyEnv(
 }
 
 /**
- * Same as createLlmProvider, but applies dvg.config.yaml's optional
+ * Same as createLlmProvider, but applies apvg.config.yaml's optional
  * `llm.tasks.<task>` override first (provider/model/apiKeyEnv), falling
  * back to the top-level llm.* settings for anything not overridden. Use
  * this from analyze/scenario-generate instead of createLlmProvider

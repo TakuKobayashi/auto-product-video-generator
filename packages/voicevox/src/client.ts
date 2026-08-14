@@ -1,7 +1,7 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { Script, VoicevoxConfig, logger, getAudioDurationSeconds } from '@demo-video-gen/core';
+import { Script, VoicevoxConfig, logger, getAudioDurationSeconds } from '@auto-product-video-generator/core';
 
 export interface SynthesizeOptions {
   outputDir: string;

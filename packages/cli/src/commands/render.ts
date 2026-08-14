@@ -3,7 +3,7 @@ import { Command } from 'commander';
 export function renderCommand(): Command {
   return new Command('render')
     .description('Render the final video using ffmpeg')
-    .option('-c, --config <path>', 'path to dvg.config.yaml', 'dvg.config.yaml')
+    .option('-c, --config <path>', 'path to apvg.config.yaml', 'apvg.config.yaml')
     .option('--no-subtitles', 'skip subtitle overlay')
     .option('--no-voice', 'skip voice narration')
     .option('--preview', 'render a fast low-quality preview (ultrafast preset)')

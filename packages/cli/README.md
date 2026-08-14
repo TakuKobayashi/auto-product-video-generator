@@ -1,13 +1,13 @@
-# demo-video-gen
+# auto-product-video-generator
 
 AI-powered promotional video generator for web and Android apps.
 
 ## Install
 
 ```bash
-npm install --global demo-video-gen
+npm install --global auto-product-video-generator
 npx playwright install chromium
-dvg --help
+apvg --help
 ```
 
 The CLI also requires git and a running VOICEVOX Engine. Video rendering and

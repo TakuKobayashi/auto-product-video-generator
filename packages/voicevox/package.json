@@ -1,7 +1,7 @@
 {
-  "name": "@demo-video-gen/voicevox",
+  "name": "@auto-product-video-generator/voicevox",
   "version": "0.1.0",
-  "description": "VOICEVOX voice synthesis integration for demo-video-gen",
+  "description": "VOICEVOX voice synthesis integration for auto-product-video-generator",
   "files": ["dist/"],
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/TakuKobayashi/auto-product-video-generator.git", "directory": "packages/voicevox" },
@@ -25,6 +25,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@demo-video-gen/core": "workspace:*"
+    "@auto-product-video-generator/core": "workspace:*"
   }
 }

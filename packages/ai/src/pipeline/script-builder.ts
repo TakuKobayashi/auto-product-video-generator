@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { Scenario, Script, ScriptScene, getAudioDurationSeconds, logger } from '@demo-video-gen/core';
+import { Scenario, Script, ScriptScene, getAudioDurationSeconds, logger } from '@auto-product-video-generator/core';
 
 /**
  * Builds script.yaml deterministically from an already-generated

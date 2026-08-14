@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 360
 
     env:
-      # Used only when this repository does not already contain dvg.config.yaml.
+      # Used only when this repository does not already contain apvg.config.yaml.
       TARGET_REPOSITORY: https://github.com/TakuKobayashi/fullstack-media-converter.git
       OLLAMA_HOST: http://127.0.0.1:11434
       OLLAMA_KEEP_ALIVE: -1
@@ -49,11 +49,11 @@ jobs:
 
       - name: Use existing configuration or initialize it
         run: |
-          if [ -f dvg.config.yaml ]; then
-            echo "Using the existing dvg.config.yaml without overwriting it"
+          if [ -f apvg.config.yaml ]; then
+            echo "Using the existing apvg.config.yaml without overwriting it"
           else
-            echo "dvg.config.yaml was not found; generating it from $TARGET_REPOSITORY"
-            pnpm dvg project init \
+            echo "apvg.config.yaml was not found; generating it from $TARGET_REPOSITORY"
+            pnpm apvg project init \
               --repo "$TARGET_REPOSITORY" \
               --type demo
           fi
@@ -63,7 +63,7 @@ jobs:
           models=$(node -e '
             const fs = require("node:fs");
             const yaml = require("js-yaml");
-            const config = yaml.load(fs.readFileSync("dvg.config.yaml", "utf8"));
+            const config = yaml.load(fs.readFileSync("apvg.config.yaml", "utf8"));
             const llm = config?.llm ?? {};
             const models = new Set();
             const add = (provider, model) => {
@@ -74,7 +74,7 @@ jobs:
             for (const task of Object.values(llm.tasks ?? {})) {
               add(task.provider ?? llm.provider, task.model ?? llm.model);
             }
-            if (models.size === 0) throw new Error("No Ollama model is configured in dvg.config.yaml");
+            if (models.size === 0) throw new Error("No Ollama model is configured in apvg.config.yaml");
             process.stdout.write([...models].join(" "));
           ')
           echo "OLLAMA_MODELS=$models" >> "$GITHUB_ENV"
@@ -116,10 +116,10 @@ jobs:
           done
 
       - name: Analyze project
-        run: pnpm dvg project analyze
+        run: pnpm apvg project analyze
 
       - name: Generate recording scenario
-        run: pnpm dvg video scenario generate
+        run: pnpm apvg video scenario generate
 
       - name: Release Ollama resources before media processing
         run: |
@@ -131,7 +131,7 @@ jobs:
       - name: Start VOICEVOX Engine
         run: |
           docker run -d --rm \
-            --name dvg-voicevox \
+            --name apvg-voicevox \
             -p 50021:50021 \
             "$VOICEVOX_IMAGE"
           for attempt in $(seq 1 90); do
@@ -140,20 +140,20 @@ jobs:
             fi
             if [ "$attempt" -eq 90 ]; then
               echo "VOICEVOX Engine did not become ready" >&2
-              docker logs dvg-voicevox
+              docker logs apvg-voicevox
               exit 1
             fi
             sleep 2
           done
 
       - name: Synthesize narration
-        run: pnpm dvg video voice
+        run: pnpm apvg video voice
 
       - name: Record browser interactions
-        run: pnpm dvg video record
+        run: pnpm apvg video record
 
       - name: Render promotional video
-        run: pnpm dvg video render
+        run: pnpm apvg video render
 
       - name: Upload final video and intermediate artifacts
         uses: actions/upload-artifact@v7
@@ -166,7 +166,7 @@ jobs:
       - name: Collect service logs after failure
         if: failure()
         run: |
-          docker logs dvg-voicevox > voicevox.log 2>&1 || true
+          docker logs apvg-voicevox > voicevox.log 2>&1 || true
 
       - name: Upload failure diagnostics
         if: failure()
@@ -174,8 +174,8 @@ jobs:
         with:
           name: video-generation-diagnostics-${{ github.run_number }}
           path: |
-            .dvg/
-            dvg.config.yaml
+            .apvg/
+            apvg.config.yaml
             ollama.log
             voicevox.log
           include-hidden-files: true

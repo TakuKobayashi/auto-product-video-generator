@@ -2,7 +2,7 @@ import { LlmConfig } from '../types/config.js';
 
 /**
  * Human-readable "provider/model" string for what createLlmProviderForTask
- * (in @demo-video-gen/ai) will actually use for the given task, accounting
+ * (in @auto-product-video-generator/ai) will actually use for the given task, accounting
  * for `llm.tasks.<task>` overrides. Used purely for CLI log lines so what's
  * printed matches what's really called.
  */

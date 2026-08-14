@@ -5,9 +5,11 @@ dist/
 *.tsbuildinfo
 
 # 作業ディレクトリ
+.apvg/
+# Ignore working data left by versions released before the APVG rename.
 .dvg/
 output/
-.dvg-ollama-serve.log
+.apvg-ollama-serve.log
 
 # 環境変数
 .env

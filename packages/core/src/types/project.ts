@@ -8,7 +8,7 @@ export const FeatureSchema = z.object({
   description: z.string(),
   // URL path this feature lives at, e.g. "/dashboard/settings" — discovered
   // from the project's route/page files where possible (see
-  // @demo-video-gen/source), otherwise inferred by the AI. Combined with
+  // @auto-product-video-generator/source), otherwise inferred by the AI. Combined with
   // `target.url` at scenario-generation time to produce a real `goto` URL.
   // Only meaningful for platform: "web"; other platforms may leave this unset.
   route: z.string().optional(),
@@ -20,15 +20,15 @@ export const ProjectSummarySchema = z.object({
   name: z.string(),
   description: z.string(),
   // AI-classified from the actual source — see
-  // @demo-video-gen/ai's platform-classifier.ts.
+  // @auto-product-video-generator/ai's platform-classifier.ts.
   platform: ProjectPlatformSchema,
   // AI-generated "how to get this project running" plan (install deps,
   // start the dev server, ...), grounded by package.json scripts / README /
-  // platform signals — see @demo-video-gen/ai's analyzer.ts. Copied
+  // platform signals — see @auto-product-video-generator/ai's analyzer.ts. Copied
   // verbatim into scenario.yaml's `setup` field when the scenario is
   // generated (not re-decided there), so project-summary.json and
   // scenario.yaml always agree. Can be empty if nothing could be
-  // determined — `record`/`build` fall back to dvg.config.yaml's
+  // determined — `record`/`build` fall back to apvg.config.yaml's
   // source.startCommand or manual startup in that case.
   setupSteps: z.array(SetupStepSchema).default([]),
   features: z.array(FeatureSchema),

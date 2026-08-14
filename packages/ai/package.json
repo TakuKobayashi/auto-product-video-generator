@@ -1,7 +1,7 @@
 {
-  "name": "@demo-video-gen/ai",
+  "name": "@auto-product-video-generator/ai",
   "version": "0.1.0",
-  "description": "AI/LLM integration for demo-video-gen",
+  "description": "AI/LLM integration for auto-product-video-generator",
   "files": ["dist/"],
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/TakuKobayashi/auto-product-video-generator.git", "directory": "packages/ai" },
@@ -25,8 +25,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@demo-video-gen/core": "workspace:*",
-    "@demo-video-gen/source": "workspace:*",
+    "@auto-product-video-generator/core": "workspace:*",
+    "@auto-product-video-generator/source": "workspace:*",
     "@google/generative-ai": "^0.21.0",
     "zod": "^3.23.0"
   }

@@ -1,0 +1,104 @@
+project:
+  name: "My Web App"
+  description: "An awesome web application"
+
+# Where the AI reads the actual project from, to plan the recording.
+# Exactly one of repository / localPath — pick ONE of the two blocks below.
+source:
+  # Option A — a remote git repository (cloned into .apvg/source-repo):
+  repository: "https://github.com/your-org/your-repo.git"
+  # ref: "main"              # optional branch/tag/commit; defaults to the
+                              # repository's default branch if omitted
+  #
+  # Option B — a project you already have checked out locally
+  # (must itself be a git repository):
+  # localPath: "../my-local-project"
+
+  # Monorepos are scanned after every clone/update. APVG normally selects a
+  # runnable web app (for example apps/web) automatically. Use these only
+  # when you want to override that choice:
+  # projectPath: "apps/web"
+  # platformPriority: [web, android, flutter, react-native, unity, ios, desktop, other]
+
+  # Command to start the app's dev server, run from the source root.
+  # If unset, `analyze` tries to detect one from package.json's scripts
+  # (dev -> start -> serve -> preview) and fills this in automatically.
+  # startCommand: "npm run dev"
+
+  # Run `npm install` before startCommand — useful for a fresh clone that
+  # doesn't have node_modules yet.
+  # installDeps: false
+
+# Where the app can actually be reached once it's running, so Playwright can
+# record it. If source.startCommand is set, `record`/`build` start it
+# automatically whenever this isn't already reachable — otherwise start your
+# dev server yourself (e.g. `npm run dev`) first.
+target:
+  url: "http://localhost:3000"
+  # true means analyze replaces the URL above with a localhost URL inferred
+  # from the project's scripts/README. `project init` sets this automatically
+  # when --url is omitted.
+  autoDetectUrl: false
+  type: "web"
+  # Android / Flutter / React Native / Unity Android recording overrides.
+  # Normally this entire block can be omitted: after platform detection APVG
+  # builds a debug APK, starts the first installed AVD if needed, detects the
+  # application id, and installs the APK. Set only values you need to override.
+  # android:
+  #   package: "com.example.app"
+  #   activity: ".MainActivity"
+  #   serial: "emulator-5554"
+  #   avd: "Pixel_8_API_35"
+  #   apkPath: "build/custom/app.apk"
+  #   buildCommand: "./build-android.sh"
+  #   sdkPath: "/Users/you/Library/Android/sdk"
+  #   autoStartEmulator: true
+  #   autoInstall: true
+
+video:
+  type: "demo"       # teaser | shorts | demo | tutorial
+  duration: 90       # target seconds
+  resolution: "1920x1080"
+  fps: 30
+  language: "ja"
+  pageReadyWaitSeconds: 2 # extra wait after the first web page is fully loaded
+  sceneGapSeconds: 1 # silence between narration clips/scenes, in seconds
+
+llm:
+  # Primary provider: gemini | openai | claude | groq | ollama
+  #
+  # Option A — cloud only (needs GEMINI_API_KEY):
+  provider: "gemini"
+  model: "gemini-2.5-pro"
+  # apiKeyEnv: "GEMINI_API_KEY"  # defaults to GEMINI_API_KEY
+  #
+  # Option B — fully local via Ollama (no API key, no network needed):
+  #   provider: "ollama"
+  #   model: "qwen2.5:7b-instruct"   # see Taskfile.yml's vars: block
+  #   ollamaHost: "http://localhost:11434"
+  #
+  # Option C — use both together: try Ollama first, fall back to Gemini
+  # automatically if Ollama is unreachable / the model isn't pulled yet /
+  # it returns invalid JSON. (Or swap the two to prefer Gemini with an
+  # offline fallback.)
+  #   provider: "ollama"
+  #   model: "qwen2.5:7b-instruct"
+  #   fallbackProvider: "gemini"
+  #   fallbackModel: "gemini-2.5-pro"
+  #
+  # Option D — different model per task. `analyze` (extraction/classification)
+  # and `scenario generate` (complex structured JSON: actions, timing, a
+  # setup plan) are different tasks; a model that's fine for one can
+  # struggle with the other. Unset fields fall back to provider/model above.
+  #   tasks:
+  #     scenario:
+  #       provider: "gemini"
+  #       model: "gemini-2.5-pro"
+
+voicevox:
+  host: "http://localhost:50021"
+  speakerId: 3
+
+output:
+  dir: "./output"
+  workDir: "./.apvg"

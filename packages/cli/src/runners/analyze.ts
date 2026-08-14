@@ -1,8 +1,8 @@
 import { join } from 'node:path';
-import { loadConfig, saveConfig, writeJson, logger, describeTaskLlm } from '@demo-video-gen/core';
-import { createLlmProviderForTask, ProjectAnalyzer } from '@demo-video-gen/ai';
-import { resolveProjectSource, inspectProject, detectStartCommand } from '@demo-video-gen/source';
-import { isAndroidRecordingPlatform } from '@demo-video-gen/recorder';
+import { loadConfig, saveConfig, writeJson, logger, describeTaskLlm } from '@auto-product-video-generator/core';
+import { createLlmProviderForTask, ProjectAnalyzer } from '@auto-product-video-generator/ai';
+import { resolveProjectSource, inspectProject, detectStartCommand } from '@auto-product-video-generator/source';
+import { isAndroidRecordingPlatform } from '@auto-product-video-generator/recorder';
 import { applyInferredTargetUrl } from '../utils/inferred-target.js';
 
 interface AnalyzeOptions {
@@ -13,9 +13,9 @@ interface AnalyzeOptions {
 }
 
 export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
-  logger.header('dvg project analyze');
+  logger.header('apvg project analyze');
 
-  const configPath = options.config ?? 'dvg.config.yaml';
+  const configPath = options.config ?? 'apvg.config.yaml';
   const config = await loadConfig(configPath);
 
   if (options.url) {
@@ -54,7 +54,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
     );
   }
 
-  // If dvg.config.yaml doesn't already say how to start the dev server,
+  // If apvg.config.yaml doesn't already say how to start the dev server,
   // suggest one from package.json's scripts and save it — 'record'/'build'
   // will use it to start the app automatically instead of requiring it to
   // already be running.
@@ -64,7 +64,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
       config.source.startCommand = detected;
       await saveConfig(configPath, config);
       logger.info(`Detected dev server command '${detected}' — saved to ${configPath} (source.startCommand).`);
-      logger.dim(`  Edit dvg.config.yaml if this isn't right, or clear it to start the app yourself.`);
+      logger.dim(`  Edit apvg.config.yaml if this isn't right, or clear it to start the app yourself.`);
     }
   }
 
@@ -96,5 +96,5 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
     logger.dim(`  ${mark} [${f.priority}] ${f.title}  ${f.route ? `(${f.route})` : ''}`);
   }
   logger.info('');
-  logger.info('Next: pnpm dvg video scenario generate');
+  logger.info('Next: pnpm apvg video scenario generate');
 }

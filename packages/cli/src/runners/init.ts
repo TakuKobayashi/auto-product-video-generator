@@ -1,6 +1,6 @@
 import { join, resolve, basename } from 'node:path';
 import { existsSync } from 'node:fs';
-import { createDefaultConfig, DEFAULT_PLATFORM_PRIORITY, saveConfig, logger, SourceConfig } from '@demo-video-gen/core';
+import { createDefaultConfig, DEFAULT_PLATFORM_PRIORITY, saveConfig, logger, SourceConfig } from '@auto-product-video-generator/core';
 
 interface InitOptions {
   repo?: string;
@@ -25,15 +25,15 @@ interface InitOptions {
 }
 
 export async function runInit(directory: string, options: InitOptions): Promise<void> {
-  logger.header('dvg project init');
+  logger.header('apvg project init');
 
   if (!options.repo && !options.source) {
     logger.error('You must specify exactly one of --repo <git-url> or --source <local-path>.');
     logger.error('');
-    logger.error('dvg analyzes an actual (version-controlled) project to plan the');
+    logger.error('apvg analyzes an actual (version-controlled) project to plan the');
     logger.error('recording, so it needs to know where that project lives:');
-    logger.error('  pnpm dvg project init --repo https://github.com/user/repo.git');
-    logger.error('  pnpm dvg project init --source ../my-local-project');
+    logger.error('  pnpm apvg project init --repo https://github.com/user/repo.git');
+    logger.error('  pnpm apvg project init --source ../my-local-project');
     process.exit(1);
   }
 
@@ -42,7 +42,7 @@ export async function runInit(directory: string, options: InitOptions): Promise<
     process.exit(1);
   }
 
-  const configPath = join(directory, 'dvg.config.yaml');
+  const configPath = join(directory, 'apvg.config.yaml');
 
   if (existsSync(configPath) && !options.dryRun && !options.force) {
     logger.warn(`Config already exists: ${configPath}`);
@@ -115,12 +115,12 @@ export async function runInit(directory: string, options: InitOptions): Promise<
   logger.info('Video:  non-technical, product-usage-focused promotion (built-in default)');
   logger.info('');
   logger.info('Next steps:');
-  logger.dim(`  1. Run: pnpm dvg project analyze`);
-  logger.dim(`  2. Run: pnpm dvg video scenario generate`);
-  logger.dim(`  3. Run: pnpm dvg video voice`);
-  logger.dim(`  4. Run: pnpm dvg video record`);
-  logger.dim(`  5. Run: pnpm dvg video render`);
-  logger.dim(`  Or run all five at once: pnpm dvg video generate`);
+  logger.dim(`  1. Run: pnpm apvg project analyze`);
+  logger.dim(`  2. Run: pnpm apvg video scenario generate`);
+  logger.dim(`  3. Run: pnpm apvg video voice`);
+  logger.dim(`  4. Run: pnpm apvg video record`);
+  logger.dim(`  5. Run: pnpm apvg video render`);
+  logger.dim(`  Or run all five at once: pnpm apvg video generate`);
 }
 
 function parsePlatformPriority(value?: string): SourceConfig['platformPriority'] {

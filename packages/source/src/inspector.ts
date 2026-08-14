@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
-import { logger } from '@demo-video-gen/core';
+import { logger } from '@auto-product-video-generator/core';
 import { findRepositoryRoot } from './workspace-selector.js';
 
 export interface RouteInfo {
@@ -45,7 +45,7 @@ export interface ProjectSourceContext {
    * Deterministic, file-based signals for what platform this project targets
    * (e.g. "Podfile found (iOS/CocoaPods)"). Passed to the AI as grounding
    * for its platform classification — see
-   * @demo-video-gen/ai's platform-classifier.ts. Not authoritative by
+   * @auto-product-video-generator/ai's platform-classifier.ts. Not authoritative by
    * itself (a project could have stray files from an unrelated tool), just
    * strong evidence.
    */
@@ -54,7 +54,7 @@ export interface ProjectSourceContext {
 
 const EXCLUDED_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', '.next', 'out', '.turbo',
-  '.vercel', 'coverage', '.cache', '.dvg', '.output',
+  '.vercel', 'coverage', '.cache', '.apvg', '.output',
 ]);
 
 const MAX_README_CHARS = 4000;

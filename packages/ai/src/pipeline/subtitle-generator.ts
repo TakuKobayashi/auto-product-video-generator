@@ -1,4 +1,4 @@
-import { Script, formatSrtTime, logger } from '@demo-video-gen/core';
+import { Script, formatSrtTime, logger } from '@auto-product-video-generator/core';
 
 export class SubtitleGenerator {
   generateSrt(script: Script): string {

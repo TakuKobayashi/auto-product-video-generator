@@ -7,7 +7,7 @@ import {
   isConcreteWebRoute,
   logger,
   withHeartbeat,
-} from '@demo-video-gen/core';
+} from '@auto-product-video-generator/core';
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
 import { buildScriptFromScenario } from './script-builder.js';

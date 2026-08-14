@@ -1,9 +1,9 @@
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
-import { loadConfig, readYaml, writeYaml, logger, ScriptSchema } from '@demo-video-gen/core';
-import { recomputeScriptTimingFromAudio, SubtitleGenerator } from '@demo-video-gen/ai';
-import { VoicevoxClient } from '@demo-video-gen/voicevox';
+import { loadConfig, readYaml, writeYaml, logger, ScriptSchema } from '@auto-product-video-generator/core';
+import { recomputeScriptTimingFromAudio, SubtitleGenerator } from '@auto-product-video-generator/ai';
+import { VoicevoxClient } from '@auto-product-video-generator/voicevox';
 
 interface VoiceOptions {
   config?: string;
@@ -13,16 +13,16 @@ interface VoiceOptions {
 }
 
 export async function runVoice(options: VoiceOptions): Promise<void> {
-  logger.header('dvg video voice');
+  logger.header('apvg video voice');
 
-  const configPath = options.config ?? 'dvg.config.yaml';
+  const configPath = options.config ?? 'apvg.config.yaml';
   const config = await loadConfig(configPath);
 
   const workDir = config.output.workDir;
   const scriptPath = join(workDir, 'script.yaml');
 
   if (!existsSync(scriptPath)) {
-    logger.error(`script.yaml not found. Run 'pnpm dvg video scenario generate' first.`);
+    logger.error(`script.yaml not found. Run 'pnpm apvg video scenario generate' first.`);
     process.exit(1);
   }
 
@@ -72,6 +72,6 @@ export async function runVoice(options: VoiceOptions): Promise<void> {
   logger.info('');
   logger.success('Voice synthesis complete.');
   if (!options.dryRun) {
-    logger.info('Next: pnpm dvg video record');
+    logger.info('Next: pnpm apvg video record');
   }
 }

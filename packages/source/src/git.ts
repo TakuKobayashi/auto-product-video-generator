@@ -2,19 +2,19 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
-import { SourceConfig, logger } from '@demo-video-gen/core';
+import { SourceConfig, logger } from '@auto-product-video-generator/core';
 import { selectProjectRoot } from './workspace-selector.js';
 
 export interface ResolveSourceOptions {
   source: SourceConfig;
-  /** Where to clone a remote repository into, e.g. `.dvg/source-repo`. Unused for `localPath`. */
+  /** Where to clone a remote repository into, e.g. `.apvg/source-repo`. Unused for `localPath`. */
   cloneDir: string;
 }
 
 /**
  * Resolves `source.repository` (git remote) or `source.localPath` (existing
  * checkout) down to a single absolute directory on disk that
- * `@demo-video-gen/source`'s inspector can read. Both paths require `git`
+ * `@auto-product-video-generator/source`'s inspector can read. Both paths require `git`
  * to be on PATH — even for `localPath`, since we verify it's actually a git
  * repository (this tool intentionally analyzes *version-controlled*
  * projects, not arbitrary folders).
@@ -33,7 +33,7 @@ export async function resolveProjectSource(options: ResolveSourceOptions): Promi
   }
 
   throw new Error(
-    'No project source configured. Set source.repository (git URL) or source.localPath in dvg.config.yaml.',
+    'No project source configured. Set source.repository (git URL) or source.localPath in apvg.config.yaml.',
   );
 }
 
@@ -48,7 +48,7 @@ async function resolveLocalPath(localPath: string): Promise<string> {
   if (!isRepo) {
     throw new Error(
       `source.localPath is not a git repository: ${absPath}\n` +
-      `dvg analyzes version-controlled projects. Run 'git init' there first, or point ` +
+      `apvg analyzes version-controlled projects. Run 'git init' there first, or point ` +
       `source.repository at a remote instead.`,
     );
   }

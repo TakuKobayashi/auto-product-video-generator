@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { logger, type Action, type Scene, type VideoConfig } from '@demo-video-gen/core';
+import { logger, type Action, type Scene, type VideoConfig } from '@auto-product-video-generator/core';
 import type { PlatformRecorder, PlatformRecordOptions } from './types.js';
 import {
   prepareAndroidProject,
@@ -36,7 +36,7 @@ export class AndroidRecorder implements PlatformRecorder {
     await this.prepare();
     await this.assertDeviceReady();
 
-    const remotePath = `/sdcard/dvg-${safeName(scene.id)}.mp4`;
+    const remotePath = `/sdcard/apvg-${safeName(scene.id)}.mp4`;
     await this.adb(['shell', 'rm', '-f', remotePath]);
     const recorder = this.spawnAdb(['shell', 'screenrecord', '--time-limit', String(Math.max(1, Math.ceil(targetDurationSeconds + 2))), remotePath]);
     const startedAt = Date.now();
@@ -125,7 +125,7 @@ export class AndroidRecorder implements PlatformRecorder {
 
   private async findElementCenter(text: string | undefined, description: string | undefined,
     tempDir: string): Promise<readonly [number, number]> {
-    const remote = '/sdcard/dvg-window.xml';
+    const remote = '/sdcard/apvg-window.xml';
     const local = join(tempDir, 'android-window.xml');
     await this.adb(['shell', 'uiautomator', 'dump', remote]);
     await this.adb(['pull', remote, local]);
@@ -141,7 +141,7 @@ export class AndroidRecorder implements PlatformRecorder {
   }
 
   private async captureScreenshot(localPath: string): Promise<void> {
-    const remote = '/sdcard/dvg-screenshot.png';
+    const remote = '/sdcard/apvg-screenshot.png';
     await this.adb(['shell', 'screencap', '-p', remote]);
     await this.adb(['pull', remote, localPath]);
   }

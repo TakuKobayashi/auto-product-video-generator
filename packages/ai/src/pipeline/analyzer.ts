@@ -1,5 +1,5 @@
-import { ProjectSummary, ProjectSummarySchema, isConcreteWebRoute, logger, withHeartbeat } from '@demo-video-gen/core';
-import { ProjectSourceContext } from '@demo-video-gen/source';
+import { ProjectSummary, ProjectSummarySchema, isConcreteWebRoute, logger, withHeartbeat } from '@auto-product-video-generator/core';
+import { ProjectSourceContext } from '@auto-product-video-generator/source';
 import { relative } from 'node:path';
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';

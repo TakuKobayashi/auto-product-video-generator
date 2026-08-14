@@ -48,10 +48,10 @@ importers:
 
   packages/ai:
     dependencies:
-      '@demo-video-gen/core':
+      '@auto-product-video-generator/core':
         specifier: workspace:*
         version: link:../core
-      '@demo-video-gen/source':
+      '@auto-product-video-generator/source':
         specifier: workspace:*
         version: link:../source
       '@google/generative-ai':
@@ -63,25 +63,25 @@ importers:
 
   packages/cli:
     dependencies:
-      '@demo-video-gen/ai':
+      '@auto-product-video-generator/ai':
         specifier: workspace:*
         version: link:../ai
-      '@demo-video-gen/core':
+      '@auto-product-video-generator/core':
         specifier: workspace:*
         version: link:../core
-      '@demo-video-gen/playwright':
+      '@auto-product-video-generator/playwright':
         specifier: workspace:*
         version: link:../playwright
-      '@demo-video-gen/recorder':
+      '@auto-product-video-generator/recorder':
         specifier: workspace:*
         version: link:../recorder
-      '@demo-video-gen/renderer':
+      '@auto-product-video-generator/renderer':
         specifier: workspace:*
         version: link:../renderer
-      '@demo-video-gen/source':
+      '@auto-product-video-generator/source':
         specifier: workspace:*
         version: link:../source
-      '@demo-video-gen/voicevox':
+      '@auto-product-video-generator/voicevox':
         specifier: workspace:*
         version: link:../voicevox
       commander:
@@ -112,7 +112,7 @@ importers:
 
   packages/playwright:
     dependencies:
-      '@demo-video-gen/core':
+      '@auto-product-video-generator/core':
         specifier: workspace:*
         version: link:../core
       playwright:
@@ -121,28 +121,28 @@ importers:
 
   packages/recorder:
     dependencies:
-      '@demo-video-gen/core':
+      '@auto-product-video-generator/core':
         specifier: workspace:*
         version: link:../core
-      '@demo-video-gen/playwright':
+      '@auto-product-video-generator/playwright':
         specifier: workspace:*
         version: link:../playwright
 
   packages/renderer:
     dependencies:
-      '@demo-video-gen/core':
+      '@auto-product-video-generator/core':
         specifier: workspace:*
         version: link:../core
 
   packages/source:
     dependencies:
-      '@demo-video-gen/core':
+      '@auto-product-video-generator/core':
         specifier: workspace:*
         version: link:../core
 
   packages/voicevox:
     dependencies:
-      '@demo-video-gen/core':
+      '@auto-product-video-generator/core':
         specifier: workspace:*
         version: link:../core
 

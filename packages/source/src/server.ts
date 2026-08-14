@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { openSync } from 'node:fs';
 import { join } from 'node:path';
-import { logger, SetupStep } from '@demo-video-gen/core';
+import { logger, SetupStep } from '@auto-product-video-generator/core';
 import { PackageJsonSummary } from './inspector.js';
 
 /** Picks a sensible default dev-server command from package.json's scripts. */
@@ -92,7 +92,7 @@ export interface EnsureAppRunningOptions {
   url: string;
   /** scenario.yaml's `setup` field — preferred when non-empty. */
   setupSteps: SetupStep[];
-  /** Legacy fallback: dvg.config.yaml's source.startCommand, used only when setupSteps is empty. */
+  /** Legacy fallback: apvg.config.yaml's source.startCommand, used only when setupSteps is empty. */
   startCommand?: string;
   cwd: string;
   installDeps: boolean;
@@ -105,7 +105,7 @@ export interface EnsureAppRunningOptions {
  *   1. If scenario.yaml has a `setup` plan (the common case for anything
  *      generated after this feature shipped), run it via runSetupSteps —
  *      this is the "execution plan describes its own startup" behavior.
- *   2. Else fall back to the older, simpler dvg.config.yaml
+ *   2. Else fall back to the older, simpler apvg.config.yaml
  *      source.startCommand mechanism (ensureServerRunning), for
  *      scenario.yaml files generated before `setup` existed, or as a
  *      manual override.
@@ -172,7 +172,7 @@ export async function ensureServerRunning(options: EnsureServerRunningOptions): 
   if (!options.startCommand) {
     logger.warn(`${options.url} is not reachable, and no source.startCommand is configured.`);
     logger.warn('Start your app yourself (e.g. `npm run dev`) before running this command, or set');
-    logger.warn('source.startCommand in dvg.config.yaml to have it started automatically.');
+    logger.warn('source.startCommand in apvg.config.yaml to have it started automatically.');
     return;
   }
 

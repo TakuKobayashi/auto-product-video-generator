@@ -1,11 +1,11 @@
-# demo-video-gen
+# auto-product-video-generator
 
 AI-powered promotional video generator for web and Android apps. Point it at
 a real git-managed project; it reads the actual source, plans a recording,
 drives a browser or Android device, and produces a narrated video. Flutter,
 React Native, and Unity are supported when targeting an Android build.
 
-For conventional Android, Flutter, and React Native repositories, DVG can
+For conventional Android, Flutter, and React Native repositories, APVG can
 build a debug APK, reuse a connected device or start the first installed AVD,
 wait for Android to boot, detect the application id, install the APK, and
 record through adb. Create at least one AVD in Android Studio first. Unity and
@@ -26,8 +26,8 @@ command below.
 ## Install from npm
 
 ```bash
-npm install --global demo-video-gen
-dvg --help
+npm install --global auto-product-video-generator
+apvg --help
 ```
 
 The npm package installs the CLI and its Node.js dependencies. The external
@@ -39,20 +39,20 @@ VOICEVOX Engine instance on port `50021`. Ollama is optional when
 ## Quick Start
 
 ```bash
-git clone <this-repo> && cd demo-video-gen
+git clone <this-repo> && cd auto-product-video-generator
 
 task install          # one-time: installs everything (see task --list)
 task serve            # starts local services (VOICEVOX, Ollama)
 task doctor           # not sure something's set up right? check here
 
 # Point it at the project; its local URL/start command are inferred from source:
-pnpm dvg project init --repo https://github.com/you/your-app.git
+pnpm apvg project init --repo https://github.com/you/your-app.git
 #   or: --source ../your-app   (for a project already checked out locally)
 
-pnpm dvg video generate # generate the video
+pnpm apvg video generate # generate the video
 ```
 
-`init` generates `dvg.config.yaml`. Use `--repo` for a remote repository or
+`init` generates `apvg.config.yaml`. Use `--repo` for a remote repository or
 `--source` for a local checkout. The non-technical, product-usage editorial
 direction is built in and does not need a config entry.
 When `--url` is omitted, the LLM reads package scripts and the README to infer
@@ -60,10 +60,10 @@ the start command and loopback URL (including its port), then saves that URL to
 the config. Pass `--url http://localhost:3000` only when you want an explicit
 value; an explicit URL is never replaced by inference.
 
-Monorepos normally need no extra configuration. After every clone/update, DVG
+Monorepos normally need no extra configuration. After every clone/update, APVG
 scans the workspace and prioritizes a runnable web application such as
 `apps/web`; its selected path is recorded as `projectPath` in
-`.dvg/source-context.json`. If the automatic choice is not the intended app,
+`.apvg/source-context.json`. If the automatic choice is not the intended app,
 change `source.platformPriority` (web is first by default). To pin one app,
 use `--project-path apps/web` or set `source.projectPath`. Init also accepts a
 comma-separated order such as `--platform-priority web,android,flutter`.
@@ -76,7 +76,7 @@ If VOICEVOX Engine and Ollama are already running through your own
 `task doctor`, `curl http://localhost:50021/version`, and optionally
 `curl http://localhost:11434/api/tags`.
 
-`pnpm dvg` uses development-condition package exports and `tsx` to run every
+`pnpm apvg` uses development-condition package exports and `tsx` to run every
 workspace package from TypeScript source, even in a clean checkout, so no
 pre-build is required. `pnpm build` is only for CI/release type-checking and
 JavaScript output.
@@ -89,7 +89,7 @@ runs, or just use the plain `pnpm run <name>` equivalents in
 Output: `output/final.mp4`, with intermediate files under `output/artifacts/`
 (scenario/script, subtitles, WAV narration, scene recordings, screenshots,
 timeline, analysis results, logs, and the effective config). First run without
-`GEMINI_API_KEY` set uses Ollama automatically — see `examples/dvg.config.yaml` for every config
+`GEMINI_API_KEY` set uses Ollama automatically — see `examples/apvg.config.yaml` for every config
 option (each one is commented inline, not duplicated here).
 
 ## GitHub Actions generation
@@ -106,7 +106,7 @@ back through 7B to 3B as resources decrease. Pipeline stages run separately;
 the Ollama model is removed after scenario generation to release both RAM and
 disk before VOICEVOX and browser media processing.
 No Gemini secret is required. Successful runs upload
-`output/` as `promotional-video-<run number>`; failed runs upload `.dvg/` and
+`output/` as `promotional-video-<run number>`; failed runs upload `.apvg/` and
 service logs for diagnosis. The job allows up to six hours because local LLM
 generation is CPU-bound on GitHub-hosted runners.
 
@@ -116,9 +116,9 @@ generation is CPU-bound on GitHub-hosted runners.
 
 ```mermaid
 flowchart TD
-    init(["<b>init</b><br/>--repo / --source"]) -->|writes| cfg[(dvg.config.yaml)]
+    init(["<b>init</b><br/>--repo / --source"]) -->|writes| cfg[(apvg.config.yaml)]
 
-    subgraph build["pnpm dvg video generate  (one command runs all five ↓)"]
+    subgraph build["pnpm apvg video generate  (one command runs all five ↓)"]
         direction TB
         analyze(["<b>analyze</b><br/>clone/read source,<br/>AI extracts features<br/>+ platform + setup plan"])
         scenario(["<b>scenario generate</b><br/>AI writes the recording<br/>plan (scenario.yaml)"])
@@ -137,47 +137,47 @@ flowchart TD
 
 ## Running all at once or step by step
 
-Each box above is its own CLI command, reading/writing files under `.dvg/`
+Each box above is its own CLI command, reading/writing files under `.apvg/`
 — so `build` isn't a black box, it's just those five in a row. Run them
-`pnpm dvg video generate` for the normal all-in-one path. To inspect or edit
+`pnpm apvg video generate` for the normal all-in-one path. To inspect or edit
 intermediate results, run these commands in this exact order:
 
 ```bash
-pnpm dvg project analyze
-pnpm dvg video scenario generate
-pnpm dvg video voice     # synthesizes WAVs and applies their actual timing
-pnpm dvg video record    # requires the timed script and WAVs
-pnpm dvg video render
+pnpm apvg project analyze
+pnpm apvg video scenario generate
+pnpm apvg video voice     # synthesizes WAVs and applies their actual timing
+pnpm apvg video record    # requires the timed script and WAVs
+pnpm apvg video render
 ```
 
 Resume from the first unfinished or affected step:
 
 | Last successful step / change | Resume with |
 |---|---|
-| analyze completed | `pnpm dvg video scenario generate` |
-| scenario completed | `pnpm dvg video voice` |
-| voice completed | `pnpm dvg video record` |
-| recording completed | `pnpm dvg video render` |
-| narration/subtitle text changed | start from `pnpm dvg video voice` |
-| browser actions only changed | start from `pnpm dvg video record` |
-| only render settings changed | run `pnpm dvg video render` |
+| analyze completed | `pnpm apvg video scenario generate` |
+| scenario completed | `pnpm apvg video voice` |
+| voice completed | `pnpm apvg video record` |
+| recording completed | `pnpm apvg video render` |
+| narration/subtitle text changed | start from `pnpm apvg video voice` |
+| browser actions only changed | start from `pnpm apvg video record` |
+| only render settings changed | run `pnpm apvg video render` |
 
 | Command | Produces | Notes |
 |---|---|---|
-| `pnpm dvg project init --repo <url>` | `dvg.config.yaml` | one-time; `--source <path>` for a local checkout instead |
-| `pnpm dvg project analyze` | `.dvg/source-context.json`, `.dvg/project-summary.json` | deterministic source scan + AI classification |
-| `pnpm dvg video scenario generate` | `.dvg/scenario.yaml`, `.dvg/script.yaml`, `.dvg/subtitles.srt` | scenario is AI; script/subtitles are derived deterministically from it |
-| `pnpm dvg video voice` | `.dvg/voice/*.wav` | also updates script/subtitle timing from actual audio |
-| `pnpm dvg video record` | `.dvg/recordings/*.mp4` | paces actions to audio timing; fails if the target is unreachable |
-| `pnpm dvg video render` | `output/final.mp4`, `output/artifacts/` | final video plus intermediate artifacts |
+| `pnpm apvg project init --repo <url>` | `apvg.config.yaml` | one-time; `--source <path>` for a local checkout instead |
+| `pnpm apvg project analyze` | `.apvg/source-context.json`, `.apvg/project-summary.json` | deterministic source scan + AI classification |
+| `pnpm apvg video scenario generate` | `.apvg/scenario.yaml`, `.apvg/script.yaml`, `.apvg/subtitles.srt` | scenario is AI; script/subtitles are derived deterministically from it |
+| `pnpm apvg video voice` | `.apvg/voice/*.wav` | also updates script/subtitle timing from actual audio |
+| `pnpm apvg video record` | `.apvg/recordings/*.mp4` | paces actions to audio timing; fails if the target is unreachable |
+| `pnpm apvg video render` | `output/final.mp4`, `output/artifacts/` | final video plus intermediate artifacts |
 
-`pnpm dvg video generate [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
+`pnpm apvg video generate [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
 runs all five, skipping (reusing existing output for) whichever steps you
 name. Every command's full option list is in `--help`
-(e.g. `pnpm dvg project analyze --help`). Run `pnpm dvg --help` for the complete hierarchy.
+(e.g. `pnpm apvg project analyze --help`). Run `pnpm apvg --help` for the complete hierarchy.
 
 Recording cannot run before voice synthesis. When combining
-`--skip-voice` with recording, existing `.dvg/voice/*.wav` files are still
+`--skip-voice` with recording, existing `.apvg/voice/*.wav` files are still
 required and are measured again before recording. After changing narration
 or `video.sceneGapSeconds`, rerun `voice → record → render`.
 
@@ -185,7 +185,7 @@ or `video.sceneGapSeconds`, rerun `voice → record → render`.
 
 ## Configuration
 
-`dvg.config.yaml` — see **[`examples/dvg.config.yaml`](./examples/dvg.config.yaml)**
+`apvg.config.yaml` — see **[`examples/apvg.config.yaml`](./examples/apvg.config.yaml)**
 for the full reference, every option commented inline (git source, target
 URL, video type, LLM provider/fallback/per-task overrides, VOICEVOX). Not
 duplicated here on purpose — that file *is* the documentation for it.
@@ -220,7 +220,7 @@ Three things worth knowing up front:
 
 - **`scenario generate` fails schema validation repeatedly** — the model
   isn't a great fit for that task. Point `llm.tasks.scenario` at a
-  different/stronger model (see `examples/dvg.config.yaml`) without
+  different/stronger model (see `examples/apvg.config.yaml`) without
   changing what `analyze` uses.
 - **`pnpm install` fails downloading ffmpeg/task binaries**, or
   **`ERR_PNPM_IGNORED_BUILDS`** — see the Japanese README's
@@ -229,7 +229,7 @@ Three things worth knowing up front:
 - **Nothing works and you don't know why** — `task doctor`.
 - **Recording stops on a URL or browser-action error** — first open
   `target.url` in a normal browser, then verify the `goto`, `click`, and
-  `wait_visible` actions in `.dvg/scenario.yaml`. Rerun from `record` if
+  `wait_visible` actions in `.apvg/scenario.yaml`. Rerun from `record` if
   narration is unchanged, or from `voice` if narration changed.
 
 ---
@@ -252,13 +252,13 @@ Taskfile.yml        environment setup & service orchestration
 
 ```bash
 task build          # or: pnpm run build (CI/release type-check + JS output)
-pnpm dvg --help     # show the organized CLI command hierarchy
+pnpm apvg --help     # show the organized CLI command hierarchy
 ```
 
 ### Publishing to npm
 
 All workspace packages share one version and are published together because
-the public `demo-video-gen` CLI depends on the scoped internal packages.
+the public `auto-product-video-generator` CLI depends on the scoped internal packages.
 
 ```bash
 npm login
@@ -267,7 +267,7 @@ pnpm publish:npm    # publish every package in dependency order
 ```
 
 Before the first release, confirm that the npm account owns the
-`@demo-video-gen` scope and that the unscoped `demo-video-gen` name is
+`@auto-product-video-generator` scope and that the unscoped `auto-product-video-generator` name is
 available. Publishing requires a clean, committed git working tree. For later
 releases, update all eight package versions together before publishing.
 

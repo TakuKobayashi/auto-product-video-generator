@@ -1,4 +1,4 @@
-import type { Scene, VideoConfig } from '@demo-video-gen/core';
+import type { Scene, VideoConfig } from '@auto-product-video-generator/core';
 
 export interface PlatformRecordOptions {
   headed: boolean;

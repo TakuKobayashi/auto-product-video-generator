@@ -3,7 +3,7 @@ import { Command } from 'commander';
 export function recordCommand(): Command {
   return new Command('record')
     .description('Record interactions using the recorder selected for the detected platform')
-    .option('-c, --config <path>', 'path to dvg.config.yaml', 'dvg.config.yaml')
+    .option('-c, --config <path>', 'path to apvg.config.yaml', 'apvg.config.yaml')
     .option('-s, --scene <id>', 'record a specific scene only')
     .option('--headed', 'show the browser window during recording')
     .option('--slow-mo <ms>', 'slow down each action by N milliseconds', '0')

@@ -14,7 +14,7 @@ describe('prepareAndroidProject', () => {
   const posixTest = process.platform === 'win32' ? it.skip : it;
 
   posixTest('builds a debug APK, detects its package, and installs it on a connected emulator', async () => {
-    const temp = await mkdtemp(join(tmpdir(), 'dvg-android-spec-'));
+    const temp = await mkdtemp(join(tmpdir(), 'apvg-android-spec-'));
     temporaryPaths.push(temp);
     const sdk = join(temp, 'sdk');
     const project = join(temp, 'project');
