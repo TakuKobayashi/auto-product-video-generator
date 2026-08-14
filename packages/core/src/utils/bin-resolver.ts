@@ -45,7 +45,7 @@ function requireCjsDefault<T>(moduleName: string): T | null {
     const require = createRequire(import.meta.url);
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require(moduleName);
-    return (mod?.default ?? mod) as T;
+    return (mod?.default || mod) as T;
   } catch {
     return null;
   }

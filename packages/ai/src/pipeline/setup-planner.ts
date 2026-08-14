@@ -6,7 +6,7 @@
  * detection, add platform-specific examples here).
  */
 export function buildSetupPlanningPrompt(targetUrl: string | undefined, platformHint: string): string {
-  const readyUrl = targetUrl ?? 'http://localhost:3000';
+  const readyUrl = targetUrl || 'http://localhost:3000';
   const urlRule = targetUrl
     ? `A background web-server step MUST use "readyUrl":"${targetUrl}".`
     : `The shown port 3000 is only an example. Infer readyUrl from the actual script and README. ` +

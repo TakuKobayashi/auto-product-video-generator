@@ -70,15 +70,15 @@ jobs:
             const fs = require("node:fs");
             const yaml = require("js-yaml");
             const config = yaml.load(fs.readFileSync("apvg.config.yml", "utf8"));
-            const llm = config?.llm ?? {};
+            const llm = config?.llm || {};
             const models = new Set();
             const add = (provider, model) => {
               if (provider === "ollama" && model) models.add(model);
             };
             add(llm.provider, llm.model);
-            add(llm.fallbackProvider, llm.fallbackModel ?? llm.model);
-            for (const task of Object.values(llm.tasks ?? {})) {
-              add(task.provider ?? llm.provider, task.model ?? llm.model);
+            add(llm.fallbackProvider, llm.fallbackModel || llm.model);
+            for (const task of Object.values(llm.tasks || {})) {
+              add(task.provider || llm.provider, task.model || llm.model);
             }
             if (models.size === 0) throw new Error("No Ollama model is configured in apvg.config.yml");
             process.stdout.write([...models].join(" "));

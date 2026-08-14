@@ -11,6 +11,7 @@ export interface RenderOptions {
   dryRun: boolean;
   ffmpegPath: string;
   workDir: string;
+  subtitlesPath?: string;
 }
 
 export class FfmpegRenderer {
@@ -97,7 +98,7 @@ export class FfmpegRenderer {
     );
 
     // Subtitles overlay
-    const srtPath = resolve(options.workDir, 'subtitles.srt');
+    const srtPath = options.subtitlesPath || resolve(options.workDir, 'subtitles.srt');
     if (subtitleTracks.length > 0 && existsSync(srtPath)) {
       // Escape path for ffmpeg filter
       const escapedSrt = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');

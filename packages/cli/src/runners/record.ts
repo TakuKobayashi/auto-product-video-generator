@@ -1,11 +1,18 @@
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { loadConfig, readYaml, logger, ScenarioSchema, ScriptSchema } from '@auto-product-video-generator/core';
+import { ensureDir, loadConfig, readYaml, logger, ScenarioSchema, ScriptSchema } from '@auto-product-video-generator/core';
 import { createPlatformRecorder } from '@auto-product-video-generator/recorder';
 import { resolveProjectSource, ensureAppRunning } from '@auto-product-video-generator/source';
 
 interface RecordOptions {
   config?: string;
+  scenario?: string;
+  script?: string;
+  voiceDir?: string;
+  recordingsDir?: string;
+  screenshotsDir?: string;
+  sourceDir?: string;
+  serverLog?: string;
   scene?: string;
   headed?: boolean;
   slowMo?: string;
@@ -15,12 +22,12 @@ interface RecordOptions {
 export async function runRecord(options: RecordOptions): Promise<void> {
   logger.header('apvg video record');
 
-  const configPath = options.config ?? 'apvg.config.yml';
+  const configPath = options.config || 'apvg.config.yml';
   const config = await loadConfig(configPath);
 
   const workDir = config.output.workDir;
-  const scenarioPath = join(workDir, 'scenario.yml');
-  const scriptPath = join(workDir, 'script.yml');
+  const scenarioPath = options.scenario || join(workDir, 'scenario.yml');
+  const scriptPath = options.script || join(workDir, 'script.yml');
 
   if (!existsSync(scenarioPath)) {
     logger.error(`scenario.yml not found. Run 'pnpm apvg video scenario generate' first.`);
@@ -35,8 +42,9 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   }
   const script = ScriptSchema.parse(await readYaml(scriptPath));
 
-  const recordingsDir = join(workDir, 'recordings');
-  const screenshotDir = join(workDir, 'screenshots');
+  const voiceDir = options.voiceDir || join(workDir, 'voice');
+  const recordingsDir = options.recordingsDir || join(workDir, 'recordings');
+  const screenshotDir = options.screenshotsDir || join(workDir, 'screenshots');
 
   const scenesToRecord = options.scene
     ? scenario.scenes.filter((s) => s.id === options.scene)
@@ -50,21 +58,23 @@ export async function runRecord(options: RecordOptions): Promise<void> {
 
   logger.info(`Scenes to record: ${scenesToRecord.map((s) => s.id).join(', ')}`);
   logger.info(`Output dir:       ${recordingsDir}`);
-  logger.info(`Headed:           ${options.headed ?? false}`);
-  logger.info(`Slow-mo:          ${options.slowMo ?? '0'}ms`);
+  logger.info(`Headed:           ${options.headed || false}`);
+  logger.info(`Slow-mo:          ${options.slowMo || '0'}ms`);
 
   let rootDir: string | undefined;
   if (!options.dryRun) {
-    const cloneDir = join(workDir, 'source-repo');
+    const cloneDir = options.sourceDir || join(workDir, 'source-repo');
     rootDir = await resolveProjectSource({ source: config.source, cloneDir });
     if (scenario.meta.platform === 'web') {
+      const serverLogPath = options.serverLog || join(workDir, 'dev-server.log');
+      await ensureDir(dirname(serverLogPath));
       await ensureAppRunning({
         url: config.target.url,
         setupSteps: scenario.setup,
         startCommand: config.source.startCommand,
         cwd: rootDir,
         installDeps: config.source.installDeps,
-        logPath: join(workDir, 'dev-server.log'),
+        logPath: serverLogPath,
       });
     }
   }
@@ -75,7 +85,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
     const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
     if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yml.`);
     const scriptScene = script.scenes[scriptIndex];
-    const voicePath = join(workDir, scriptScene.voiceFile);
+    const voicePath = join(voiceDir, basename(scriptScene.voiceFile));
     if (!options.dryRun && !existsSync(voicePath)) {
       throw new Error(`Voice file not found: ${voicePath}. Run 'pnpm apvg video voice' before recording.`);
     }
@@ -83,11 +93,11 @@ export async function runRecord(options: RecordOptions): Promise<void> {
     const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
     logger.info('');
     await recorder.recordScene(scene, config.video, {
-      headed: options.headed ?? false,
-      slowMo: parseInt(options.slowMo ?? '0', 10),
+      headed: options.headed || false,
+      slowMo: parseInt(options.slowMo || '0', 10),
       outputDir: recordingsDir,
       screenshotDir,
-      dryRun: options.dryRun ?? false,
+      dryRun: options.dryRun || false,
     }, targetDurationSeconds, scriptScene.endTime - scriptScene.startTime);
   }
 

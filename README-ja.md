@@ -183,6 +183,48 @@ pnpm apvg video render
 | `pnpm apvg video record` | `.apvg/recordings/*.mp4` | 音声の実時間に合わせて操作し、到達不能なら停止 |
 | `pnpm apvg video render` | `output/final.mp4`、`output/artifacts/` | 完成動画と途中生成物一式を出力 |
 
+各工程は入出力パスを明示指定できます。複数の実行やCIジョブ、動画のバリエーションごとに
+`.apvg/`を共有せず、任意の中間ファイルを次の工程へ渡せます。
+
+```bash
+pnpm apvg project analyze \
+  --source-context tmp/source-context.json \
+  --project-summary tmp/project-summary.json
+
+pnpm apvg video scenario generate \
+  --project-summary tmp/project-summary.json \
+  --scenario tmp/scenario.yml \
+  --script tmp/script.yml \
+  --subtitles tmp/subtitles.srt
+
+pnpm apvg video voice \
+  --script tmp/script.yml \
+  --voice-dir tmp/voice \
+  --subtitles tmp/subtitles.srt
+
+pnpm apvg video record \
+  --scenario tmp/scenario.yml \
+  --script tmp/script.yml \
+  --voice-dir tmp/voice \
+  --recordings-dir tmp/recordings \
+  --screenshots-dir tmp/screenshots
+
+pnpm apvg video render \
+  --scenario tmp/scenario.yml \
+  --script tmp/script.yml \
+  --voice-dir tmp/voice \
+  --recordings-dir tmp/recordings \
+  --screenshots-dir tmp/screenshots \
+  --subtitles-file tmp/subtitles.srt \
+  --timeline tmp/timeline.json \
+  --output tmp/final.mp4 \
+  --artifacts-dir tmp/artifacts
+```
+
+相対パスは現在のディレクトリを基準に解決され、絶対パスも指定できます。省略した項目は
+上表の既定パスを使います。source clone/cacheやdev server logのパスも指定できるため、
+詳細は各コマンドの`--help`を参照してください。
+
 `pnpm apvg video generate [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
 は上記5つをまとめて実行し、指定したステップだけ既存の生成物を使って
 スキップできます。各コマンドの全オプションは`--help`で確認できます

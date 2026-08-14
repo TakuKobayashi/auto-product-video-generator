@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import {
@@ -16,6 +16,10 @@ import { createLlmProviderForTask, ScenarioGenerator, SubtitleGenerator } from '
 interface ScenarioGenerateOptions {
   config?: string;
   type?: string;
+  projectSummary?: string;
+  scenario?: string;
+  script?: string;
+  subtitles?: string;
   force?: boolean;
   dryRun?: boolean;
 }
@@ -23,14 +27,14 @@ interface ScenarioGenerateOptions {
 export async function runScenarioGenerate(options: ScenarioGenerateOptions): Promise<void> {
   logger.header('apvg video scenario generate');
 
-  const configPath = options.config ?? 'apvg.config.yml';
+  const configPath = options.config || 'apvg.config.yml';
   const config = await loadConfig(configPath);
 
   const workDir = config.output.workDir;
-  const summaryPath = join(workDir, 'project-summary.json');
-  const scenarioPath = join(workDir, 'scenario.yml');
-  const scriptPath = join(workDir, 'script.yml');
-  const srtPath = join(workDir, 'subtitles.srt');
+  const summaryPath = options.projectSummary || join(workDir, 'project-summary.json');
+  const scenarioPath = options.scenario || join(workDir, 'scenario.yml');
+  const scriptPath = options.script || join(workDir, 'script.yml');
+  const srtPath = options.subtitles || join(workDir, 'subtitles.srt');
 
   if (!existsSync(summaryPath)) {
     logger.error(`project-summary.json not found. Run 'pnpm apvg project analyze' first.`);
@@ -58,7 +62,7 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
     return;
   }
 
-  await ensureDir(workDir);
+  await Promise.all([workDir, dirname(scenarioPath), dirname(scriptPath), dirname(srtPath)].map(ensureDir));
 
   logger.info(`LLM: ${describeTaskLlm(config.llm, 'scenario')}`);
 

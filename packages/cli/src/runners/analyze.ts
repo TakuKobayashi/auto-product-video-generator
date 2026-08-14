@@ -8,6 +8,9 @@ import { applyInferredTargetUrl } from '../utils/inferred-target.js';
 interface AnalyzeOptions {
   config?: string;
   url?: string;
+  sourceDir?: string;
+  sourceContext?: string;
+  projectSummary?: string;
   dryRun?: boolean;
   verbose?: boolean;
 }
@@ -15,7 +18,7 @@ interface AnalyzeOptions {
 export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   logger.header('apvg project analyze');
 
-  const configPath = options.config ?? 'apvg.config.yml';
+  const configPath = options.config || 'apvg.config.yml';
   const config = await loadConfig(configPath);
 
   if (options.url) {
@@ -23,12 +26,12 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
     config.target.autoDetectUrl = false;
   }
   const targetUrl = config.target.autoDetectUrl ? undefined : config.target.url;
-  const cloneDir = join(config.output.workDir, 'source-repo');
-  const contextPath = join(config.output.workDir, 'source-context.json');
-  const summaryPath = join(config.output.workDir, 'project-summary.json');
+  const cloneDir = options.sourceDir || join(config.output.workDir, 'source-repo');
+  const contextPath = options.sourceContext || join(config.output.workDir, 'source-context.json');
+  const summaryPath = options.projectSummary || join(config.output.workDir, 'project-summary.json');
 
-  logger.info(`Source:     ${config.source.repository ?? config.source.localPath}`);
-  logger.info(`Target URL: ${targetUrl ?? 'auto-detect from source'}`);
+  logger.info(`Source:     ${config.source.repository || config.source.localPath}`);
+  logger.info(`Target URL: ${targetUrl || 'auto-detect from source'}`);
   logger.info(`LLM:        ${describeTaskLlm(config.llm, 'analyze')}`);
 
   if (options.dryRun) {
@@ -80,7 +83,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
     // not retain an LLM-guessed setup plan that would duplicate those steps.
     summary.setupSteps = [];
     config.target.type = 'android';
-    config.target.android ??= { autoStartEmulator: true, autoInstall: true };
+    config.target.android ||= { autoStartEmulator: true, autoInstall: true };
     await saveConfig(configPath, config);
     logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
   }

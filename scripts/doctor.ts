@@ -121,7 +121,7 @@ async function main(): Promise<void> {
     try {
       const res = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(2000) });
       const data = (await res.json()) as { models?: Array<{ name: string }> };
-      ollamaModels = (data.models ?? []).map((m) => m.name);
+      ollamaModels = (data.models || []).map((m) => m.name);
     } catch {
       /* best-effort only */
     }
@@ -212,11 +212,11 @@ function readConfiguredOllamaModels(): string[] {
     if (!llm) return defaults;
 
     const models = new Set<string>();
-    if (llm.provider === 'ollama') models.add(llm.model ?? defaults[0]);
-    if (llm.fallbackProvider === 'ollama') models.add(llm.fallbackModel ?? defaults[0]);
-    for (const task of Object.values(llm.tasks ?? {})) {
-      const provider = task.provider ?? llm.provider;
-      if (provider === 'ollama') models.add(task.model ?? llm.model ?? defaults[0]);
+    if (llm.provider === 'ollama') models.add(llm.model || defaults[0]);
+    if (llm.fallbackProvider === 'ollama') models.add(llm.fallbackModel || defaults[0]);
+    for (const task of Object.values(llm.tasks || {})) {
+      const provider = task.provider || llm.provider;
+      if (provider === 'ollama') models.add(task.model || llm.model || defaults[0]);
     }
     return [...models];
   } catch {

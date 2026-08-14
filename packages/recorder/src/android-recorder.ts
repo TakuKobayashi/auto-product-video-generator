@@ -120,7 +120,7 @@ export class AndroidRecorder implements PlatformRecorder {
       try { return await this.findElementCenter(text, description, tempDir); } catch (error) { lastError = error; }
       await wait(400);
     }
-    throw new Error(`Android element did not appear: ${text ?? description}`, { cause: lastError });
+    throw new Error(`Android element did not appear: ${text || description}`, { cause: lastError });
   }
 
   private async findElementCenter(text: string | undefined, description: string | undefined,
@@ -130,11 +130,11 @@ export class AndroidRecorder implements PlatformRecorder {
     await this.adb(['shell', 'uiautomator', 'dump', remote]);
     await this.adb(['pull', remote, local]);
     const xml = await readFile(local, 'utf8');
-    const nodes = xml.match(/<node\b[^>]*>/g) ?? [];
+    const nodes = xml.match(/<node\b[^>]*>/g) || [];
     const node = nodes.find((value) =>
       (text && attr(value, 'text') === text) ||
       (description && attr(value, 'content-desc') === description));
-    if (!node) throw new Error(`Element not found in Android UI: ${text ?? description}`);
+    if (!node) throw new Error(`Element not found in Android UI: ${text || description}`);
     const bounds = attr(node, 'bounds')?.match(/\[(\d+),(\d+)]\[(\d+),(\d+)]/);
     if (!bounds) throw new Error('Matched Android element has no usable bounds.');
     return [(Number(bounds[1]) + Number(bounds[3])) / 2, (Number(bounds[2]) + Number(bounds[4])) / 2] as const;
@@ -152,7 +152,7 @@ export class AndroidRecorder implements PlatformRecorder {
       rootDir: this.context.rootDir,
       workDir: this.context.workDir,
     };
-    this.prepared ??= prepareAndroidProject(this.target, projectContext);
+    this.prepared ||= prepareAndroidProject(this.target, projectContext);
     this.runtime = await this.prepared;
   }
 

@@ -20,10 +20,10 @@ export function createPlatformRecorder(
 ): PlatformRecorder {
   if (platform === 'web') return new SceneRecorder();
   if (platform === 'android' || platform === 'flutter' || platform === 'react-native') {
-    return new AndroidRecorder(config.target.android ?? {}, options);
+    return new AndroidRecorder(config.target.android || {}, options);
   }
   if (platform === 'unity') {
-    return new AndroidRecorder(config.target.android ?? {}, options);
+    return new AndroidRecorder(config.target.android || {}, options);
   }
   throw new Error(
     `Recording platform '${platform}' is not implemented yet. ` +

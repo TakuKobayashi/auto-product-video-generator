@@ -242,7 +242,7 @@ function groundScenarioActions(
       ? `${baseUrl}/`
       : existingGoto?.type === 'goto'
         ? existingGoto.url
-        : featureUrls[index % Math.max(featureUrls.length, 1)] ?? `${baseUrl}/`;
+        : featureUrls[index % Math.max(featureUrls.length, 1)] || `${baseUrl}/`;
     scene.actions = [
       { type: 'goto', url: targetUrl },
       ...safeActions,
@@ -264,5 +264,5 @@ function resolveFeatureUrl(baseUrl: string, route?: string): string {
 function describeProvider(llm: LlmProvider): string {
   // LlmProvider doesn't expose its name/model directly; this is best-effort
   // for a friendlier log line and falls back gracefully.
-  return (llm as { constructor?: { name?: string } }).constructor?.name ?? 'LLM';
+  return (llm as { constructor?: { name?: string } }).constructor?.name || 'LLM';
 }

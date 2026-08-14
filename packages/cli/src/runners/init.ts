@@ -52,17 +52,17 @@ export async function runInit(directory: string, options: InitOptions): Promise<
 
   // A placeholder keeps the config immediately valid. autoDetectUrl tells
   // analyze to replace it with the local readyUrl inferred from source.
-  const url = options.url ?? 'http://localhost:3000';
-  const name = options.name ?? basename(resolve(options.source ?? directory));
+  const url = options.url || 'http://localhost:3000';
+  const name = options.name || basename(resolve(options.source || directory));
 
   const source: SourceConfig = options.repo
     ? {
-        repository: options.repo, ref: options.ref, installDeps: options.installDeps ?? false,
+        repository: options.repo, ref: options.ref, installDeps: options.installDeps || false,
         startCommand: options.serveCommand, projectPath: options.projectPath,
         platformPriority: parsePlatformPriority(options.platformPriority),
       }
     : {
-        localPath: options.source, installDeps: options.installDeps ?? false,
+        localPath: options.source, installDeps: options.installDeps || false,
         startCommand: options.serveCommand, projectPath: options.projectPath,
         platformPriority: parsePlatformPriority(options.platformPriority),
       };
@@ -83,7 +83,7 @@ export async function runInit(directory: string, options: InitOptions): Promise<
       autoInstall: true,
     };
   }
-  config.video.type = (options.type as 'teaser' | 'shorts' | 'demo' | 'tutorial') ?? 'demo';
+  config.video.type = (options.type as 'teaser' | 'shorts' | 'demo' | 'tutorial') || 'demo';
 
   if (options.dryRun) {
     logger.dryRun(`Would write: ${configPath}`);

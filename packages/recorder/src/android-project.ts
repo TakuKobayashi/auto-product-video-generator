@@ -64,8 +64,8 @@ export async function prepareAndroidProject(
   // APK metadata is authoritative for debug applicationIdSuffix values;
   // source parsing is only a fallback when Android build-tools are absent.
   const packageName = options.package
-    ?? await detectPackageFromApk(apkPath, options.sdkPath)
-    ?? await detectPackageFromSource(sourceRoot);
+    || await detectPackageFromApk(apkPath, options.sdkPath)
+    || await detectPackageFromSource(sourceRoot);
   if (!packageName) {
     throw new Error(
       `Could not detect the Android application id from source or ${apkPath}. ` +
@@ -115,7 +115,7 @@ async function ensureAndroidDevice(
   }
   if (!options.serial && connected.length > 0) {
     const emulator = connected.find((serial) => serial.startsWith('emulator-'));
-    const selected = emulator ?? connected[0];
+    const selected = emulator || connected[0];
     logger.success(`Using connected Android device: ${selected}`);
     await waitForBoot(adbPath, selected);
     return selected;
@@ -127,7 +127,7 @@ async function ensureAndroidDevice(
   const emulatorPath = findSdkTool('emulator', options.sdkPath);
   const avds = (await run(emulatorPath, ['-list-avds']))
     .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const avd = options.avd ?? avds[0];
+  const avd = options.avd || avds[0];
   if (!avd) {
     throw new Error(
       'No connected Android device and no AVD is installed. Create one in Android Studio Device Manager, ' +
@@ -234,7 +234,7 @@ async function detectPackageFromSource(rootDir: string): Promise<string | undefi
 }
 
 async function detectPackageFromApk(apkPath: string, sdkPath?: string): Promise<string | undefined> {
-  const aapt = findBuildTool('aapt', sdkPath) ?? findBuildTool('aapt2', sdkPath);
+  const aapt = findBuildTool('aapt', sdkPath) || findBuildTool('aapt2', sdkPath);
   if (!aapt) return undefined;
   try {
     const output = await run(aapt, ['dump', 'badging', apkPath]);

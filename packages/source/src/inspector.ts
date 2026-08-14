@@ -67,10 +67,10 @@ export async function inspectProject(rootDir: string): Promise<ProjectSourceCont
   const repositoryRoot = findRepositoryRoot(rootDir);
   const packageManager = detectPackageManager(repositoryRoot);
   const packageJson = await readPackageJson(rootDir);
-  const readme = await readReadme(rootDir) ??
+  const readme = await readReadme(rootDir) ||
     (rootDir !== repositoryRoot ? await readReadme(repositoryRoot) : null);
 
-  const deps = new Set([...(packageJson?.dependencies ?? []), ...(packageJson?.devDependencies ?? [])]);
+  const deps = new Set([...(packageJson?.dependencies || []), ...(packageJson?.devDependencies || [])]);
   const looksLikeNextProject = deps.has('next') || existsSync(join(rootDir, 'next.config.js')) || existsSync(join(rootDir, 'next.config.mjs')) || existsSync(join(rootDir, 'next.config.ts'));
 
   // Directory presence alone isn't enough evidence — an "app/" (or "pages/")
@@ -144,8 +144,8 @@ async function readPackageJson(rootDir: string): Promise<PackageJsonSummary | nu
       name: data.name,
       description: data.description,
       scripts: data.scripts,
-      dependencies: Object.keys(data.dependencies ?? {}),
-      devDependencies: Object.keys(data.devDependencies ?? {}),
+      dependencies: Object.keys(data.dependencies || {}),
+      devDependencies: Object.keys(data.devDependencies || {}),
     };
   } catch {
     return null;

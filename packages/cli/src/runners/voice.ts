@@ -1,12 +1,15 @@
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
-import { loadConfig, readYaml, writeYaml, logger, ScriptSchema } from '@auto-product-video-generator/core';
+import { ensureDir, loadConfig, readYaml, writeYaml, logger, ScriptSchema } from '@auto-product-video-generator/core';
 import { recomputeScriptTimingFromAudio, SubtitleGenerator } from '@auto-product-video-generator/ai';
 import { VoicevoxClient } from '@auto-product-video-generator/voicevox';
 
 interface VoiceOptions {
   config?: string;
+  script?: string;
+  voiceDir?: string;
+  subtitles?: string;
   speaker?: string;
   scene?: string;
   dryRun?: boolean;
@@ -15,11 +18,11 @@ interface VoiceOptions {
 export async function runVoice(options: VoiceOptions): Promise<void> {
   logger.header('apvg video voice');
 
-  const configPath = options.config ?? 'apvg.config.yml';
+  const configPath = options.config || 'apvg.config.yml';
   const config = await loadConfig(configPath);
 
   const workDir = config.output.workDir;
-  const scriptPath = join(workDir, 'script.yml');
+  const scriptPath = options.script || join(workDir, 'script.yml');
 
   if (!existsSync(scriptPath)) {
     logger.error(`script.yml not found. Run 'pnpm apvg video scenario generate' first.`);
@@ -34,8 +37,9 @@ export async function runVoice(options: VoiceOptions): Promise<void> {
     ...(options.speaker ? { speakerId: parseInt(options.speaker, 10) } : {}),
   };
 
-  const voiceDir = join(workDir, 'voice');
-  const srtPath = join(workDir, 'subtitles.srt');
+  const voiceDir = options.voiceDir || join(workDir, 'voice');
+  const srtPath = options.subtitles || join(workDir, 'subtitles.srt');
+  await Promise.all([voiceDir, dirname(scriptPath), dirname(srtPath)].map(ensureDir));
 
   logger.info(`VOICEVOX host:  ${voicevoxConfig.host}`);
   logger.info(`Speaker ID:     ${voicevoxConfig.speakerId}`);
@@ -54,7 +58,7 @@ export async function runVoice(options: VoiceOptions): Promise<void> {
   const client = new VoicevoxClient(voicevoxConfig);
   await client.synthesizeAll(script, {
     outputDir: voiceDir,
-    dryRun: options.dryRun ?? false,
+    dryRun: options.dryRun || false,
     sceneId: options.scene,
   });
 

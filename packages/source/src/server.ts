@@ -9,7 +9,7 @@ export function detectStartCommand(
   packageJson: PackageJsonSummary | null,
   packageManager: 'pnpm' | 'yarn' | 'npm' | 'bun' = 'npm',
 ): string | null {
-  const scripts = packageJson?.scripts ?? {};
+  const scripts = packageJson?.scripts || {};
   const preferredOrder = ['dev', 'start', 'serve', 'preview'];
   for (const name of preferredOrder) {
     if (scripts[name]) {

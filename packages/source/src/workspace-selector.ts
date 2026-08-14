@@ -24,7 +24,7 @@ export async function selectProjectRoot(repositoryRoot: string, source: SourceCo
 
   const candidates = await discoverCandidates(repositoryRoot);
   const applications = candidates.filter((item) => item.platform !== 'web' || item.runnable);
-  const priority = source.platformPriority ?? DEFAULT_PLATFORM_PRIORITY;
+  const priority = source.platformPriority || DEFAULT_PLATFORM_PRIORITY;
   const platformRank = (platform: ProjectPlatform) => {
     const index = priority.indexOf(platform);
     return index < 0 ? priority.length : index;
@@ -41,7 +41,7 @@ export async function selectProjectRoot(repositoryRoot: string, source: SourceCo
   if (selected.score < 40) return repositoryRoot;
   logger.success(
     `Monorepo project selected: ${selected.relativePath} ` +
-    `(${selected.packageName ?? selected.platform}, platform=${selected.platform})`,
+    `(${selected.packageName || selected.platform}, platform=${selected.platform})`,
   );
   return selected.path;
 }
@@ -69,7 +69,7 @@ async function discoverCandidates(root: string): Promise<Candidate[]> {
           dependencies?: Record<string, string>; devDependencies?: Record<string, string>;
         };
         const dependencies = new Set([
-          ...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {}),
+          ...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.devDependencies || {}),
         ]);
         const platform = detectCandidatePlatform(dir, dependencies);
         const runnable = Boolean(pkg.scripts?.dev || pkg.scripts?.start || pkg.scripts?.serve);

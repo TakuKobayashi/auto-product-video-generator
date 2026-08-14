@@ -8,8 +8,8 @@ import { LlmConfig } from '../types/config.js';
  */
 export function describeTaskLlm(config: LlmConfig, task: 'analyze' | 'scenario'): string {
   const override = config.tasks?.[task];
-  const provider = override?.provider ?? config.provider;
-  const model = override?.model ?? config.model;
+  const provider = override?.provider || config.provider;
+  const model = override?.model || config.model;
   const overridden = override?.provider || override?.model ? ' (task override)' : '';
   return `${provider}/${model}${overridden}`;
 }

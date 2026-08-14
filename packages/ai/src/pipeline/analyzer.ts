@@ -145,14 +145,14 @@ ${buildPlatformClassificationPrompt(context.platformHints)}
 
 ## Project details
 
-Project name: ${pkg?.name ?? '(unknown)'}
-Description (from package.json): ${pkg?.description ?? '(none)'}
+Project name: ${pkg?.name || '(unknown)'}
+Description (from package.json): ${pkg?.description || '(none)'}
 Web framework detected (if any): ${context.framework}
 Selected application path: ${context.projectPath}
 Repository package manager: ${context.packageManager}
 
-package.json scripts: ${JSON.stringify(pkg?.scripts ?? {})}
-Key dependencies: ${(pkg?.dependencies ?? []).slice(0, 40).join(', ') || '(none listed)'}
+package.json scripts: ${JSON.stringify(pkg?.scripts || {})}
+Key dependencies: ${(pkg?.dependencies || []).slice(0, 40).join(', ') || '(none listed)'}
 
 ${context.readme ? `README:\n${context.readme}\n` : '(No README found)'}
 

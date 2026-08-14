@@ -177,6 +177,49 @@ Resume from the first unfinished or affected step:
 | `pnpm apvg video record` | `.apvg/recordings/*.mp4` | paces actions to audio timing; fails if the target is unreachable |
 | `pnpm apvg video render` | `output/final.mp4`, `output/artifacts/` | final video plus intermediate artifacts |
 
+Every step accepts explicit input and output paths. This lets separate runs,
+CI jobs, or multiple variants connect their own intermediate files instead of
+sharing `.apvg/`:
+
+```bash
+pnpm apvg project analyze \
+  --source-context tmp/source-context.json \
+  --project-summary tmp/project-summary.json
+
+pnpm apvg video scenario generate \
+  --project-summary tmp/project-summary.json \
+  --scenario tmp/scenario.yml \
+  --script tmp/script.yml \
+  --subtitles tmp/subtitles.srt
+
+pnpm apvg video voice \
+  --script tmp/script.yml \
+  --voice-dir tmp/voice \
+  --subtitles tmp/subtitles.srt
+
+pnpm apvg video record \
+  --scenario tmp/scenario.yml \
+  --script tmp/script.yml \
+  --voice-dir tmp/voice \
+  --recordings-dir tmp/recordings \
+  --screenshots-dir tmp/screenshots
+
+pnpm apvg video render \
+  --scenario tmp/scenario.yml \
+  --script tmp/script.yml \
+  --voice-dir tmp/voice \
+  --recordings-dir tmp/recordings \
+  --screenshots-dir tmp/screenshots \
+  --subtitles-file tmp/subtitles.srt \
+  --timeline tmp/timeline.json \
+  --output tmp/final.mp4 \
+  --artifacts-dir tmp/artifacts
+```
+
+Paths are relative to the current directory unless absolute. Omitted options
+retain the defaults shown in the table. See each command's `--help` for source
+cache and development-server log path options as well.
+
 `pnpm apvg video generate [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
 runs all five, skipping (reusing existing output for) whichever steps you
 name. Every command's full option list is in `--help`

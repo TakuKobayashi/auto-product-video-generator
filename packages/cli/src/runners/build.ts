@@ -48,7 +48,7 @@ interface BuildOptions {
 export async function runBuild(options: BuildOptions): Promise<void> {
   logger.header('apvg video generate');
 
-  const configPath = options.config ?? 'apvg.config.yml';
+  const configPath = options.config || 'apvg.config.yml';
   let config = await loadConfig(configPath);
 
   // Apply overrides
@@ -61,7 +61,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   const workDir = config.output.workDir;
   await ensureDir(workDir);
 
-  logger.info(`Source:  ${config.source.repository ?? config.source.localPath}`);
+  logger.info(`Source:  ${config.source.repository || config.source.localPath}`);
   logger.info(`Target:  ${config.target.autoDetectUrl ? 'auto-detect from source' : config.target.url}`);
   logger.info(`Video:   ${config.video.type}, ~${config.video.duration}s`);
   logger.info(`LLM (analyze):  ${describeTaskLlm(config.llm, 'analyze')}`);
@@ -82,7 +82,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
 
   const analyzeLlm = createLlmProviderForTask(config.llm, 'analyze');
   const scenarioLlm = createLlmProviderForTask(config.llm, 'scenario');
-  const dryRun = options.dryRun ?? false;
+  const dryRun = options.dryRun || false;
 
   // Resolved once upfront (not just in the analyze step) since the record
   // step also needs it to know where to run source.startCommand from.
@@ -117,14 +117,14 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       if (isAndroidRecordingPlatform(summary.platform)) {
         summary.setupSteps = [];
         config.target.type = 'android';
-        config.target.android ??= { autoStartEmulator: true, autoInstall: true };
+        config.target.android ||= { autoStartEmulator: true, autoInstall: true };
         await saveConfig(configPath, config);
         logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
       }
       await writeJson(summaryPath, summary);
       logger.success(`Saved: ${summaryPath}`);
     } else {
-      logger.dryRun(`Would resolve source: ${config.source.repository ?? config.source.localPath}`);
+      logger.dryRun(`Would resolve source: ${config.source.repository || config.source.localPath}`);
       logger.dryRun(`Would write: ${contextPath}`);
       logger.dryRun(`Would write: ${summaryPath}`);
       summary = {
@@ -253,7 +253,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       const nextScene = script.scenes[scriptIndex + 1];
       const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
       await recorder.recordScene(scene, config.video, {
-        headed: options.headed ?? false,
+        headed: options.headed || false,
         slowMo: 0,
         outputDir: recordingsDir,
         screenshotDir,
@@ -273,8 +273,8 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   const renderer = new FfmpegRenderer();
   await renderer.render(timeline, outputPath, {
     noSubtitles: options.subtitles === false,
-    noVoice: options.skipVoice ?? false,
-    preview: options.preview ?? false,
+    noVoice: options.skipVoice || false,
+    preview: options.preview || false,
     dryRun,
     ffmpegPath: resolveFfmpegPath(),
     workDir,

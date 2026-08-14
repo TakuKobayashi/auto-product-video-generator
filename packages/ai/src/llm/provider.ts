@@ -52,7 +52,7 @@ export class OllamaProvider implements LlmProvider {
   }
 
   async generateJson<T>(prompt: string, systemPrompt?: string, schema?: JsonSchema): Promise<T> {
-    const raw = await this.call(prompt, systemPrompt, schema ?? 'json');
+    const raw = await this.call(prompt, systemPrompt, schema || 'json');
     const cleaned = stripCodeFence(raw);
     return JSON.parse(cleaned) as T;
   }
@@ -122,14 +122,14 @@ async function readOllamaStream(res: Response): Promise<string> {
     if (!line.trim()) return;
     const chunk = JSON.parse(line) as { response?: string; error?: string };
     if (chunk.error) throw new Error(`Ollama generation failed: ${chunk.error}`);
-    output += chunk.response ?? '';
+    output += chunk.response || '';
   };
 
   while (true) {
     const { done, value } = await reader.read();
     pending += decoder.decode(value, { stream: !done });
     const lines = pending.split('\n');
-    pending = lines.pop() ?? '';
+    pending = lines.pop() || '';
     for (const line of lines) consumeLine(line);
     if (done) break;
   }
@@ -244,15 +244,15 @@ function buildSingleProvider(
 
   switch (provider) {
     case 'gemini':
-      return new GeminiProvider(model, getKey(apiKeyEnv ?? 'GEMINI_API_KEY'));
+      return new GeminiProvider(model, getKey(apiKeyEnv || 'GEMINI_API_KEY'));
     case 'openai':
-      return new OpenAIProvider(model, getKey(apiKeyEnv ?? 'OPENAI_API_KEY'));
+      return new OpenAIProvider(model, getKey(apiKeyEnv || 'OPENAI_API_KEY'));
     case 'claude':
-      return new ClaudeProvider(model, getKey(apiKeyEnv ?? 'ANTHROPIC_API_KEY'));
+      return new ClaudeProvider(model, getKey(apiKeyEnv || 'ANTHROPIC_API_KEY'));
     case 'groq':
-      return new GroqProvider(model, getKey(apiKeyEnv ?? 'GROQ_API_KEY'));
+      return new GroqProvider(model, getKey(apiKeyEnv || 'GROQ_API_KEY'));
     case 'ollama':
-      return new OllamaProvider(model, process.env.OLLAMA_HOST ?? ollamaHost);
+      return new OllamaProvider(model, process.env.OLLAMA_HOST || ollamaHost);
     default:
       throw new Error(`Unknown LLM provider: ${provider satisfies never}`);
   }
@@ -286,7 +286,7 @@ export function createLlmProvider(config: LlmConfig): LlmProvider {
   }
 
   const fallbackModel =
-    config.fallbackModel ?? (config.fallbackProvider === 'ollama' ? 'qwen2.5:7b-instruct' : config.model);
+    config.fallbackModel || (config.fallbackProvider === 'ollama' ? 'qwen2.5:7b-instruct' : config.model);
 
   // Built lazily: constructing e.g. a GeminiProvider requires its API key to
   // be present, but we shouldn't demand that key up front if the primary
@@ -340,9 +340,9 @@ export function createLlmProviderForTask(config: LlmConfig, task: 'analyze' | 's
 
   return createLlmProvider({
     ...config,
-    provider: override.provider ?? config.provider,
-    model: override.model ?? config.model,
-    apiKeyEnv: override.apiKeyEnv ?? config.apiKeyEnv,
+    provider: override.provider || config.provider,
+    model: override.model || config.model,
+    apiKeyEnv: override.apiKeyEnv || config.apiKeyEnv,
   });
 }
 

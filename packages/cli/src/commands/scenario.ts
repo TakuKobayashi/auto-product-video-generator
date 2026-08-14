@@ -8,6 +8,10 @@ export function scenarioCommand(): Command {
     .description('Generate scenario.yml and script.yml via AI')
     .option('-c, --config <path>', 'path to apvg.config.yml', 'apvg.config.yml')
     .option('-t, --type <type>', 'override video type: teaser|shorts|demo|tutorial')
+    .option('--project-summary <path>', 'project summary JSON input (default: <workDir>/project-summary.json)')
+    .option('--scenario <path>', 'scenario YML output (default: <workDir>/scenario.yml)')
+    .option('--script <path>', 'script YML output (default: <workDir>/script.yml)')
+    .option('--subtitles <path>', 'SRT subtitles output (default: <workDir>/subtitles.srt)')
     .option('--force', 'overwrite existing scenario.yml')
     .option('--dry-run', 'preview scenario without saving')
     .action(async (options: Record<string, string | boolean>) => {

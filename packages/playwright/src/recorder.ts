@@ -300,15 +300,15 @@ export class SceneRecorder {
   private describeAction(action: Action): string {
     switch (action.type) {
       case 'goto': return ` → ${action.url}`;
-      case 'click': return ` "${action.text ?? action.label ?? action.selector}"`;
+      case 'click': return ` "${action.text || action.label || action.selector}"`;
       case 'type': return ` "${action.value.slice(0, 20)}${action.value.length > 20 ? '...' : ''}"`;
       case 'wait': return ` ${action.ms}ms`;
-      case 'wait_visible': return ` "${action.text ?? action.selector}"`;
+      case 'wait_visible': return ` "${action.text || action.selector}"`;
       case 'scroll': return ` ${action.direction} ${action.amount}px`;
-      case 'hover': return ` "${action.text ?? action.label ?? action.selector}"`;
+      case 'hover': return ` "${action.text || action.label || action.selector}"`;
       case 'screenshot': return ` "${action.name}"`;
       case 'launch_app': return '';
-      case 'tap': return ` "${action.text ?? action.contentDescription ?? `${action.x},${action.y}`}"`;
+      case 'tap': return ` "${action.text || action.contentDescription || `${action.x},${action.y}`}"`;
       case 'input_text': return ` "${action.value.slice(0, 20)}"`;
       case 'swipe': return ` ${action.fromX},${action.fromY} → ${action.toX},${action.toY}`;
       case 'back': return '';

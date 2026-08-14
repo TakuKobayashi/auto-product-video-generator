@@ -66,7 +66,7 @@ async function cloneOrUpdate(repository: string, ref: string | undefined, cloneD
   if (alreadyCloned) {
     logger.step('source', `Updating existing clone: ${absCloneDir}`);
     try {
-      const target = ref ?? 'HEAD';
+      const target = ref || 'HEAD';
       await git(['-C', absCloneDir, 'fetch', '--depth', '1', 'origin', target]);
       await git(['-C', absCloneDir, 'reset', '--hard', 'FETCH_HEAD']);
       logger.success('Clone updated.');
