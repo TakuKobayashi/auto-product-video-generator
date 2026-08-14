@@ -6,13 +6,13 @@ WebおよびAndroidアプリ向けのAIプロモーション動画自動生成�
 
 ---
 
-## 必要な環境
+## 実行時に利用する外部環境
 
-Node.js ≥ 20、pnpm ≥ 9、git、Docker（VOICEVOX用）。Web録画にはPlaywright、Android録画には
-Android SDK（`adb`、`emulator`）と作成済みAVDが必要です。AVDは停止中でも構いません。SDKは
+npmパッケージではNode.jsやパッケージマネージャーのバージョンを強制していません。また、実行時に
+pnpmは必要ありません。gitはリポジトリ取得、Dockerまたは別途起動したVOICEVOX Engineは音声生成、
+Android SDK（`adb`、`emulator`）と作成済みAVDはAndroid録画を使う場合にだけ必要です。SDKは
 `target.android.sdkPath`、`ANDROID_SDK_ROOT`、`ANDROID_HOME`のいずれかで指定できます。
-それ以外（ffmpeg、Playwright、
-Task、任意でOllama）は下のセットアップコマンドがまとめてインストールします。
+リポジトリのセットアップコマンドでは、ffmpeg、Playwright、Task、任意でOllamaもまとめて準備します。
 
 ## クイックスタート
 

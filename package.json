@@ -1,7 +1,6 @@
 {
   "name": "auto-product-video-generator-workspace",
   "private": true,
-  "packageManager": "pnpm@10.30.1",
   "workspaces": [
     "packages/*"
   ],

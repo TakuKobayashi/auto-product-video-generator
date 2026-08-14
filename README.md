@@ -17,11 +17,14 @@ Set the SDK root with `target.android.sdkPath`, `ANDROID_SDK_ROOT`, or
 
 ---
 
-## Requirements
+## Runtime dependencies
 
-Node.js ≥ 20, pnpm ≥ 9, git, Docker (for VOICEVOX). Everything else
-(ffmpeg, Playwright, Task, and optionally Ollama) is installed by the setup
-command below.
+The npm package does not enforce a Node.js or package-manager version. External
+tools are needed only for the features that use them: git for repository
+sources, Docker or another VOICEVOX Engine installation for narration, and the
+Android SDK for Android recording. The repository setup command installs the
+remaining development tools, including ffmpeg, Playwright, Task, and optionally
+Ollama.
 
 ## Install from npm
 
@@ -30,8 +33,9 @@ npm install --global auto-product-video-generator
 apvg --help
 ```
 
-The npm package installs the CLI and its Node.js dependencies. The external
-runtime services and tools listed above are still required. In particular,
+The npm package installs the CLI and its JavaScript dependencies with npm; it
+does not require pnpm at runtime. External services and tools listed above are
+still required only for their corresponding features. In particular,
 install Playwright Chromium with `npx playwright install chromium`, and run a
 VOICEVOX Engine instance on port `50021`. Ollama is optional when
 `GEMINI_API_KEY` is configured.
