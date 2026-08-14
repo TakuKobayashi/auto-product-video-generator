@@ -42,7 +42,7 @@ export async function runInit(directory: string, options: InitOptions): Promise<
     process.exit(1);
   }
 
-  const configPath = join(directory, 'apvg.config.yaml');
+  const configPath = join(directory, 'apvg.config.yml');
 
   if (existsSync(configPath) && !options.dryRun && !options.force) {
     logger.warn(`Config already exists: ${configPath}`);

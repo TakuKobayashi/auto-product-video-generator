@@ -1,0 +1,24 @@
+# Repository and CI configuration
+.github/
+*.yaml
+*.yml
+apvg.config.yaml
+apvg.config.yml
+project.yml
+Taskfile.yml
+
+# Development-only files
+.apvg/
+.dvg/
+output/
+examples/
+scripts/
+templates/
+.env*
+tsconfig*.json
+pnpm-workspace.yaml
+pnpm-lock.yaml
+prettier.config.js
+
+# Workspace source packages are published individually.
+packages/

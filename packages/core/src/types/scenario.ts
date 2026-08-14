@@ -170,7 +170,7 @@ export const ScenarioMetaSchema = z.object({
 // One step of the "how to get this project running" plan — a Taskfile-like
 // ordered command list, AI-generated during `analyze` (grounded by
 // package.json scripts, README, and the platform classification) and
-// recorded here so scenario.yaml is a fully self-contained execution plan:
+// recorded here so scenario.yml is a fully self-contained execution plan:
 // everything needed to go from a fresh checkout to a recording, not just
 // what to click once something is already running.
 //
@@ -190,8 +190,8 @@ export const SetupStepSchema = z.object({
 export const ScenarioSchema = z.object({
   meta: ScenarioMetaSchema,
   // Ordered setup/start commands — see SetupStepSchema above. Empty by
-  // default so scenario.yaml files from before this field existed still
-  // validate; `record`/`build` fall back to apvg.config.yaml's
+  // default so scenario.yml files from before this field existed still
+  // validate; `record`/`build` fall back to apvg.config.yml's
   // source.startCommand (or manual startup) when this is empty.
   setup: z.array(SetupStepSchema).default([]),
   scenes: z.array(SceneSchema).min(1),

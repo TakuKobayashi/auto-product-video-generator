@@ -48,7 +48,7 @@ interface BuildOptions {
 export async function runBuild(options: BuildOptions): Promise<void> {
   logger.header('apvg video generate');
 
-  const configPath = options.config ?? 'apvg.config.yaml';
+  const configPath = options.config ?? 'apvg.config.yml';
   let config = await loadConfig(configPath);
 
   // Apply overrides
@@ -71,8 +71,8 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   const summaryPath    = join(workDir, 'project-summary.json');
   const contextPath    = join(workDir, 'source-context.json');
   const cloneDir       = join(workDir, 'source-repo');
-  const scenarioPath   = join(workDir, 'scenario.yaml');
-  const scriptPath     = join(workDir, 'script.yaml');
+  const scenarioPath   = join(workDir, 'scenario.yml');
+  const scriptPath     = join(workDir, 'script.yml');
   const srtPath        = join(workDir, 'subtitles.srt');
   const timelinePath   = join(workDir, 'timeline.json');
   const recordingsDir  = join(workDir, 'recordings');
@@ -170,7 +170,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
     }
   } else {
     logger.step('2/5', 'Skipping scenario (--skip-scenario)');
-    for (const [label, p] of [['scenario.yaml', scenarioPath], ['script.yaml', scriptPath]] as const) {
+    for (const [label, p] of [['scenario.yml', scenarioPath], ['script.yml', scriptPath]] as const) {
       if (!existsSync(p)) {
         logger.error(`${label} not found: ${p}`);
         process.exit(1);
@@ -248,7 +248,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
     const recorder = createPlatformRecorder(scenario.meta.platform, config, { rootDir, workDir });
     for (const scene of scenario.scenes) {
       const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
-      if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yaml.`);
+      if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yml.`);
       const scriptScene = script.scenes[scriptIndex];
       const nextScene = script.scenes[scriptIndex + 1];
       const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;

@@ -164,8 +164,8 @@ async function main(): Promise<void> {
 
   // Config file
   check(
-    'apvg.config.yaml present in current directory',
-    existsSync('apvg.config.yaml'),
+    'apvg.config.yml present in current directory',
+    existsSync('apvg.config.yml'),
     'Run: pnpm apvg project init --repo <git-url> --url http://localhost:3000',
   );
 
@@ -195,11 +195,11 @@ async function main(): Promise<void> {
 
 function readConfiguredOllamaModels(): string[] {
   const defaults = ['qwen2.5:7b-instruct'];
-  if (!existsSync('apvg.config.yaml')) return defaults;
+  if (!existsSync('apvg.config.yml')) return defaults;
 
   try {
     const yaml = require('js-yaml') as { load(input: string): unknown };
-    const raw = yaml.load(readFileSync('apvg.config.yaml', 'utf-8')) as {
+    const raw = yaml.load(readFileSync('apvg.config.yml', 'utf-8')) as {
       llm?: {
         provider?: string;
         model?: string;
@@ -229,10 +229,10 @@ function normalizeModelName(name: string): string {
 }
 
 function configuredTargetType(): string | undefined {
-  if (!existsSync('apvg.config.yaml')) return undefined;
+  if (!existsSync('apvg.config.yml')) return undefined;
   try {
     const yaml = require('js-yaml') as { load(input: string): unknown };
-    return (yaml.load(readFileSync('apvg.config.yaml', 'utf8')) as { target?: { type?: string } })?.target?.type;
+    return (yaml.load(readFileSync('apvg.config.yml', 'utf8')) as { target?: { type?: string } })?.target?.type;
   } catch { return undefined; }
 }
 

@@ -69,7 +69,7 @@ export async function prepareAndroidProject(
   if (!packageName) {
     throw new Error(
       `Could not detect the Android application id from source or ${apkPath}. ` +
-      'Set target.android.package in apvg.config.yaml.',
+      'Set target.android.package in apvg.config.yml.',
     );
   }
 

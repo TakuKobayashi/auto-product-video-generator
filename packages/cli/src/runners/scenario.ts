@@ -23,13 +23,13 @@ interface ScenarioGenerateOptions {
 export async function runScenarioGenerate(options: ScenarioGenerateOptions): Promise<void> {
   logger.header('apvg video scenario generate');
 
-  const configPath = options.config ?? 'apvg.config.yaml';
+  const configPath = options.config ?? 'apvg.config.yml';
   const config = await loadConfig(configPath);
 
   const workDir = config.output.workDir;
   const summaryPath = join(workDir, 'project-summary.json');
-  const scenarioPath = join(workDir, 'scenario.yaml');
-  const scriptPath = join(workDir, 'script.yaml');
+  const scenarioPath = join(workDir, 'scenario.yml');
+  const scriptPath = join(workDir, 'script.yml');
   const srtPath = join(workDir, 'subtitles.srt');
 
   if (!existsSync(summaryPath)) {

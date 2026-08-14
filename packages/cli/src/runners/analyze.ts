@@ -15,7 +15,7 @@ interface AnalyzeOptions {
 export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   logger.header('apvg project analyze');
 
-  const configPath = options.config ?? 'apvg.config.yaml';
+  const configPath = options.config ?? 'apvg.config.yml';
   const config = await loadConfig(configPath);
 
   if (options.url) {
@@ -50,11 +50,11 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   if (sourceContext.routes.length === 0) {
     logger.warn(
       `No routes could be auto-discovered for framework '${sourceContext.framework}'. ` +
-      `The AI will infer routes from the file listing instead — review scenario.yaml carefully after generation.`,
+      `The AI will infer routes from the file listing instead — review scenario.yml carefully after generation.`,
     );
   }
 
-  // If apvg.config.yaml doesn't already say how to start the dev server,
+  // If apvg.config.yml doesn't already say how to start the dev server,
   // suggest one from package.json's scripts and save it — 'record'/'build'
   // will use it to start the app automatically instead of requiring it to
   // already be running.
@@ -64,7 +64,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
       config.source.startCommand = detected;
       await saveConfig(configPath, config);
       logger.info(`Detected dev server command '${detected}' — saved to ${configPath} (source.startCommand).`);
-      logger.dim(`  Edit apvg.config.yaml if this isn't right, or clear it to start the app yourself.`);
+      logger.dim(`  Edit apvg.config.yml if this isn't right, or clear it to start the app yourself.`);
     }
   }
 

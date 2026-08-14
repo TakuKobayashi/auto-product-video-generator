@@ -27,17 +27,17 @@ interface RenderOptions {
 export async function runRender(options: RenderOptions): Promise<void> {
   logger.header('apvg video render');
 
-  const configPath = options.config ?? 'apvg.config.yaml';
+  const configPath = options.config ?? 'apvg.config.yml';
   const config = await loadConfig(configPath);
 
   const workDir = config.output.workDir;
-  const scenarioPath = join(workDir, 'scenario.yaml');
-  const scriptPath = join(workDir, 'script.yaml');
+  const scenarioPath = join(workDir, 'scenario.yml');
+  const scriptPath = join(workDir, 'script.yml');
   const timelinePath = join(workDir, 'timeline.json');
   const outputPath = join(config.output.dir, 'final.mp4');
 
   // Validate prerequisites
-  for (const [label, p] of [['scenario.yaml', scenarioPath], ['script.yaml', scriptPath]] as const) {
+  for (const [label, p] of [['scenario.yml', scenarioPath], ['script.yml', scriptPath]] as const) {
     if (!existsSync(p)) {
       logger.error(`${label} not found: ${p}`);
       logger.error(`Run 'pnpm apvg video scenario generate' first.`);

@@ -5,6 +5,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      target_repository:
+        description: Git repository URL of the project to record
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -20,8 +25,9 @@ jobs:
     timeout-minutes: 360
 
     env:
-      # Used only when this repository does not already contain apvg.config.yaml.
-      TARGET_REPOSITORY: https://github.com/TakuKobayashi/fullstack-media-converter.git
+      # Manual runs can use the input; push-triggered runs use the repository
+      # variable configured in GitHub Settings.
+      TARGET_REPOSITORY: ${{ inputs.target_repository || vars.TARGET_REPOSITORY }}
       OLLAMA_HOST: http://127.0.0.1:11434
       OLLAMA_KEEP_ALIVE: -1
       OLLAMA_NUM_PARALLEL: 1
@@ -47,23 +53,23 @@ jobs:
       - name: Install project dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Use existing configuration or initialize it
+      - name: Initialize configuration for the selected target
         run: |
-          if [ -f apvg.config.yaml ]; then
-            echo "Using the existing apvg.config.yaml without overwriting it"
-          else
-            echo "apvg.config.yaml was not found; generating it from $TARGET_REPOSITORY"
-            pnpm apvg project init \
-              --repo "$TARGET_REPOSITORY" \
-              --type demo
+          if [ -z "$TARGET_REPOSITORY" ]; then
+            echo "Set the TARGET_REPOSITORY repository variable or provide the target_repository workflow input." >&2
+            exit 1
           fi
+          pnpm apvg project init \
+            --repo "$TARGET_REPOSITORY" \
+            --type demo \
+            --force
 
       - name: Read Ollama models from configuration
         run: |
           models=$(node -e '
             const fs = require("node:fs");
             const yaml = require("js-yaml");
-            const config = yaml.load(fs.readFileSync("apvg.config.yaml", "utf8"));
+            const config = yaml.load(fs.readFileSync("apvg.config.yml", "utf8"));
             const llm = config?.llm ?? {};
             const models = new Set();
             const add = (provider, model) => {
@@ -74,7 +80,7 @@ jobs:
             for (const task of Object.values(llm.tasks ?? {})) {
               add(task.provider ?? llm.provider, task.model ?? llm.model);
             }
-            if (models.size === 0) throw new Error("No Ollama model is configured in apvg.config.yaml");
+            if (models.size === 0) throw new Error("No Ollama model is configured in apvg.config.yml");
             process.stdout.write([...models].join(" "));
           ')
           echo "OLLAMA_MODELS=$models" >> "$GITHUB_ENV"
@@ -175,7 +181,7 @@ jobs:
           name: video-generation-diagnostics-${{ github.run_number }}
           path: |
             .apvg/
-            apvg.config.yaml
+            apvg.config.yml
             ollama.log
             voicevox.log
           include-hidden-files: true

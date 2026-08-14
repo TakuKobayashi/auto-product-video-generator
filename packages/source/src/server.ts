@@ -38,8 +38,8 @@ export interface RunSetupStepsOptions {
 /**
  * Executes an ordered list of SetupStep — the Taskfile-like "how do I get
  * this project running" plan AI-generated during `analyze` and stored in
- * scenario.yaml's `setup` field (see SetupStepSchema in
- * packages/core/src/types/scenario.ts). This is what makes scenario.yaml a
+ * scenario.yml's `setup` field (see SetupStepSchema in
+ * packages/core/src/types/scenario.ts). This is what makes scenario.yml a
  * fully self-contained execution plan: everything needed to go from a
  * fresh checkout to a recording, not just what to click once something
  * happens to already be running.
@@ -90,9 +90,9 @@ export async function runSetupSteps(steps: SetupStep[], options: RunSetupStepsOp
 
 export interface EnsureAppRunningOptions {
   url: string;
-  /** scenario.yaml's `setup` field — preferred when non-empty. */
+  /** scenario.yml's `setup` field — preferred when non-empty. */
   setupSteps: SetupStep[];
-  /** Legacy fallback: apvg.config.yaml's source.startCommand, used only when setupSteps is empty. */
+  /** Legacy fallback: apvg.config.yml's source.startCommand, used only when setupSteps is empty. */
   startCommand?: string;
   cwd: string;
   installDeps: boolean;
@@ -102,12 +102,12 @@ export interface EnsureAppRunningOptions {
 /**
  * The single entry point `record`/`build` call before recording. If `url`
  * is already reachable, does nothing. Otherwise:
- *   1. If scenario.yaml has a `setup` plan (the common case for anything
+ *   1. If scenario.yml has a `setup` plan (the common case for anything
  *      generated after this feature shipped), run it via runSetupSteps —
  *      this is the "execution plan describes its own startup" behavior.
- *   2. Else fall back to the older, simpler apvg.config.yaml
+ *   2. Else fall back to the older, simpler apvg.config.yml
  *      source.startCommand mechanism (ensureServerRunning), for
- *      scenario.yaml files generated before `setup` existed, or as a
+ *      scenario.yml files generated before `setup` existed, or as a
  *      manual override.
  *   3. Else warn that nothing could be started automatically.
  */
@@ -118,7 +118,7 @@ export async function ensureAppRunning(options: EnsureAppRunningOptions): Promis
   }
 
   if (options.setupSteps.length > 0) {
-    logger.step('setup', `Running scenario.yaml's setup plan (${options.setupSteps.length} step(s))...`);
+    logger.step('setup', `Running scenario.yml's setup plan (${options.setupSteps.length} step(s))...`);
     if (options.installDeps && !options.setupSteps.some((s) => /install/i.test(s.name))) {
       // The scenario's plan didn't include an explicit install step but
       // installDeps was requested — run it first as a courtesy.
@@ -160,7 +160,7 @@ export interface EnsureServerRunningOptions {
  * nothing. Otherwise, if `startCommand` is set, runs it (installing deps
  * first if requested) as a detached background process and polls `url`
  * until it responds or `timeoutMs` elapses. Prefer `ensureAppRunning` (uses
- * scenario.yaml's `setup` plan when available) — this is what it falls
+ * scenario.yml's `setup` plan when available) — this is what it falls
  * back to when there's no `setup` plan.
  */
 export async function ensureServerRunning(options: EnsureServerRunningOptions): Promise<void> {
@@ -172,7 +172,7 @@ export async function ensureServerRunning(options: EnsureServerRunningOptions): 
   if (!options.startCommand) {
     logger.warn(`${options.url} is not reachable, and no source.startCommand is configured.`);
     logger.warn('Start your app yourself (e.g. `npm run dev`) before running this command, or set');
-    logger.warn('source.startCommand in apvg.config.yaml to have it started automatically.');
+    logger.warn('source.startCommand in apvg.config.yml to have it started automatically.');
     return;
   }
 

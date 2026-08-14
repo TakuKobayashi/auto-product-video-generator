@@ -56,7 +56,7 @@ pnpm apvg project init --repo https://github.com/you/your-app.git
 pnpm apvg video generate # generate the video
 ```
 
-`init` generates `apvg.config.yaml`. Use `--repo` for a remote repository or
+`init` generates `apvg.config.yml`. Use `--repo` for a remote repository or
 `--source` for a local checkout. The non-technical, product-usage editorial
 direction is built in and does not need a config entry.
 When `--url` is omitted, the LLM reads package scripts and the README to infer
@@ -93,7 +93,7 @@ runs, or just use the plain `pnpm run <name>` equivalents in
 Output: `output/final.mp4`, with intermediate files under `output/artifacts/`
 (scenario/script, subtitles, WAV narration, scene recordings, screenshots,
 timeline, analysis results, logs, and the effective config). First run without
-`GEMINI_API_KEY` set uses Ollama automatically — see `examples/apvg.config.yaml` for every config
+`GEMINI_API_KEY` set uses Ollama automatically — see `examples/apvg.config.yml` for every config
 option (each one is commented inline, not duplicated here).
 
 ## GitHub Actions generation
@@ -102,9 +102,11 @@ option (each one is commented inline, not duplicated here).
 GitHub-hosted `ubuntu-latest` runner. It starts automatically on every push to
 `main` and can also be started manually with `Run workflow`.
 
-The target is currently fixed to
-`https://github.com/TakuKobayashi/tappunpages.git`. The job installs Node.js,
-pnpm, Playwright Chromium, system ffmpeg, Ollama, and VOICEVOX Engine. It selects
+The target repository is supplied through the `target_repository` input for a
+manual run, or through a `TARGET_REPOSITORY` repository variable for a
+push-triggered run. No personal target repository is built into the workflow.
+The job installs Node.js, pnpm, Playwright Chromium, system ffmpeg, Ollama, and
+VOICEVOX Engine. It selects
 `qwen2.5:14b-instruct` with at least 15 GB RAM and 11 GB free disk, then falls
 back through 7B to 3B as resources decrease. Pipeline stages run separately;
 the Ollama model is removed after scenario generation to release both RAM and
@@ -120,18 +122,18 @@ generation is CPU-bound on GitHub-hosted runners.
 
 ```mermaid
 flowchart TD
-    init(["<b>init</b><br/>--repo / --source"]) -->|writes| cfg[(apvg.config.yaml)]
+    init(["<b>init</b><br/>--repo / --source"]) -->|writes| cfg[(apvg.config.yml)]
 
     subgraph build["pnpm apvg video generate  (one command runs all five ↓)"]
         direction TB
         analyze(["<b>analyze</b><br/>clone/read source,<br/>AI extracts features<br/>+ platform + setup plan"])
-        scenario(["<b>scenario generate</b><br/>AI writes the recording<br/>plan (scenario.yaml)"])
+        scenario(["<b>scenario generate</b><br/>AI writes the recording<br/>plan (scenario.yml)"])
         voice(["<b>voice</b><br/>VOICEVOX narration"])
         record(["<b>record</b><br/>Playwright records using<br/>actual narration durations"])
         render(["<b>render</b><br/>ffmpeg composite"])
         analyze -->|project-summary.json| scenario
-        scenario -->|scenario.yaml, script.yaml| voice
-        voice -->|script.yaml with actual timing| record
+        scenario -->|scenario.yml, script.yml| voice
+        voice -->|script.yml with actual timing| record
         record -->|recordings/*.mp4| render
     end
 
@@ -168,9 +170,9 @@ Resume from the first unfinished or affected step:
 
 | Command | Produces | Notes |
 |---|---|---|
-| `pnpm apvg project init --repo <url>` | `apvg.config.yaml` | one-time; `--source <path>` for a local checkout instead |
+| `pnpm apvg project init --repo <url>` | `apvg.config.yml` | one-time; `--source <path>` for a local checkout instead |
 | `pnpm apvg project analyze` | `.apvg/source-context.json`, `.apvg/project-summary.json` | deterministic source scan + AI classification |
-| `pnpm apvg video scenario generate` | `.apvg/scenario.yaml`, `.apvg/script.yaml`, `.apvg/subtitles.srt` | scenario is AI; script/subtitles are derived deterministically from it |
+| `pnpm apvg video scenario generate` | `.apvg/scenario.yml`, `.apvg/script.yml`, `.apvg/subtitles.srt` | scenario is AI; script/subtitles are derived deterministically from it |
 | `pnpm apvg video voice` | `.apvg/voice/*.wav` | also updates script/subtitle timing from actual audio |
 | `pnpm apvg video record` | `.apvg/recordings/*.mp4` | paces actions to audio timing; fails if the target is unreachable |
 | `pnpm apvg video render` | `output/final.mp4`, `output/artifacts/` | final video plus intermediate artifacts |
@@ -189,7 +191,7 @@ or `video.sceneGapSeconds`, rerun `voice → record → render`.
 
 ## Configuration
 
-`apvg.config.yaml` — see **[`examples/apvg.config.yaml`](./examples/apvg.config.yaml)**
+`apvg.config.yml` — see **[`examples/apvg.config.yml`](./examples/apvg.config.yml)**
 for the full reference, every option commented inline (git source, target
 URL, video type, LLM provider/fallback/per-task overrides, VOICEVOX). Not
 duplicated here on purpose — that file *is* the documentation for it.
@@ -204,7 +206,7 @@ Three things worth knowing up front:
   a harder task and sometimes needs a stronger model than `analyze` does.
 - **Starting the app**: `analyze` tries to detect a start command
   (`npm run dev`, etc.) from `package.json` and bakes it into
-  `scenario.yaml`'s `setup` plan; `record`/`build` run it automatically.
+  `scenario.yml`'s `setup` plan; `record`/`build` run it automatically.
   Recording stops with an error instead of rendering blank/partial footage
   when the target is unreachable or a browser action fails.
 - **Scene gaps**: `video.sceneGapSeconds` (default: `1`) controls the silent
@@ -224,7 +226,7 @@ Three things worth knowing up front:
 
 - **`scenario generate` fails schema validation repeatedly** — the model
   isn't a great fit for that task. Point `llm.tasks.scenario` at a
-  different/stronger model (see `examples/apvg.config.yaml`) without
+  different/stronger model (see `examples/apvg.config.yml`) without
   changing what `analyze` uses.
 - **`pnpm install` fails downloading ffmpeg/task binaries**, or
   **`ERR_PNPM_IGNORED_BUILDS`** — see the Japanese README's
@@ -233,7 +235,7 @@ Three things worth knowing up front:
 - **Nothing works and you don't know why** — `task doctor`.
 - **Recording stops on a URL or browser-action error** — first open
   `target.url` in a normal browser, then verify the `goto`, `click`, and
-  `wait_visible` actions in `.apvg/scenario.yaml`. Rerun from `record` if
+  `wait_visible` actions in `.apvg/scenario.yml`. Rerun from `record` if
   narration is unchanged, or from `voice` if narration changed.
 
 ---

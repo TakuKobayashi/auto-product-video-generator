@@ -33,7 +33,7 @@ export async function resolveProjectSource(options: ResolveSourceOptions): Promi
   }
 
   throw new Error(
-    'No project source configured. Set source.repository (git URL) or source.localPath in apvg.config.yaml.',
+    'No project source configured. Set source.repository (git URL) or source.localPath in apvg.config.yml.',
   );
 }
 

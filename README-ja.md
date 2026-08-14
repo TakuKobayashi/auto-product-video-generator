@@ -45,14 +45,14 @@ Android StudioのDevice Managerで一度作成してください。複数端末�
 SDKを環境変数で指定しない場合は`target.android.sdkPath`を設定します。
 `target.android.activity`は省略可能で、省略時はランチャーActivityを自動起動します。
 生成された端末向けシナリオは、安全のため推測したボタン名をタップせず、起動・待機・スワイプを
-中心にします。実際のラベルが分かる場合は`.apvg/scenario.yaml`へ`tap`、`input_text`、
+中心にします。実際のラベルが分かる場合は`.apvg/scenario.yml`へ`tap`、`input_text`、
 `back`などを追加してから`pnpm apvg video record`を実行できます。
 
 Unityのバッチモードはプロジェクト固有のBuild Methodが必要なため、Unityでは既存APK、または
 `target.android.buildCommand`を指定します。生成後のAVD起動・インストール・ADB録画は同じく自動です。
 iOSとUnity Desktopの録画は未対応です。
 
-`init`が`apvg.config.yaml`を生成します。動画化するソースがGitHub等にある場合は`--repo`、
+`init`が`apvg.config.yml`を生成します。動画化するソースがGitHub等にある場合は`--repo`、
 ローカルにある場合は`--source`を使います。非エンジニア向け・使い方中心という編集方針は
 ツール本体のデフォルトなので、設定ファイルへの追記は不要です。
 `--url`を省略すると、LLMがpackage.jsonの起動スクリプトとREADMEを読み、起動コマンドと
@@ -64,7 +64,7 @@ iOSとUnity Desktopの録画は未対応です。
 解析します。選択結果は`.apvg/source-context.json`の`projectPath`に記録されます。意図したアプリと
 異なる場合は`source.platformPriority`で種類の優先順位を変更できます（デフォルトはWebが最優先）。
 特定アプリに固定する場合だけ、初期化時の`--project-path apps/web`または
-`apvg.config.yaml`の`source.projectPath`を使います。初期化時にも、たとえば
+`apvg.config.yml`の`source.projectPath`を使います。初期化時にも、たとえば
 `--platform-priority web,android,flutter`と指定できます。
 依存関係はモノレポのルートで、開発サーバーは選択したアプリのディレクトリで自動実行されます。
 
@@ -89,7 +89,7 @@ TypeScriptソースを直接実行するため、クリーンなcheckoutでも�
 出力先は完成動画が`output/final.mp4`、途中生成物が`output/artifacts/`です。
 `artifacts/`にはscenario/script、字幕、WAV音声、シーン録画、スクリーンショット、
 timeline、分析結果、ログ、使用した設定が保存されます。`GEMINI_API_KEY`を設定して
-いない場合は自動的にOllamaが使われます。設定項目の全リストは`examples/apvg.config.yaml`を見てください（各項目に
+いない場合は自動的にOllamaが使われます。設定項目の全リストは`examples/apvg.config.yml`を見てください（各項目に
 コメントで説明が書いてあるので、ここでは重複させません）。
 
 ## GitHub Actionsで自動生成
@@ -98,11 +98,9 @@ timeline、分析結果、ログ、使用した設定が保存されます。`GE
 `ubuntu-latest` runnerだけで動画生成を完結します。`main`ブランチへのpushで自動実行され、
 Actions画面の`Run workflow`から手動実行することもできます。
 
-現在の動画化対象はworkflow内で次へ固定しています。
-
-```text
-https://github.com/TakuKobayashi/tappunpages.git
-```
+対象リポジトリは、手動実行時の`target_repository`入力、またはpush実行時の
+GitHub Repository Variable `TARGET_REPOSITORY`で指定します。個人の対象リポジトリは
+workflow内に組み込まれていません。
 
 runner内でNode.js、pnpm、Playwright Chromium、システム版ffmpeg、Ollama、VOICEVOX Engineを準備します。
 RAM 15 GB以上かつ空きディスク11 GB以上なら`qwen2.5:14b-instruct`、次に7B、
@@ -123,18 +121,18 @@ GitHub-hosted runnerではOllamaをCPU実行するため時間がかかります
 
 ```mermaid
 flowchart TD
-    init(["<b>init</b><br/>--repo / --source"]) -->|生成| cfg[(apvg.config.yaml)]
+    init(["<b>init</b><br/>--repo / --source"]) -->|生成| cfg[(apvg.config.yml)]
 
     subgraph build["pnpm apvg video generate （下の5つをまとめて実行）"]
         direction TB
         analyze(["<b>analyze</b><br/>ソースをclone/読込み、<br/>AIが機能・プラットフォーム・<br/>起動計画を抽出"])
-        scenario(["<b>scenario generate</b><br/>AIが録画計画<br/>(scenario.yaml)を生成"])
+        scenario(["<b>scenario generate</b><br/>AIが録画計画<br/>(scenario.yml)を生成"])
         voice(["<b>voice</b><br/>VOICEVOXでナレーション合成"])
         record(["<b>record</b><br/>音声の実時間に合わせて<br/>プラットフォーム別に録画"])
         render(["<b>render</b><br/>ffmpegで合成"])
         analyze -->|project-summary.json| scenario
-        scenario -->|scenario.yaml, script.yaml| voice
-        voice -->|実時間を反映したscript.yaml| record
+        scenario -->|scenario.yml, script.yml| voice
+        voice -->|実時間を反映したscript.yml| record
         record -->|recordings/*.mp4| render
     end
 
@@ -178,9 +176,9 @@ pnpm apvg video render
 
 | コマンド | 生成物 | 補足 |
 |---|---|---|
-| `pnpm apvg project init --repo <URL>` | `apvg.config.yaml` | 初回のみ。ローカルの場合は`--source <パス>` |
+| `pnpm apvg project init --repo <URL>` | `apvg.config.yml` | 初回のみ。ローカルの場合は`--source <パス>` |
 | `pnpm apvg project analyze` | `.apvg/source-context.json`、`.apvg/project-summary.json` | 決定論的なソース走査 + AIによる分類 |
-| `pnpm apvg video scenario generate` | `.apvg/scenario.yaml`、`.apvg/script.yaml`、`.apvg/subtitles.srt` | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
+| `pnpm apvg video scenario generate` | `.apvg/scenario.yml`、`.apvg/script.yml`、`.apvg/subtitles.srt` | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
 | `pnpm apvg video voice` | `.apvg/voice/*.wav` | 実音声の長さでscript/subtitlesの時刻も更新 |
 | `pnpm apvg video record` | `.apvg/recordings/*.mp4` | 音声の実時間に合わせて操作し、到達不能なら停止 |
 | `pnpm apvg video render` | `output/final.mp4`、`output/artifacts/` | 完成動画と途中生成物一式を出力 |
@@ -198,7 +196,7 @@ pnpm apvg video render
 
 ## 設定ファイル
 
-`apvg.config.yaml` — 全項目の説明は**[`examples/apvg.config.yaml`](./examples/apvg.config.yaml)**
+`apvg.config.yml` — 全項目の説明は**[`examples/apvg.config.yml`](./examples/apvg.config.yml)**
 にコメント付きで書いてあります（gitソース指定、対象URL、動画タイプ、LLMプロバイダー/
 フォールバック/タスク別モデル、VOICEVOX等）。ここでは意図的に重複させていません
 — あのファイル自体がドキュメントです。
@@ -212,7 +210,7 @@ pnpm apvg video render
   モデル**を指定可能です — `scenario generate`のほうが難しいタスクなので、
   `analyze`より強いモデルが必要になることがあります。
 - **アプリの起動**: `analyze`が`package.json`から起動コマンド（`npm run dev`等）を
-  自動検出し、`scenario.yaml`の`setup`計画に焼き込みます。`record`/`build`は
+  自動検出し、`scenario.yml`の`setup`計画に焼き込みます。`record`/`build`は
   それを使って自動的にアプリを起動します。`target.url`へ到達できない場合やブラウザ操作が
   失敗した場合は、白画面や部分録画を完成品にせずエラーで停止します。
 - **シーン間の無音**: `video.sceneGapSeconds`（デフォルト`1`秒）で、ナレーションと
@@ -232,7 +230,7 @@ pnpm apvg video render
 ### `scenario generate`がスキーマ検証で何度も失敗する
 
 使っているモデルがそのタスクに向いていない可能性が高いです。`llm.tasks.scenario`
-だけを別の（より強い）モデルに向けてください（`examples/apvg.config.yaml`参照）。
+だけを別の（より強い）モデルに向けてください（`examples/apvg.config.yml`参照）。
 `analyze`側の設定は変えなくて大丈夫です。警告メッセージには、モデルが具体的に
 どのフィールドを間違えたかも表示されます。
 
@@ -257,11 +255,11 @@ pnpm approve-builds
 あります: `pnpm apvg project init --repo <URL>` または `--source <パス>`（gitリポジトリ
 である必要あり）。
 
-### `scenario.yaml`のURLが実際のページと合っていない
+### `scenario.yml`のURLが実際のページと合っていない
 
 自動ルート検出は現時点でNext.js（App/Pages Router）のみ対応です。
 `.apvg/source-context.json`の`routes`が空なら、AIがファイル一覧から推測しているため
-精度が落ちます。`scenario.yaml`の`goto`アクションを手動で修正してから`record`して
+精度が落ちます。`scenario.yml`の`goto`アクションを手動で修正してから`record`して
 ください。
 
 ### VOICEVOX / Ollamaに接続できない
@@ -277,7 +275,7 @@ Ollamaもコンテナで動かす場合は`11434:11434`が必要です。`voice`
 
 ### 録画が対象URLやブラウザ操作のエラーで停止する
 
-まず`target.url`を通常のブラウザで開けるか確認してください。次に`.apvg/scenario.yaml`の
+まず`target.url`を通常のブラウザで開けるか確認してください。次に`.apvg/scenario.yml`の
 `goto`、`click`、`wait_visible`が実際の画面と合っているか確認します。修正後は音声を
 変えていなければ`pnpm apvg video record`、ナレーションも変えた場合は
 `pnpm apvg video voice`から再実行してください。

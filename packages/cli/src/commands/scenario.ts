@@ -5,10 +5,10 @@ export function scenarioCommand(): Command {
 
   cmd
     .command('generate')
-    .description('Generate scenario.yaml and script.yaml via AI')
-    .option('-c, --config <path>', 'path to apvg.config.yaml', 'apvg.config.yaml')
+    .description('Generate scenario.yml and script.yml via AI')
+    .option('-c, --config <path>', 'path to apvg.config.yml', 'apvg.config.yml')
     .option('-t, --type <type>', 'override video type: teaser|shorts|demo|tutorial')
-    .option('--force', 'overwrite existing scenario.yaml')
+    .option('--force', 'overwrite existing scenario.yml')
     .option('--dry-run', 'preview scenario without saving')
     .action(async (options: Record<string, string | boolean>) => {
       const { runScenarioGenerate } = await import('../runners/scenario.js');
@@ -17,8 +17,8 @@ export function scenarioCommand(): Command {
 
   cmd
     .command('validate')
-    .description('Validate an existing scenario.yaml against the schema')
-    .argument('[file]', 'scenario file path', '.apvg/scenario.yaml')
+    .description('Validate an existing scenario.yml against the schema')
+    .argument('[file]', 'scenario file path', '.apvg/scenario.yml')
     .action(async (file: string) => {
       const { runScenarioValidate } = await import('../runners/scenario.js');
       await runScenarioValidate(file);

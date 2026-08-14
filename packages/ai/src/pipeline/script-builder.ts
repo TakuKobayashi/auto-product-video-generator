@@ -2,14 +2,14 @@ import { join } from 'node:path';
 import { Scenario, Script, ScriptScene, getAudioDurationSeconds, logger } from '@auto-product-video-generator/core';
 
 /**
- * Builds script.yaml deterministically from an already-generated
- * scenario.yaml, instead of asking the LLM to produce both in one call.
+ * Builds script.yml deterministically from an already-generated
+ * scenario.yml, instead of asking the LLM to produce both in one call.
  *
  * Previously the LLM had to emit `scenario.scenes[].narration` AND
  * `script.scenes[].narration` (the same text, twice) plus made-up
  * startTime/endTime — a lot of redundant, easy-to-get-wrong JSON surface
  * for smaller/local models especially. Since the narration text already
- * lives on each scene in scenario.yaml, and timing is just "how long does
+ * lives on each scene in scenario.yml, and timing is just "how long does
  * this text take to say out loud", there's no reason for the LLM to
  * regenerate any of this — it's a pure calculation.
  */
@@ -61,7 +61,7 @@ export async function recomputeScriptTimingFromAudio(
  * chars/sec for narration-style speech); other languages are word-paced
  * (~2.5 words/sec). Good enough for scene timing — not meant to be exact,
  * and the whole point is it's cheap/deterministic rather than another LLM
- * round-trip. Edit script.yaml by hand afterward for anything that needs
+ * round-trip. Edit script.yml by hand afterward for anything that needs
  * to be precise.
  */
 function estimateNarrationSeconds(text: string, language: string): number {

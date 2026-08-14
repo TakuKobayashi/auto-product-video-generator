@@ -25,10 +25,10 @@ export const ProjectSummarySchema = z.object({
   // AI-generated "how to get this project running" plan (install deps,
   // start the dev server, ...), grounded by package.json scripts / README /
   // platform signals — see @auto-product-video-generator/ai's analyzer.ts. Copied
-  // verbatim into scenario.yaml's `setup` field when the scenario is
+  // verbatim into scenario.yml's `setup` field when the scenario is
   // generated (not re-decided there), so project-summary.json and
-  // scenario.yaml always agree. Can be empty if nothing could be
-  // determined — `record`/`build` fall back to apvg.config.yaml's
+  // scenario.yml always agree. Can be empty if nothing could be
+  // determined — `record`/`build` fall back to apvg.config.yml's
   // source.startCommand or manual startup in that case.
   setupSteps: z.array(SetupStepSchema).default([]),
   features: z.array(FeatureSchema),

@@ -15,15 +15,15 @@ interface RecordOptions {
 export async function runRecord(options: RecordOptions): Promise<void> {
   logger.header('apvg video record');
 
-  const configPath = options.config ?? 'apvg.config.yaml';
+  const configPath = options.config ?? 'apvg.config.yml';
   const config = await loadConfig(configPath);
 
   const workDir = config.output.workDir;
-  const scenarioPath = join(workDir, 'scenario.yaml');
-  const scriptPath = join(workDir, 'script.yaml');
+  const scenarioPath = join(workDir, 'scenario.yml');
+  const scriptPath = join(workDir, 'script.yml');
 
   if (!existsSync(scenarioPath)) {
-    logger.error(`scenario.yaml not found. Run 'pnpm apvg video scenario generate' first.`);
+    logger.error(`scenario.yml not found. Run 'pnpm apvg video scenario generate' first.`);
     process.exit(1);
   }
 
@@ -31,7 +31,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   const scenario = ScenarioSchema.parse(rawScenario);
 
   if (!existsSync(scriptPath)) {
-    throw new Error(`script.yaml not found. Run 'pnpm apvg video voice' before recording.`);
+    throw new Error(`script.yml not found. Run 'pnpm apvg video voice' before recording.`);
   }
   const script = ScriptSchema.parse(await readYaml(scriptPath));
 
@@ -73,7 +73,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
 
   for (const scene of scenesToRecord) {
     const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
-    if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yaml.`);
+    if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yml.`);
     const scriptScene = script.scenes[scriptIndex];
     const voicePath = join(workDir, scriptScene.voiceFile);
     if (!options.dryRun && !existsSync(voicePath)) {

@@ -1,0 +1,43 @@
+project:
+  name: "My Web App"
+  description: "A sample web application"
+
+source:
+  repository: "https://github.com/your-org/your-repo.git"
+  installDeps: false
+  platformPriority:
+    - web
+    - android
+    - flutter
+    - react-native
+    - unity
+    - ios
+    - desktop
+    - other
+
+target:
+  url: "http://localhost:3000"
+  autoDetectUrl: true
+  type: "web"
+
+video:
+  type: "demo"
+  duration: 60
+  resolution: "1920x1080"
+  fps: 30
+  language: "ja"
+  pageReadyWaitSeconds: 2
+  sceneGapSeconds: 1
+
+llm:
+  provider: "ollama"
+  model: "qwen2.5:7b-instruct"
+  ollamaHost: "http://localhost:11434"
+
+voicevox:
+  host: "http://localhost:50021"
+  speakerId: 3
+
+output:
+  dir: "./output"
+  workDir: "./.apvg"

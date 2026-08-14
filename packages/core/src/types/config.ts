@@ -7,7 +7,7 @@ export type VideoType = z.infer<typeof VideoTypeSchema>;
 // (see @auto-product-video-generator/ai's platform-classifier.ts for the prompt, and
 // @auto-product-video-generator/source's inspector.ts for the deterministic file-based
 // hints that ground that classification). Recorded in both
-// project-summary.json and scenario.yaml's meta.platform.
+// project-summary.json and scenario.yml's meta.platform.
 //
 // Recording is selected by platform. Web uses Playwright; Android and
 // Android builds from cross-platform projects use adb.
@@ -59,7 +59,7 @@ export const SourceConfigSchema = z
     // requiring you to start it yourself in another terminal. Left unset
     // by default — `analyze` will suggest one it detects from
     // package.json's scripts (prefers "dev", falls back to "start") and
-    // save it into apvg.config.yaml for you to confirm/edit.
+    // save it into apvg.config.yml for you to confirm/edit.
     startCommand: z.string().optional(),
     // Monorepo application selection. projectPath wins; otherwise runnable
     // workspace packages are ranked by this platform order, then app quality.

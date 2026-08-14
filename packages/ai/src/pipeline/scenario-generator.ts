@@ -147,7 +147,7 @@ Respond with JSON only — just the scenario object, no "script" field, no other
     // The platform and setup plan were already determined,
     // deterministically-grounded, in `analyze` (see platform-classifier.ts
     // and setup-planner.ts) — stamp them here rather than letting this LLM
-    // call re-decide them, so scenario.yaml always agrees with
+    // call re-decide them, so scenario.yml always agrees with
     // project-summary.json.
     scenario.meta.platform = summary.platform;
     scenario.setup = summary.setupSteps;
@@ -157,7 +157,7 @@ Respond with JSON only — just the scenario object, no "script" field, no other
       groundDeviceScenarioActions(scenario);
     }
 
-    // script.yaml is derived deterministically from scenario.yaml's
+    // script.yml is derived deterministically from scenario.yml's
     // narration text — no second LLM call, no risk of the two disagreeing.
     const script = buildScriptFromScenario(scenario, config.sceneGapSeconds);
 
@@ -173,7 +173,7 @@ Respond with JSON only — just the scenario object, no "script" field, no other
  * Until source inspection exposes a verified mobile accessibility tree, do
  * not let the LLM guess labels or coordinates. Convert its safe pacing and
  * scrolling intent into Android-executable actions. Users can then enrich
- * scenario.yaml with verified tap/input actions before `video record`.
+ * scenario.yml with verified tap/input actions before `video record`.
  */
 function groundDeviceScenarioActions(scenario: Scenario): void {
   scenario.scenes.forEach((scene, index) => {
@@ -190,7 +190,7 @@ function groundDeviceScenarioActions(scenario: Scenario): void {
     if (!actions.some((action) => action.type === 'wait')) actions.push({ type: 'wait', ms: 800 });
     scene.actions = actions;
   });
-  logger.info('[scenario] Generated a conservative device scenario; edit verified tap/input actions in scenario.yaml if needed.');
+  logger.info('[scenario] Generated a conservative device scenario; edit verified tap/input actions in scenario.yml if needed.');
 }
 
 const TECHNICAL_TERMS = /\b(?:Next\.js|App Router|TypeScript|JavaScript|React|Cloudflare|Workers?|Hono|API(?:s| routes?)?|serverless|front-?end|back-?end|runtime|framework|deployment|database|architecture|static generation)\b|技術仕様|実装|フレームワーク|プログラミング言語|サーバーレス|アーキテクチャ|静的生成/iu;

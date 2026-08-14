@@ -6,8 +6,8 @@ import { logger } from '@auto-product-video-generator/core';
 const GENERATED_FILES = [
   'project-summary.json',
   'source-context.json',
-  'scenario.yaml',
-  'script.yaml',
+  'scenario.yml',
+  'script.yml',
   'subtitles.srt',
   'timeline.json',
   'dev-server.log',

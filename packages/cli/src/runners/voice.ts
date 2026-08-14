@@ -15,14 +15,14 @@ interface VoiceOptions {
 export async function runVoice(options: VoiceOptions): Promise<void> {
   logger.header('apvg video voice');
 
-  const configPath = options.config ?? 'apvg.config.yaml';
+  const configPath = options.config ?? 'apvg.config.yml';
   const config = await loadConfig(configPath);
 
   const workDir = config.output.workDir;
-  const scriptPath = join(workDir, 'script.yaml');
+  const scriptPath = join(workDir, 'script.yml');
 
   if (!existsSync(scriptPath)) {
-    logger.error(`script.yaml not found. Run 'pnpm apvg video scenario generate' first.`);
+    logger.error(`script.yml not found. Run 'pnpm apvg video scenario generate' first.`);
     process.exit(1);
   }
 
