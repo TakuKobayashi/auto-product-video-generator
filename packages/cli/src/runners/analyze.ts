@@ -86,6 +86,10 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
     config.target.android ||= { autoStartEmulator: true, autoInstall: true };
     await saveConfig(configPath, config);
     logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
+  } else if (summary.platform === 'cli') {
+    config.target.type = 'cli';
+    await saveConfig(configPath, config);
+    logger.info(`Enabled Docker-based CLI recording in ${configPath}.`);
   }
 
   await writeJson(summaryPath, summary);

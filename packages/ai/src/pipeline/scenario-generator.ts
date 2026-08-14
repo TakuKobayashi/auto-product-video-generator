@@ -23,7 +23,7 @@ const DEFAULT_AUDIENCE =
 // example) reliably produced invalid JSON for them (missing
 // direction/amount, missing name).
 const SYSTEM_PROMPT = `You are a video director creating promotional demo videos.
-Generate a scenario (the recording plan) for a web application demo.
+Generate a scenario (the recording plan) for a web application or command-line product demo.
 
 ## Audience and editorial goal
 
@@ -62,17 +62,19 @@ Each scene: { "id": "string", "title": "string", "narration": "string", "actions
 
 ## Action types — use ONLY these, and copy the exact field names shown
 
-The feature list provides verified URLs, but it does NOT provide verified UI
-text, labels, selectors, or form fields. Therefore use ONLY goto / wait /
-scroll / screenshot. NEVER generate click, type, hover, or wait_visible unless
-the prompt explicitly gives you the exact visible UI text or selector. Guessing
-translated labels such as "トップページ" or generic labels such as "Previous"
-will make the recording fail.
+For web projects, the feature list provides verified URLs, but it does NOT
+provide verified UI text, labels, selectors, or form fields. Therefore use
+ONLY goto / wait / scroll / screenshot. For CLI projects, use ONLY
+run_command / wait / screenshot. NEVER generate click, type, hover, or
+wait_visible unless the prompt explicitly gives you the exact visible UI text
+or selector. Guessing translated labels such as "トップページ" or generic
+labels such as "Previous" will make the recording fail.
 
 - {"type":"goto","url":"https://example.com/page"}
 - {"type":"wait","ms":1000}
 - {"type":"scroll","direction":"down","amount":300}          (direction and amount are BOTH REQUIRED)
 - {"type":"screenshot","name":"final-view"}                  ("name" is REQUIRED)
+- {"type":"run_command","command":"my-tool --help"}          (CLI projects only; command is REQUIRED)
 
 For "goto" actions, ONLY use the exact URLs given to you in the feature list
 below (already the real target URL + a real discovered route). Never invent
@@ -99,11 +101,13 @@ export class ScenarioGenerator {
     logger.step('scenario', `Generating ${config.type} scenario via LLM...`);
 
     const baseUrl = targetUrl.replace(/\/$/, '');
+    const isCli = summary.platform === 'cli';
     const demoableFeatures = summary.features
-      .filter((f) => f.demoable && isConcreteWebRoute(f.route))
-      .map((f) => `- ${f.title}: ${f.description}\n  URL: ${resolveFeatureUrl(baseUrl, f.route)}`)
+      .filter((f) => f.demoable && (isCli ? Boolean(f.command) : isConcreteWebRoute(f.route)))
+      .map((f) => isCli
+        ? `- ${f.title}: ${f.description}\n  Command: ${f.command}`
+        : `- ${f.title}: ${f.description}\n  URL: ${resolveFeatureUrl(baseUrl, f.route)}`)
       .join('\n');
-
     const prompt = `Create a ${config.type} promotional video scenario.
 
 Project: ${summary.name}
@@ -112,8 +116,10 @@ Target audience: ${summary.targetAudience}
 Key value props:
 ${summary.keyValueProps.map((v) => `- ${v}`).join('\n')}
 
-Features to demonstrate (each with its verified URL — use only these URLs for goto actions):
-${demoableFeatures || `- (no demoable features identified; use ${baseUrl} as a general intro)`}
+Features to demonstrate${isCli ? '' : ' (each with its verified URL — use only these URLs for goto actions)'}:
+${demoableFeatures || (isCli
+    ? '- (no documented CLI commands were identified; use a safe --help command)'
+    : `- (no demoable features identified; use ${baseUrl} as a general intro)`)}
 
 App base URL: ${baseUrl}
 Video type: ${config.type}
@@ -127,8 +133,10 @@ Editorial direction:
 - Assume the viewer has no software-development knowledge.
 - Never mention implementation technology, technical specifications, or source-code structure.
 
-The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
-demonstrate a specific feature should "goto" that feature's URL from the list above.
+${isCli
+    ? 'This is a CLI project. Use run_command actions with realistic commands documented by the project. Start with a safe --help or --version command. Do not use goto, click, type, scroll, hover, or mobile actions.'
+    : `The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
+demonstrate a specific feature should "goto" that feature's URL from the list above.`}
 Remember: at most 5 scenes total.
 
 Respond with JSON only — just the scenario object, no "script" field, no other wrapping.`;
@@ -153,6 +161,8 @@ Respond with JSON only — just the scenario object, no "script" field, no other
     scenario.setup = summary.setupSteps;
     if (summary.platform === 'web') {
       groundScenarioActions(scenario, summary, baseUrl);
+    } else if (summary.platform === 'cli') {
+      groundCliScenarioActions(scenario, summary);
     } else {
       groundDeviceScenarioActions(scenario);
     }
@@ -166,6 +176,21 @@ Respond with JSON only — just the scenario object, no "script" field, no other
       `${scenario.scenes.length} scene(s).`,
     );
     return { scenario, script };
+  }
+}
+
+function groundCliScenarioActions(scenario: Scenario, summary: ProjectSummary): void {
+  const commands = summary.features.flatMap((feature) => feature.command ? [feature.command] : []);
+  const allowed = new Set(commands);
+  const fallback = commands[0] || 'npm --help';
+  for (const scene of scenario.scenes) {
+    scene.actions = scene.actions.filter((action) => {
+      if (action.type !== 'run_command') return action.type === 'wait' || action.type === 'screenshot';
+      return allowed.size === 0 || allowed.has(action.command);
+    });
+    if (!scene.actions.some((action) => action.type === 'run_command')) {
+      scene.actions.unshift({ type: 'run_command', command: fallback });
+    }
   }
 }
 

@@ -66,13 +66,14 @@ async function discoverCandidates(root: string): Promise<Candidate[]> {
       try {
         const pkg = JSON.parse(await readFile(packagePath, 'utf8')) as {
           name?: string; scripts?: Record<string, string>;
+          bin?: string | Record<string, string>;
           dependencies?: Record<string, string>; devDependencies?: Record<string, string>;
         };
         const dependencies = new Set([
           ...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.devDependencies || {}),
         ]);
-        const platform = detectCandidatePlatform(dir, dependencies);
-        const runnable = Boolean(pkg.scripts?.dev || pkg.scripts?.start || pkg.scripts?.serve);
+        const platform = detectCandidatePlatform(dir, dependencies, Boolean(pkg.bin));
+        const runnable = Boolean(pkg.scripts?.dev || pkg.scripts?.start || pkg.scripts?.serve || pkg.bin);
         const relativePath = relative(root, dir) || '.';
         let score = runnable ? 40 : 0;
         if (platform === 'web') score += 35;
@@ -94,7 +95,7 @@ async function discoverCandidates(root: string): Promise<Candidate[]> {
   return results;
 }
 
-function detectCandidatePlatform(dir: string, dependencies: Set<string>): ProjectPlatform {
+function detectCandidatePlatform(dir: string, dependencies: Set<string>, hasBin: boolean): ProjectPlatform {
   if (existsSync(resolve(dir, 'ProjectSettings', 'ProjectVersion.txt'))) return 'unity';
   if (existsSync(resolve(dir, 'pubspec.yaml'))) return 'flutter';
   if (dependencies.has('react-native')) return 'react-native';
@@ -102,6 +103,7 @@ function detectCandidatePlatform(dir: string, dependencies: Set<string>): Projec
   if ([
     'next', 'react', 'react-dom', 'vue', 'nuxt', '@sveltejs/kit', 'vite', 'astro',
   ].some((name) => dependencies.has(name))) return 'web';
+  if (hasBin || dependencies.has('commander') || dependencies.has('yargs') || dependencies.has('oclif')) return 'cli';
   return 'other';
 }
 

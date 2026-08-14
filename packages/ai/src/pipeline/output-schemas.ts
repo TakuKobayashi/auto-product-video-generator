@@ -26,7 +26,7 @@ export const PROJECT_SUMMARY_OUTPUT_SCHEMA: JsonSchema = {
     description: { type: 'string', minLength: 1 },
     platform: {
       type: 'string',
-      enum: ['web', 'ios', 'android', 'unity', 'flutter', 'react-native', 'desktop', 'other'],
+      enum: ['web', 'cli', 'ios', 'android', 'unity', 'flutter', 'react-native', 'desktop', 'other'],
     },
     setupSteps: { type: 'array', items: setupStep },
     features: {
@@ -34,12 +34,13 @@ export const PROJECT_SUMMARY_OUTPUT_SCHEMA: JsonSchema = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['id', 'title', 'description', 'route', 'demoable', 'priority'],
+        required: ['id', 'title', 'description', 'demoable', 'priority'],
         properties: {
           id: { type: 'string', minLength: 1 },
           title: { type: 'string', minLength: 1 },
           description: { type: 'string', minLength: 1 },
           route: { type: 'string', minLength: 1 },
+          command: { type: 'string', minLength: 1 },
           demoable: { type: 'boolean' },
           priority: { type: 'string', enum: ['high', 'medium', 'low'] },
         },
@@ -74,6 +75,10 @@ const action = {
     {
       type: 'object', additionalProperties: false, required: ['type', 'name'],
       properties: { type: { const: 'screenshot' }, name: { type: 'string', minLength: 1 } },
+    },
+    {
+      type: 'object', additionalProperties: false, required: ['type', 'command'],
+      properties: { type: { const: 'run_command' }, command: { type: 'string', minLength: 1 } },
     },
   ],
 };

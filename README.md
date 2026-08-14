@@ -4,6 +4,8 @@ AI-powered promotional video generator for web and Android apps. Point it at
 a real git-managed project; it reads the actual source, plans a recording,
 drives a browser or Android device, and produces a narrated video. Flutter,
 React Native, and Unity are supported when targeting an Android build.
+Command-line applications run in a temporary Docker container and are shown
+in a browser-rendered terminal recorded by Playwright.
 
 For conventional Android, Flutter, and React Native repositories, APVG can
 build a debug APK, reuse a connected device or start the first installed AVD,
@@ -229,6 +231,27 @@ Recording cannot run before voice synthesis. When combining
 `--skip-voice` with recording, existing `.apvg/voice/*.wav` files are still
 required and are measured again before recording. After changing narration
 or `video.sceneGapSeconds`, rerun `voice → record → render`.
+
+### CLI project recording
+
+Projects with a `package.json` `bin` entry or a recognized CLI framework are
+classified as `cli`. APVG builds the bundled
+`packages/recorder/docker/cli/Dockerfile`, mounts the selected source as
+read-only, copies it into the temporary container, runs documented commands,
+and records a dedicated terminal page with Playwright. The container is reused
+across scenes and removed after recording, including when a command fails.
+
+```yml
+actions:
+  - type: run_command
+    command: "my-tool --help"
+  - type: wait
+    ms: 1000
+```
+
+Set `target.type: cli` and `target.cli` only when overriding automatic
+detection or the bundled image. Docker is required for the recording step;
+VOICEVOX and rendering use the same pipeline as web videos.
 
 ---
 

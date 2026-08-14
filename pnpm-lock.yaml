@@ -127,6 +127,9 @@ importers:
       '@auto-product-video-generator/playwright':
         specifier: workspace:*
         version: link:../playwright
+      playwright:
+        specifier: ^1.47.0
+        version: 1.61.1
 
   packages/renderer:
     dependencies:

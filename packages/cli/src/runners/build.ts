@@ -120,6 +120,10 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         config.target.android ||= { autoStartEmulator: true, autoInstall: true };
         await saveConfig(configPath, config);
         logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
+      } else if (summary.platform === 'cli') {
+        config.target.type = 'cli';
+        await saveConfig(configPath, config);
+        logger.info(`Enabled Docker-based CLI recording in ${configPath}.`);
       }
       await writeJson(summaryPath, summary);
       logger.success(`Saved: ${summaryPath}`);
@@ -245,20 +249,24 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         });
       }
     }
-    const recorder = createPlatformRecorder(scenario.meta.platform, config, { rootDir, workDir });
-    for (const scene of scenario.scenes) {
-      const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
-      if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yml.`);
-      const scriptScene = script.scenes[scriptIndex];
-      const nextScene = script.scenes[scriptIndex + 1];
-      const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
-      await recorder.recordScene(scene, config.video, {
-        headed: options.headed || false,
-        slowMo: 0,
-        outputDir: recordingsDir,
-        screenshotDir,
-        dryRun,
-      }, targetDurationSeconds, scriptScene.endTime - scriptScene.startTime);
+    const recorder = createPlatformRecorder(scenario.meta.platform, config, { rootDir, workDir, setupSteps: scenario.setup });
+    try {
+      for (const scene of scenario.scenes) {
+        const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
+        if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yml.`);
+        const scriptScene = script.scenes[scriptIndex];
+        const nextScene = script.scenes[scriptIndex + 1];
+        const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
+        await recorder.recordScene(scene, config.video, {
+          headed: options.headed || false,
+          slowMo: 0,
+          outputDir: recordingsDir,
+          screenshotDir,
+          dryRun,
+        }, targetDurationSeconds, scriptScene.endTime - scriptScene.startTime);
+      }
+    } finally {
+      await recorder.dispose?.();
     }
   } else {
     logger.step('4/5', 'Skipping record (--skip-record)');

@@ -12,6 +12,8 @@ export const FeatureSchema = z.object({
   // `target.url` at scenario-generation time to produce a real `goto` URL.
   // Only meaningful for platform: "web"; other platforms may leave this unset.
   route: z.string().optional(),
+  // Exact documented command used to demonstrate a CLI feature.
+  command: z.string().min(1).optional(),
   demoable: z.boolean(),
   priority: z.enum(['high', 'medium', 'low']),
 });

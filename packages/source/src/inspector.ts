@@ -15,6 +15,7 @@ export interface PackageJsonSummary {
   name?: string;
   description?: string;
   scripts?: Record<string, string>;
+  bin?: string | Record<string, string>;
   dependencies?: string[];
   devDependencies?: string[];
 }
@@ -137,6 +138,7 @@ async function readPackageJson(rootDir: string): Promise<PackageJsonSummary | nu
       name?: string;
       description?: string;
       scripts?: Record<string, string>;
+      bin?: string | Record<string, string>;
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
     };
@@ -144,6 +146,7 @@ async function readPackageJson(rootDir: string): Promise<PackageJsonSummary | nu
       name: data.name,
       description: data.description,
       scripts: data.scripts,
+      bin: data.bin,
       dependencies: Object.keys(data.dependencies || {}),
       devDependencies: Object.keys(data.devDependencies || {}),
     };
@@ -319,6 +322,12 @@ async function detectPlatformHints(
   // Desktop (Electron / Tauri)
   if (deps.has('electron')) hints.push('package.json depends on electron');
   if (deps.has('@tauri-apps/cli') || topLevel.includes('src-tauri')) hints.push('Tauri project (src-tauri/ or @tauri-apps/cli dependency)');
+
+  // CLI applications
+  if (packageJson?.bin) hints.push('package.json declares bin command(s) (command-line application)');
+  if (deps.has('commander') || deps.has('yargs') || deps.has('oclif')) {
+    hints.push('package.json depends on a command-line framework');
+  }
 
   return hints;
 }

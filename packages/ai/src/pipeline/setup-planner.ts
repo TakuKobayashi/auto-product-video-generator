@@ -27,6 +27,8 @@ files support them. Examples of the intended shape are \`./gradlew installDebug\
 standard Android app or the project's documented Flutter/React Native build-and-install
 command. For Unity, use its documented command-line build method only when that method
 actually exists in the repository; never invent a \`-executeMethod\` target.
+For CLI projects, include only documented install/build preparation here. Commands that
+demonstrate the CLI belong in feature.command, and a background web server is unnecessary.
 
 Use these exact JSON shapes. Do not use TypeScript notation and NEVER output null.
 

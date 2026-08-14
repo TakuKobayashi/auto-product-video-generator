@@ -16,4 +16,5 @@ export interface PlatformRecorder {
     targetDurationSeconds?: number,
     actionDurationSeconds?: number,
   ): Promise<string>;
+  dispose?(): Promise<void>;
 }

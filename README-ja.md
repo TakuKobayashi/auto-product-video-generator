@@ -3,6 +3,8 @@
 WebおよびAndroidアプリ向けのAIプロモーション動画自動生成ツールです。実在するgit管理プロジェクトを
 指定すると、実際のソースコードを読み込み、録画計画を立て、ブラウザまたはAndroid端末を操作し、
 ナレーション付きの動画を生成します。
+CLIアプリは一時的なDockerコンテナ内で実行し、ブラウザ内に描画した専用ターミナルを
+Playwrightで録画します。
 
 ---
 
@@ -233,6 +235,25 @@ pnpm apvg video render \
 `--skip-voice`と録画を組み合わせる場合も、既存の`.apvg/voice/*.wav`が必要です。
 録画前に既存WAVを測り直すため、音声なしの状態で録画だけを先行することはできません。
 ナレーションや`sceneGapSeconds`を変更した場合は、`voice → record → render`を再実行してください。
+
+### CLIプロジェクトの録画
+
+`package.json`の`bin`、または既知のCLIフレームワークを持つプロジェクトは`cli`として
+判定されます。APVGは同梱する`packages/recorder/docker/cli/Dockerfile`をビルドし、対象ソースを
+読み取り専用でマウントして一時コンテナ内へコピーします。コマンド出力は専用のブラウザ内
+ターミナルへ表示してPlaywrightで録画します。コンテナは全シーンで再利用し、コマンド失敗時を
+含めて録画終了後に削除します。
+
+```yml
+actions:
+  - type: run_command
+    command: "my-tool --help"
+  - type: wait
+    ms: 1000
+```
+
+自動判定や同梱イメージを変更するときだけ、`target.type: cli`と`target.cli`を指定します。
+録画工程ではDockerが必要です。VOICEVOXと動画合成はWeb録画と同じパイプラインを使用します。
 
 ---
 

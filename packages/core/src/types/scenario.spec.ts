@@ -14,3 +14,14 @@ describe('device actions', () => {
     expect(() => ActionSchema.parse({ type: 'tap' })).toThrow(/tap requires/);
   });
 });
+
+describe('CLI actions', () => {
+  it('accepts a non-empty command', () => {
+    expect(ActionSchema.parse({ type: 'run_command', command: 'apvg --help' }))
+      .toEqual({ type: 'run_command', command: 'apvg --help' });
+  });
+
+  it('rejects an empty command', () => {
+    expect(() => ActionSchema.parse({ type: 'run_command', command: '' })).toThrow();
+  });
+});

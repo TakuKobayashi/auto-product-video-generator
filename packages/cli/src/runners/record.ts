@@ -79,26 +79,30 @@ export async function runRecord(options: RecordOptions): Promise<void> {
     }
   }
 
-  const recorder = createPlatformRecorder(scenario.meta.platform, config, { rootDir, workDir });
+  const recorder = createPlatformRecorder(scenario.meta.platform, config, { rootDir, workDir, setupSteps: scenario.setup });
 
-  for (const scene of scenesToRecord) {
-    const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
-    if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yml.`);
-    const scriptScene = script.scenes[scriptIndex];
-    const voicePath = join(voiceDir, basename(scriptScene.voiceFile));
-    if (!options.dryRun && !existsSync(voicePath)) {
-      throw new Error(`Voice file not found: ${voicePath}. Run 'pnpm apvg video voice' before recording.`);
+  try {
+    for (const scene of scenesToRecord) {
+      const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
+      if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yml.`);
+      const scriptScene = script.scenes[scriptIndex];
+      const voicePath = join(voiceDir, basename(scriptScene.voiceFile));
+      if (!options.dryRun && !existsSync(voicePath)) {
+        throw new Error(`Voice file not found: ${voicePath}. Run 'pnpm apvg video voice' before recording.`);
+      }
+      const nextScene = script.scenes[scriptIndex + 1];
+      const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
+      logger.info('');
+      await recorder.recordScene(scene, config.video, {
+        headed: options.headed || false,
+        slowMo: parseInt(options.slowMo || '0', 10),
+        outputDir: recordingsDir,
+        screenshotDir,
+        dryRun: options.dryRun || false,
+      }, targetDurationSeconds, scriptScene.endTime - scriptScene.startTime);
     }
-    const nextScene = script.scenes[scriptIndex + 1];
-    const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
-    logger.info('');
-    await recorder.recordScene(scene, config.video, {
-      headed: options.headed || false,
-      slowMo: parseInt(options.slowMo || '0', 10),
-      outputDir: recordingsDir,
-      screenshotDir,
-      dryRun: options.dryRun || false,
-    }, targetDurationSeconds, scriptScene.endTime - scriptScene.startTime);
+  } finally {
+    await recorder.dispose?.();
   }
 
   logger.info('');

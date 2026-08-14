@@ -17,6 +17,7 @@ export type VideoType = z.infer<typeof VideoTypeSchema>;
 // (and, ideally, a deterministic hint in packages/source/src/inspector.ts).
 export const ProjectPlatformSchema = z.enum([
   'web',
+  'cli',
   'ios',
   'android',
   'unity',
@@ -27,7 +28,7 @@ export const ProjectPlatformSchema = z.enum([
 ]);
 export type ProjectPlatform = z.infer<typeof ProjectPlatformSchema>;
 export const DEFAULT_PLATFORM_PRIORITY: ProjectPlatform[] = [
-  'web', 'android', 'flutter', 'react-native', 'unity', 'ios', 'desktop', 'other',
+  'web', 'cli', 'android', 'flutter', 'react-native', 'unity', 'ios', 'desktop', 'other',
 ];
 
 export const ProjectConfigSchema = z.object({
@@ -102,6 +103,14 @@ export const TargetConfigSchema = z.object({
     autoStartEmulator: z.boolean().default(true),
     autoInstall: z.boolean().default(true),
   }).optional(),
+  cli: z.object({
+    image: z.string().min(1).default('apvg-cli-recorder:latest'),
+    dockerfile: z.string().min(1).optional(),
+    shell: z.string().min(1).default('/bin/bash'),
+    columns: z.number().int().positive().default(100),
+    rows: z.number().int().positive().default(30),
+    fontSize: z.number().int().positive().default(22),
+  }).default({}),
 });
 
 export const VideoConfigSchema = z.object({

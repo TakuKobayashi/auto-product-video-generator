@@ -54,4 +54,16 @@ describe('selectProjectRoot', () => {
       platformPriority: ['ios', 'react-native', 'web', 'other'],
     })).resolves.toBe(join(root, 'apps/mobile'));
   });
+
+  it('recognizes a package.json bin entry as a CLI application', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'apvg-monorepo-'));
+    await packageJson(root, 'packages/shared', { name: '@sample/shared' });
+    await packageJson(root, 'apps/tool', {
+      name: '@sample/tool', bin: { sample: './dist/index.js' }, dependencies: { commander: '^12.0.0' },
+    });
+
+    await expect(selectProjectRoot(root, {
+      localPath: root, installDeps: false, platformPriority: ['cli', 'other'],
+    })).resolves.toBe(join(root, 'apps/tool'));
+  });
 });

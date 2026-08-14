@@ -47,7 +47,8 @@ Hard rules:
 - "description" is always required, even when package.json has no description.
 - Use exactly one allowed platform key from the platform section.
 - setupSteps and features may be empty arrays, but must always be present.
-- Every feature must contain every key shown in the example.
+- Every feature must contain id, title, description, demoable, and priority.
+- For web projects, set route when it is known. For CLI projects, set each demoable feature's "command" to an exact safe command documented by package.json or README and omit route when it is not meaningful.
 - Optional setup fields must be OMITTED when unused. NEVER write null.
 - A foreground setup step has no readyUrl key.
 - A background web-server step has readyUrl as a real URL string.
@@ -105,9 +106,11 @@ export class ProjectAnalyzer {
     );
     if (summary.platform !== 'web') {
       logger.info(
-        `Platform classified as '${summary.platform}'. Android, Flutter, React Native, and Unity ` +
-        `Android builds can be recorded when target.android is configured; other targets report ` +
-        `their required recorder environment before recording.`,
+        summary.platform === 'cli'
+          ? `Platform classified as 'cli'. Commands will be recorded in the Docker-based terminal recorder.`
+          : `Platform classified as '${summary.platform}'. Android, Flutter, React Native, and Unity ` +
+            `Android builds can be recorded when target.android is configured; other targets report ` +
+            `their required recorder environment before recording.`,
       );
     }
     return summary;
@@ -152,6 +155,7 @@ Selected application path: ${context.projectPath}
 Repository package manager: ${context.packageManager}
 
 package.json scripts: ${JSON.stringify(pkg?.scripts || {})}
+package.json bin commands: ${JSON.stringify(pkg?.bin || {})}
 Key dependencies: ${(pkg?.dependencies || []).slice(0, 40).join(', ') || '(none listed)'}
 
 ${context.readme ? `README:\n${context.readme}\n` : '(No README found)'}

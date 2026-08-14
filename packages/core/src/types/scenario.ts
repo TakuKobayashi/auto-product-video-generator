@@ -55,6 +55,11 @@ export const ScreenshotActionSchema = z.object({
   name: z.string(),
 });
 
+export const RunCommandActionSchema = z.object({
+  type: z.literal('run_command'),
+  command: z.string().min(1),
+});
+
 // Device actions are intentionally based on coordinates or Android's visible
 // text/content-description. They can be executed with the Android SDK alone,
 // without introducing a second automation server.
@@ -88,6 +93,7 @@ export const ActionSchema = z.discriminatedUnion('type', [
   ScrollActionSchema,
   HoverActionSchema,
   ScreenshotActionSchema,
+  RunCommandActionSchema,
   LaunchAppActionSchema,
   TapActionSchema,
   InputTextActionSchema,
@@ -220,6 +226,7 @@ export type WaitAction = z.infer<typeof WaitActionSchema>;
 export type ScrollAction = z.infer<typeof ScrollActionSchema>;
 export type HoverAction = z.infer<typeof HoverActionSchema>;
 export type ScreenshotAction = z.infer<typeof ScreenshotActionSchema>;
+export type RunCommandAction = z.infer<typeof RunCommandActionSchema>;
 export type Action = z.infer<typeof ActionSchema>;
 
 export type ZoomEffect = z.infer<typeof ZoomEffectSchema>;
