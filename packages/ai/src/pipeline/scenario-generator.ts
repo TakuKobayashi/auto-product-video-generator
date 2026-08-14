@@ -160,12 +160,15 @@ Respond with JSON only — just the scenario object, no "script" field, no other
     // project-summary.json.
     scenario.meta.platform = summary.platform;
     scenario.setup = summary.setupSteps;
-    if (summary.platform === 'web') {
-      groundScenarioActions(scenario, summary, baseUrl);
-    } else if (summary.platform === 'cli') {
-      groundCliScenarioActions(scenario, summary);
-    } else {
-      groundDeviceScenarioActions(scenario);
+    switch (summary.platform) {
+      case 'web':
+        groundScenarioActions(scenario, summary, baseUrl);
+        break;
+      case 'cli':
+        groundCliScenarioActions(scenario, summary);
+        break;
+      default:
+        groundDeviceScenarioActions(scenario);
     }
 
     // script.yml is derived deterministically from scenario.yml's

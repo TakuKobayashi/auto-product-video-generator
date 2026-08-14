@@ -2,7 +2,6 @@ import { join } from 'node:path';
 import { loadConfig, saveConfig, writeJson, logger, describeTaskLlm } from '@auto-product-video-generator/core';
 import { createLlmProviderForTask, ProjectAnalyzer } from '@auto-product-video-generator/ai';
 import { resolveProjectSource, inspectProject, detectStartCommand } from '@auto-product-video-generator/source';
-import { isAndroidRecordingPlatform } from '@auto-product-video-generator/recorder';
 import { applyInferredTargetUrl } from '../utils/inferred-target.js';
 
 interface AnalyzeOptions {
@@ -78,18 +77,24 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
 
   if (applyInferredTargetUrl(config, summary)) await saveConfig(configPath, config);
 
-  if (isAndroidRecordingPlatform(summary.platform)) {
-    // Build/install/emulator setup is deterministic in AndroidRecorder; do
-    // not retain an LLM-guessed setup plan that would duplicate those steps.
-    summary.setupSteps = [];
-    config.target.type = 'android';
-    config.target.android ||= { autoStartEmulator: true, autoInstall: true };
-    await saveConfig(configPath, config);
-    logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
-  } else if (summary.platform === 'cli') {
-    config.target.type = 'cli';
-    await saveConfig(configPath, config);
-    logger.info(`Enabled Docker-based CLI recording in ${configPath}.`);
+  switch (summary.platform) {
+    case 'android':
+    case 'flutter':
+    case 'react-native':
+    case 'unity':
+      // Build/install/emulator setup is deterministic in AndroidRecorder; do
+      // not retain an LLM-guessed setup plan that would duplicate those steps.
+      summary.setupSteps = [];
+      config.target.type = 'android';
+      config.target.android ||= { autoStartEmulator: true, autoInstall: true };
+      await saveConfig(configPath, config);
+      logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
+      break;
+    case 'cli':
+      config.target.type = 'cli';
+      await saveConfig(configPath, config);
+      logger.info(`Enabled Docker-based CLI recording in ${configPath}.`);
+      break;
   }
 
   await writeJson(summaryPath, summary);

@@ -72,19 +72,21 @@ export class ProjectAnalyzer {
       }),
     );
 
-    if (summary.platform === 'cli') {
-      summary.features = summary.features.filter((feature) => !feature.command || isSafeCliCommand(feature.command));
-    }
-
-    // Deterministic normalization: whatever URL the LLM guessed for the
-    // background (dev-server) setup step, replace it with the real
-    // target.url — that's the only URL that actually matters, since it's
-    // what Playwright will record against, regardless of what port the LLM
-    // assumed from reading scripts.
-    if (summary.platform === 'web' && targetUrl) {
-      summary.setupSteps = summary.setupSteps.map((step) =>
-        step.background ? { ...step, readyUrl: targetUrl } : step,
-      );
+    switch (summary.platform) {
+      case 'cli':
+        summary.features = summary.features.filter((feature) =>
+          !feature.command || isSafeCliCommand(feature.command),
+        );
+        break;
+      case 'web':
+        // Whatever URL the LLM guessed for a background server, replace it
+        // with the actual configured target used by Playwright.
+        if (targetUrl) {
+          summary.setupSteps = summary.setupSteps.map((step) =>
+            step.background ? { ...step, readyUrl: targetUrl } : step,
+          );
+        }
+        break;
     }
 
     // Installation belongs at the workspace root so workspace:* dependencies
@@ -109,14 +111,18 @@ export class ProjectAnalyzer {
       `Analysis complete: platform=${summary.platform}, ${summary.setupSteps.length} setup step(s), ` +
       `${summary.features.length} feature(s) identified.`,
     );
-    if (summary.platform !== 'web') {
-      logger.info(
-        summary.platform === 'cli'
-          ? `Platform classified as 'cli'. Commands will be recorded in the Docker-based terminal recorder.`
-          : `Platform classified as '${summary.platform}'. Android, Flutter, React Native, and Unity ` +
-            `Android builds can be recorded when target.android is configured; other targets report ` +
-            `their required recorder environment before recording.`,
-      );
+    switch (summary.platform) {
+      case 'web':
+        break;
+      case 'cli':
+        logger.info(`Platform classified as 'cli'. Commands will be recorded in the Docker-based terminal recorder.`);
+        break;
+      default:
+        logger.info(
+          `Platform classified as '${summary.platform}'. Android, Flutter, React Native, and Unity ` +
+          `Android builds can be recorded when target.android is configured; other targets report ` +
+          `their required recorder environment before recording.`,
+        );
     }
     return summary;
   }

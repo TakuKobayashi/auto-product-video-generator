@@ -13,8 +13,15 @@ export interface RecorderFactoryOptions {
 }
 
 export function isAndroidRecordingPlatform(platform: ProjectPlatform): boolean {
-  return platform === 'android' || platform === 'flutter' ||
-    platform === 'react-native' || platform === 'unity';
+  switch (platform) {
+    case 'android':
+    case 'flutter':
+    case 'react-native':
+    case 'unity':
+      return true;
+    default:
+      return false;
+  }
 }
 
 export function createPlatformRecorder(
@@ -22,23 +29,25 @@ export function createPlatformRecorder(
   config: ApvgConfig,
   options: RecorderFactoryOptions,
 ): PlatformRecorder {
-  if (platform === 'web') return new SceneRecorder();
-  if (platform === 'cli') {
-    return new CliRecorder(config.target.cli, {
-      rootDir: options.rootDir,
-      repositoryRoot: options.repositoryRoot,
-      setupSteps: options.setupSteps || [],
-      sourceExcludePatterns: options.sourceExcludePatterns || [],
-    });
+  switch (platform) {
+    case 'web':
+      return new SceneRecorder();
+    case 'cli':
+      return new CliRecorder(config.target.cli, {
+        rootDir: options.rootDir,
+        repositoryRoot: options.repositoryRoot,
+        setupSteps: options.setupSteps || [],
+        sourceExcludePatterns: options.sourceExcludePatterns || [],
+      });
+    case 'android':
+    case 'flutter':
+    case 'react-native':
+    case 'unity':
+      return new AndroidRecorder(config.target.android || {}, options);
+    default:
+      throw new Error(
+        `Recording platform '${platform}' is not implemented yet. ` +
+        "Currently supported: web, CLI, Android, and Flutter/React Native/Unity builds targeting Android.",
+      );
   }
-  if (platform === 'android' || platform === 'flutter' || platform === 'react-native') {
-    return new AndroidRecorder(config.target.android || {}, options);
-  }
-  if (platform === 'unity') {
-    return new AndroidRecorder(config.target.android || {}, options);
-  }
-  throw new Error(
-    `Recording platform '${platform}' is not implemented yet. ` +
-    "Currently supported: web, CLI, Android, and Flutter/React Native/Unity builds targeting Android.",
-  );
 }

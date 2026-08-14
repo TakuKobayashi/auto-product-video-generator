@@ -24,7 +24,7 @@ import {
   TimelineBuilder,
   recomputeScriptTimingFromAudio,
 } from '@auto-product-video-generator/ai';
-import { createPlatformRecorder, isAndroidRecordingPlatform } from '@auto-product-video-generator/recorder';
+import { createPlatformRecorder } from '@auto-product-video-generator/recorder';
 import { VoicevoxClient } from '@auto-product-video-generator/voicevox';
 import { FfmpegRenderer } from '@auto-product-video-generator/renderer';
 import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning, findRepositoryRoot, loadSourceExcludePatterns } from '@auto-product-video-generator/source';
@@ -114,16 +114,22 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         config.target.autoDetectUrl ? undefined : config.target.url,
       );
       if (applyInferredTargetUrl(config, summary)) await saveConfig(configPath, config);
-      if (isAndroidRecordingPlatform(summary.platform)) {
-        summary.setupSteps = [];
-        config.target.type = 'android';
-        config.target.android ||= { autoStartEmulator: true, autoInstall: true };
-        await saveConfig(configPath, config);
-        logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
-      } else if (summary.platform === 'cli') {
-        config.target.type = 'cli';
-        await saveConfig(configPath, config);
-        logger.info(`Enabled Docker-based CLI recording in ${configPath}.`);
+      switch (summary.platform) {
+        case 'android':
+        case 'flutter':
+        case 'react-native':
+        case 'unity':
+          summary.setupSteps = [];
+          config.target.type = 'android';
+          config.target.android ||= { autoStartEmulator: true, autoInstall: true };
+          await saveConfig(configPath, config);
+          logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
+          break;
+        case 'cli':
+          config.target.type = 'cli';
+          await saveConfig(configPath, config);
+          logger.info(`Enabled Docker-based CLI recording in ${configPath}.`);
+          break;
       }
       await writeJson(summaryPath, summary);
       logger.success(`Saved: ${summaryPath}`);
