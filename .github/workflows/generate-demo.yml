@@ -25,9 +25,9 @@ jobs:
     timeout-minutes: 360
 
     env:
-      # Manual runs can use the input; push-triggered runs use the repository
-      # variable configured in GitHub Settings.
-      TARGET_REPOSITORY: ${{ inputs.target_repository || vars.TARGET_REPOSITORY }}
+      # Manual runs can override the target. Push-triggered runs currently use
+      # this web application until APVG can generate videos for CLI projects.
+      TARGET_REPOSITORY: ${{ inputs.target_repository || 'https://github.com/TakuKobayashi/fullstack-media-converter.git' }}
       OLLAMA_HOST: http://127.0.0.1:11434
       OLLAMA_KEEP_ALIVE: -1
       OLLAMA_NUM_PARALLEL: 1
@@ -55,10 +55,6 @@ jobs:
 
       - name: Initialize configuration for the selected target
         run: |
-          if [ -z "$TARGET_REPOSITORY" ]; then
-            echo "Set the TARGET_REPOSITORY repository variable or provide the target_repository workflow input." >&2
-            exit 1
-          fi
           pnpm apvg project init \
             --repo "$TARGET_REPOSITORY" \
             --type demo \
