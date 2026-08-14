@@ -1,6 +1,7 @@
 {
   "name": "demo-video-gen-workspace",
   "private": true,
+  "packageManager": "pnpm@10.30.1",
   "workspaces": [
     "packages/*"
   ],
@@ -12,6 +13,8 @@
     "lint": "eslint packages/*/src/**/*.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "release:check": "pnpm test && pnpm build && pnpm pack --recursive --dry-run",
+    "publish:npm": "pnpm test && pnpm build && pnpm publish --recursive --access public",
     "setup": "task install",
     "setup:full": "task install PROFILE=local WITH_OLLAMA=true",
     "setup:cloud-only": "task install PROFILE=local WITH_OLLAMA=false",

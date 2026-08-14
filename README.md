@@ -23,6 +23,19 @@ Node.js ≥ 20, pnpm ≥ 9, git, Docker (for VOICEVOX). Everything else
 (ffmpeg, Playwright, Task, and optionally Ollama) is installed by the setup
 command below.
 
+## Install from npm
+
+```bash
+npm install --global demo-video-gen
+dvg --help
+```
+
+The npm package installs the CLI and its Node.js dependencies. The external
+runtime services and tools listed above are still required. In particular,
+install Playwright Chromium with `npx playwright install chromium`, and run a
+VOICEVOX Engine instance on port `50021`. Ollama is optional when
+`GEMINI_API_KEY` is configured.
+
 ## Quick Start
 
 ```bash
@@ -241,6 +254,22 @@ Taskfile.yml        environment setup & service orchestration
 task build          # or: pnpm run build (CI/release type-check + JS output)
 pnpm dvg --help     # show the organized CLI command hierarchy
 ```
+
+### Publishing to npm
+
+All workspace packages share one version and are published together because
+the public `demo-video-gen` CLI depends on the scoped internal packages.
+
+```bash
+npm login
+pnpm release:check  # build, test, and show the packages that would be published
+pnpm publish:npm    # publish every package in dependency order
+```
+
+Before the first release, confirm that the npm account owns the
+`@demo-video-gen` scope and that the unscoped `demo-video-gen` name is
+available. Publishing requires a clean, committed git working tree. For later
+releases, update all eight package versions together before publishing.
 
 ## License
 

@@ -17,8 +17,13 @@
   },
   "files": [
     "bin/",
-    "dist/"
+    "dist/",
+    "README.md"
   ],
+  "repository": { "type": "git", "url": "git+https://github.com/TakuKobayashi/auto-product-video-generator.git", "directory": "packages/cli" },
+  "homepage": "https://github.com/TakuKobayashi/auto-product-video-generator#readme",
+  "bugs": { "url": "https://github.com/TakuKobayashi/auto-product-video-generator/issues" },
+  "publishConfig": { "access": "public" },
   "scripts": {
     "build": "tsc -b",
     "clean": "rm -rf dist"
