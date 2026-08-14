@@ -239,8 +239,9 @@ pnpm apvg video render \
 ### CLIプロジェクトの録画
 
 `package.json`の`bin`、または既知のCLIフレームワークを持つプロジェクトは`cli`として
-判定されます。APVGは同梱する`packages/recorder/docker/cli/Dockerfile`をビルドし、対象ソースを
-読み取り専用でマウントして一時コンテナ内へコピーします。コマンド出力は専用のブラウザ内
+判定されます。APVGは同梱する`packages/recorder/docker/cli/Dockerfile`をビルドし、リポジトリ
+ルートを読み取り専用でマウントして、除外適用後の内容を一時コンテナ内へコピーします。
+モノレポでも選択したCLIのワークスペース依存を維持できます。コマンド出力は専用のブラウザ内
 ターミナルへ表示してPlaywrightで録画します。コンテナは全シーンで再利用し、コマンド失敗時を
 含めて録画終了後に削除します。
 
@@ -254,6 +255,13 @@ actions:
 
 自動判定や同梱イメージを変更するときだけ、`target.type: cli`と`target.cli`を指定します。
 録画工程ではDockerが必要です。VOICEVOXと動画合成はWeb録画と同じパイプラインを使用します。
+
+自動生成するCLIシーンは、有限かつ読み取り専用の`--help`/`--version`コマンドに制限されます。
+シェル制御演算子は常に録画直前にも拒否します。別のコマンドを使う場合は
+`target.cli.allowedCommands`へ完全一致で許可します。その明示許可では
+`target.cli.deniedCommandPatterns`が優先されます。解析時に動画・音声の中身をLLMへ送ることはありません。一般的なビルド・メディア
+生成物、ルート`.gitignore`、`source.exclude`のgitignore形式パターンは、LLM向けファイル一覧と
+CLI用一時ワークスペースの両方から除外されます。
 
 ---
 

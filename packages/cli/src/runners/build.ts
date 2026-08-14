@@ -27,7 +27,7 @@ import {
 import { createPlatformRecorder, isAndroidRecordingPlatform } from '@auto-product-video-generator/recorder';
 import { VoicevoxClient } from '@auto-product-video-generator/voicevox';
 import { FfmpegRenderer } from '@auto-product-video-generator/renderer';
-import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning } from '@auto-product-video-generator/source';
+import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning, findRepositoryRoot, loadSourceExcludePatterns } from '@auto-product-video-generator/source';
 import { exportArtifacts } from '../utils/export-artifacts.js';
 import { applyInferredTargetUrl } from '../utils/inferred-target.js';
 
@@ -96,7 +96,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   if (!options.skipAnalyze) {
     logger.step('1/5', 'Analyzing project source...');
     if (!dryRun) {
-      const sourceContext = await inspectProject(rootDir!);
+      const sourceContext = await inspectProject(rootDir!, config.source.exclude);
       await writeJson(contextPath, sourceContext);
 
       if (!config.source.startCommand) {
@@ -249,7 +249,13 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         });
       }
     }
-    const recorder = createPlatformRecorder(scenario.meta.platform, config, { rootDir, workDir, setupSteps: scenario.setup });
+    const repositoryRoot = rootDir ? findRepositoryRoot(rootDir) : undefined;
+    const sourceExcludePatterns = repositoryRoot
+      ? await loadSourceExcludePatterns(repositoryRoot, config.source.exclude)
+      : [];
+    const recorder = createPlatformRecorder(scenario.meta.platform, config, {
+      rootDir, repositoryRoot, workDir, setupSteps: scenario.setup, sourceExcludePatterns,
+    });
     try {
       for (const scene of scenario.scenes) {
         const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);

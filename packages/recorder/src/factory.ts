@@ -6,8 +6,10 @@ import type { PlatformRecorder } from './types.js';
 
 export interface RecorderFactoryOptions {
   rootDir?: string;
+  repositoryRoot?: string;
   workDir: string;
   setupSteps?: SetupStep[];
+  sourceExcludePatterns?: string[];
 }
 
 export function isAndroidRecordingPlatform(platform: ProjectPlatform): boolean {
@@ -24,7 +26,9 @@ export function createPlatformRecorder(
   if (platform === 'cli') {
     return new CliRecorder(config.target.cli, {
       rootDir: options.rootDir,
+      repositoryRoot: options.repositoryRoot,
       setupSteps: options.setupSteps || [],
+      sourceExcludePatterns: options.sourceExcludePatterns || [],
     });
   }
   if (platform === 'android' || platform === 'flutter' || platform === 'react-native') {

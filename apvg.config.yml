@@ -15,6 +15,7 @@ source:
     - ios
     - desktop
     - other
+  exclude: []
 
 target:
   url: "http://localhost:3000"

@@ -19,6 +19,12 @@ source:
   # when you want to override that choice:
   # projectPath: "apps/web"
   # platformPriority: [web, cli, android, flutter, react-native, unity, ios, desktop, other]
+  # Additional gitignore-style patterns excluded from AI source context and
+  # the temporary CLI Docker workspace. APVG also respects the root .gitignore
+  # and excludes common build/media outputs by default.
+  # exclude:
+  #   - "fixtures/private/**"
+  #   - "**/*.large.json"
 
   # Command to start the app's dev server, run from the source root.
   # If unset, `analyze` tries to detect one from package.json's scripts
@@ -51,6 +57,10 @@ target:
   #   columns: 100
   #   rows: 30
   #   fontSize: 22
+  #   # Generated scenarios may automatically run only finite --help/--version
+  #   # commands. Opt in to any other exact command here. denied patterns win.
+  #   allowedCommands: []
+  #   deniedCommandPatterns: [publish, login, logout, token, secret, clean, remove, delete, serve, start, watch, generate, voice, record, render]
   # Android / Flutter / React Native / Unity Android recording overrides.
   # Normally this entire block can be omitted: after platform detection APVG
   # builds a debug APK, starts the first installed AVD if needed, detects the

@@ -45,7 +45,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   // Deterministic: resolve (clone or verify local) + inspect the actual source.
   logger.step('source', 'Resolving project source (this may take a moment for a fresh clone)...');
   const rootDir = await resolveProjectSource({ source: config.source, cloneDir });
-  const sourceContext = await inspectProject(rootDir);
+  const sourceContext = await inspectProject(rootDir, config.source.exclude);
 
   await writeJson(contextPath, sourceContext);
   logger.success(`Saved: ${contextPath}`);

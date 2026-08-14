@@ -59,12 +59,12 @@ export async function runInit(directory: string, options: InitOptions): Promise<
     ? {
         repository: options.repo, ref: options.ref, installDeps: options.installDeps || false,
         startCommand: options.serveCommand, projectPath: options.projectPath,
-        platformPriority: parsePlatformPriority(options.platformPriority),
+        platformPriority: parsePlatformPriority(options.platformPriority), exclude: [],
       }
     : {
         localPath: options.source, installDeps: options.installDeps || false,
         startCommand: options.serveCommand, projectPath: options.projectPath,
-        platformPriority: parsePlatformPriority(options.platformPriority),
+        platformPriority: parsePlatformPriority(options.platformPriority), exclude: [],
       };
 
   const config = createDefaultConfig(name, url, source, !options.url);

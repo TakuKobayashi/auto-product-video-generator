@@ -236,9 +236,11 @@ or `video.sceneGapSeconds`, rerun `voice → record → render`.
 
 Projects with a `package.json` `bin` entry or a recognized CLI framework are
 classified as `cli`. APVG builds the bundled
-`packages/recorder/docker/cli/Dockerfile`, mounts the selected source as
-read-only, copies it into the temporary container, runs documented commands,
-and records a dedicated terminal page with Playwright. The container is reused
+`packages/recorder/docker/cli/Dockerfile`, mounts the repository root as
+read-only, copies its filtered contents into the temporary container, runs
+documented commands, and records a dedicated terminal page with Playwright.
+Keeping the repository root means workspace dependencies remain available when
+the selected CLI is one package in a monorepo. The container is reused
 across scenes and removed after recording, including when a command fails.
 
 ```yml
@@ -252,6 +254,15 @@ actions:
 Set `target.type: cli` and `target.cli` only when overriding automatic
 detection or the bundled image. Docker is required for the recording step;
 VOICEVOX and rendering use the same pipeline as web videos.
+
+Automatically generated CLI scenes are restricted to finite, read-only
+`--help`/`--version` commands. Shell control operators are always rejected.
+Use `target.cli.allowedCommands` to opt in to another exact command; for those
+opt-ins, `target.cli.deniedCommandPatterns` still takes precedence. Source
+inspection never sends media bytes to the LLM.
+Common build/media outputs, root `.gitignore` rules, and `source.exclude`
+gitignore-style patterns are omitted from both AI file listings and the
+temporary CLI workspace.
 
 ---
 

@@ -1,16 +1,18 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, rename } from 'node:fs/promises';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import type { Scene, SetupStep, TargetConfig, VideoConfig } from '@auto-product-video-generator/core';
-import { logger } from '@auto-product-video-generator/core';
+import { isSafeCliCommand, logger } from '@auto-product-video-generator/core';
 import type { PlatformRecordOptions, PlatformRecorder } from './types.js';
 
 export interface CliRecorderOptions {
   rootDir?: string;
+  repositoryRoot?: string;
   setupSteps: SetupStep[];
+  sourceExcludePatterns: string[];
 }
 
 export class CliRecorder implements PlatformRecorder {
@@ -63,8 +65,11 @@ export class CliRecorder implements PlatformRecorder {
       for (const action of scene.actions) {
         if (action.type === 'run_command') {
           await appendTerminal(page, `$ ${action.command}\n`, 18);
+          if (!isSafeCliCommand(action.command, this.config.allowedCommands, this.config.deniedCommandPatterns)) {
+            throw new Error(`Refusing unsafe CLI recording command: ${action.command}`);
+          }
           const result = await runProcess('docker', [
-            'exec', this.containerName!, this.config.shell, '-lc', action.command,
+            'exec', '--workdir', '/workspace', this.containerName!, this.config.shell, '-lc', action.command,
           ], false);
           const output = stripAnsi(result.stdout + result.stderr).trimEnd();
           if (output) await appendTerminal(page, `${output}\n`, outputDelay(output, targetDurationSeconds));
@@ -113,13 +118,15 @@ export class CliRecorder implements PlatformRecorder {
     await runProcess('docker', ['build', '-t', image, '-f', dockerfile, dirname(dockerfile)]);
 
     const name = `apvg-cli-${process.pid}-${Date.now().toString(36)}`;
+    const repositoryRoot = resolve(this.context.repositoryRoot || this.context.rootDir);
+    const copyCommand = dockerCopyCommand(this.context.sourceExcludePatterns);
     await runProcess('docker', [
       'run', '-d', '--rm',
       '--name', name,
       '--label', 'dev.apvg.owner=cli-recorder',
-      '--mount', `type=bind,source=${resolve(this.context.rootDir)},target=/source,readonly`,
+      '--mount', `type=bind,source=${repositoryRoot},target=/source,readonly`,
       image,
-      this.config.shell, '-lc', 'cp -a /source/. /workspace/ && sleep infinity',
+      this.config.shell, '-lc', `${copyCommand} && sleep infinity`,
     ]);
     this.containerName = name;
     logger.success(`CLI recording container ready: ${name}`);
@@ -129,7 +136,12 @@ export class CliRecorder implements PlatformRecorder {
     if (this.setupComplete) return;
     for (const step of this.context.setupSteps) {
       logger.step('cli:setup', `${step.name}: ${step.command}`);
-      const cwd = step.cwd ? `/workspace/${step.cwd}` : '/workspace';
+      const repositoryRoot = resolve(this.context.repositoryRoot || this.context.rootDir!);
+      const projectPath = relative(repositoryRoot, resolve(this.context.rootDir!)).split('\\').join('/');
+      const cwd = posix.resolve('/workspace', projectPath, step.cwd || '.');
+      if (cwd !== '/workspace' && !cwd.startsWith('/workspace/')) {
+        throw new Error(`CLI setup cwd must stay inside the recording workspace: ${step.cwd}`);
+      }
       const command = step.background ? `nohup ${step.command} >/tmp/apvg-setup.log 2>&1 &` : step.command;
       const result = await runProcess('docker', [
         'exec', '--workdir', cwd, this.containerName!, this.config.shell, '-lc', command,
@@ -138,6 +150,18 @@ export class CliRecorder implements PlatformRecorder {
     }
     this.setupComplete = true;
   }
+}
+
+function dockerCopyCommand(patterns: string[]): string {
+  const exclusions = [...new Set(['.git', ...patterns])]
+    .filter((pattern) => pattern && !pattern.startsWith('!'))
+    .map((pattern) => `--exclude=${shellQuote(pattern.replace(/^\//, ''))}`)
+    .join(' ');
+  return `tar -C /source ${exclusions} -cf - . | tar -C /workspace -xf -`;
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 function defaultDockerfile(): string {

@@ -30,6 +30,10 @@ export type ProjectPlatform = z.infer<typeof ProjectPlatformSchema>;
 export const DEFAULT_PLATFORM_PRIORITY: ProjectPlatform[] = [
   'web', 'cli', 'android', 'flutter', 'react-native', 'unity', 'ios', 'desktop', 'other',
 ];
+export const DEFAULT_CLI_DENIED_COMMAND_PATTERNS = [
+  'publish', 'login', 'logout', 'token', 'secret', 'clean', 'remove', 'delete',
+  'serve', 'start', 'watch', 'generate', 'voice', 'record', 'render',
+];
 
 export const ProjectConfigSchema = z.object({
   name: z.string(),
@@ -66,6 +70,9 @@ export const SourceConfigSchema = z
     // workspace packages are ranked by this platform order, then app quality.
     projectPath: z.string().min(1).optional(),
     platformPriority: z.array(ProjectPlatformSchema).min(1).default(DEFAULT_PLATFORM_PRIORITY),
+    // Additional gitignore-style patterns excluded from AI-facing source
+    // inspection and from the temporary CLI recording workspace.
+    exclude: z.array(z.string().min(1)).default([]),
   })
   .refine((data) => Boolean(data.repository) !== Boolean(data.localPath), {
     message: 'Specify exactly one of source.repository or source.localPath, not both/neither.',
@@ -110,6 +117,10 @@ export const TargetConfigSchema = z.object({
     columns: z.number().int().positive().default(100),
     rows: z.number().int().positive().default(30),
     fontSize: z.number().int().positive().default(22),
+    // Commands outside the read-only --help/--version policy must be opted in
+    // explicitly. Denied fragments always win over this allowlist.
+    allowedCommands: z.array(z.string().min(1)).default([]),
+    deniedCommandPatterns: z.array(z.string().min(1)).default(DEFAULT_CLI_DENIED_COMMAND_PATTERNS),
   }).default({}),
 });
 

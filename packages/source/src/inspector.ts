@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { logger } from '@auto-product-video-generator/core';
 import { findRepositoryRoot } from './workspace-selector.js';
+import { isSourcePathExcluded, loadSourceExcludePatterns } from './source-ignore.js';
 
 export interface RouteInfo {
   /** URL path, e.g. "/dashboard/settings" or "/posts/[id]" */
@@ -62,10 +63,11 @@ const MAX_README_CHARS = 4000;
 const MAX_FILE_TREE_ENTRIES = 200;
 const MAX_WALK_DEPTH = 6;
 
-export async function inspectProject(rootDir: string): Promise<ProjectSourceContext> {
+export async function inspectProject(rootDir: string, configuredExcludes: string[] = []): Promise<ProjectSourceContext> {
   logger.step('source', `Inspecting project at ${rootDir}...`);
 
   const repositoryRoot = findRepositoryRoot(rootDir);
+  const excludePatterns = await loadSourceExcludePatterns(repositoryRoot, configuredExcludes);
   const packageManager = detectPackageManager(repositoryRoot);
   const packageJson = await readPackageJson(rootDir);
   const readme = await readReadme(rootDir) ||
@@ -109,7 +111,7 @@ export async function inspectProject(rootDir: string): Promise<ProjectSourceCont
     framework = 'create-react-app';
   }
 
-  const fileTree = routes.length === 0 ? await buildFileTree(rootDir) : [];
+  const fileTree = routes.length === 0 ? await buildFileTree(rootDir, excludePatterns) : [];
   const platformHints = await detectPlatformHints(rootDir, packageJson, deps);
 
   logger.success(
@@ -331,7 +333,7 @@ async function detectPlatformHints(
 
   return hints;
 }
-async function buildFileTree(rootDir: string): Promise<string[]> {
+async function buildFileTree(rootDir: string, excludePatterns: string[]): Promise<string[]> {
   const results: string[] = [];
 
   async function walk(dir: string, depth: number): Promise<void> {
@@ -348,11 +350,14 @@ async function buildFileTree(rootDir: string): Promise<string[]> {
       if (results.length >= MAX_FILE_TREE_ENTRIES) return;
       if (entry.name.startsWith('.') && entry.name !== '.env.example') continue;
 
+      const relativePath = relative(rootDir, join(dir, entry.name)).split(sep).join('/');
+      if (isSourcePathExcluded(relativePath, excludePatterns)) continue;
+
       if (entry.isDirectory()) {
         if (EXCLUDED_DIRS.has(entry.name)) continue;
         await walk(join(dir, entry.name), depth + 1);
       } else {
-        results.push(relative(rootDir, join(dir, entry.name)));
+        results.push(relativePath);
       }
     }
   }

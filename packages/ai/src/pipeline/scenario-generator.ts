@@ -5,6 +5,7 @@ import {
   VideoConfig,
   ProjectSummary,
   isConcreteWebRoute,
+  isSafeCliCommand,
   logger,
   withHeartbeat,
 } from '@auto-product-video-generator/core';
@@ -134,7 +135,7 @@ Editorial direction:
 - Never mention implementation technology, technical specifications, or source-code structure.
 
 ${isCli
-    ? 'This is a CLI project. Use run_command actions with realistic commands documented by the project. Start with a safe --help or --version command. Do not use goto, click, type, scroll, hover, or mobile actions.'
+    ? 'This is a CLI project. Use only the exact commands listed above. Commands must be finite and read-only, ending in --help or --version. Never publish, authenticate, expose secrets/environment variables, modify files, start a server/watcher, or generate/record/render media. Do not use goto, click, type, scroll, hover, or mobile actions.'
     : `The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
 demonstrate a specific feature should "goto" that feature's URL from the list above.`}
 Remember: at most 5 scenes total.
@@ -180,7 +181,9 @@ Respond with JSON only — just the scenario object, no "script" field, no other
 }
 
 function groundCliScenarioActions(scenario: Scenario, summary: ProjectSummary): void {
-  const commands = summary.features.flatMap((feature) => feature.command ? [feature.command] : []);
+  const commands = summary.features.flatMap((feature) =>
+    feature.command && isSafeCliCommand(feature.command) ? [feature.command] : [],
+  );
   const allowed = new Set(commands);
   const fallback = commands[0] || 'npm --help';
   for (const scene of scenario.scenes) {

@@ -1,4 +1,4 @@
-import { ProjectSummary, ProjectSummarySchema, isConcreteWebRoute, logger, withHeartbeat } from '@auto-product-video-generator/core';
+import { ProjectSummary, ProjectSummarySchema, isConcreteWebRoute, isSafeCliCommand, logger, withHeartbeat } from '@auto-product-video-generator/core';
 import { ProjectSourceContext } from '@auto-product-video-generator/source';
 import { relative } from 'node:path';
 import { LlmProvider } from '../llm/provider.js';
@@ -49,6 +49,7 @@ Hard rules:
 - setupSteps and features may be empty arrays, but must always be present.
 - Every feature must contain id, title, description, demoable, and priority.
 - For web projects, set route when it is known. For CLI projects, set each demoable feature's "command" to an exact safe command documented by package.json or README and omit route when it is not meaningful.
+- CLI feature commands MUST be finite, read-only discovery commands ending in --help, -h, --version, or -v. Never select commands that publish, authenticate, expose environment/secrets, create/delete files, start servers/watchers, or generate/record/render media.
 - Optional setup fields must be OMITTED when unused. NEVER write null.
 - A foreground setup step has no readyUrl key.
 - A background web-server step has readyUrl as a real URL string.
@@ -70,6 +71,10 @@ export class ProjectAnalyzer {
         jsonSchema: PROJECT_SUMMARY_OUTPUT_SCHEMA,
       }),
     );
+
+    if (summary.platform === 'cli') {
+      summary.features = summary.features.filter((feature) => !feature.command || isSafeCliCommand(feature.command));
+    }
 
     // Deterministic normalization: whatever URL the LLM guessed for the
     // background (dev-server) setup step, replace it with the real

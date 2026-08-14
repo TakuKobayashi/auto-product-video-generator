@@ -2,7 +2,7 @@ import { basename, dirname, join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { ensureDir, loadConfig, readYaml, logger, ScenarioSchema, ScriptSchema } from '@auto-product-video-generator/core';
 import { createPlatformRecorder } from '@auto-product-video-generator/recorder';
-import { resolveProjectSource, ensureAppRunning } from '@auto-product-video-generator/source';
+import { resolveProjectSource, ensureAppRunning, findRepositoryRoot, loadSourceExcludePatterns } from '@auto-product-video-generator/source';
 
 interface RecordOptions {
   config?: string;
@@ -79,7 +79,13 @@ export async function runRecord(options: RecordOptions): Promise<void> {
     }
   }
 
-  const recorder = createPlatformRecorder(scenario.meta.platform, config, { rootDir, workDir, setupSteps: scenario.setup });
+  const repositoryRoot = rootDir ? findRepositoryRoot(rootDir) : undefined;
+  const sourceExcludePatterns = repositoryRoot
+    ? await loadSourceExcludePatterns(repositoryRoot, config.source.exclude)
+    : [];
+  const recorder = createPlatformRecorder(scenario.meta.platform, config, {
+    rootDir, repositoryRoot, workDir, setupSteps: scenario.setup, sourceExcludePatterns,
+  });
 
   try {
     for (const scene of scenesToRecord) {

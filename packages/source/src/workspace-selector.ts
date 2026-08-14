@@ -3,6 +3,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { relative, resolve, sep } from 'node:path';
 import type { ProjectPlatform, SourceConfig } from '@auto-product-video-generator/core';
 import { DEFAULT_PLATFORM_PRIORITY, logger } from '@auto-product-video-generator/core';
+import { isSourcePathExcluded, loadSourceExcludePatterns } from './source-ignore.js';
 
 interface Candidate {
   path: string;
@@ -22,7 +23,8 @@ export async function selectProjectRoot(repositoryRoot: string, source: SourceCo
     return selected;
   }
 
-  const candidates = await discoverCandidates(repositoryRoot);
+  const excludePatterns = await loadSourceExcludePatterns(repositoryRoot, source.exclude);
+  const candidates = await discoverCandidates(repositoryRoot, excludePatterns);
   const applications = candidates.filter((item) => item.platform !== 'web' || item.runnable);
   const priority = source.platformPriority || DEFAULT_PLATFORM_PRIORITY;
   const platformRank = (platform: ProjectPlatform) => {
@@ -56,7 +58,7 @@ export function findRepositoryRoot(projectRoot: string): string {
   }
 }
 
-async function discoverCandidates(root: string): Promise<Candidate[]> {
+async function discoverCandidates(root: string, excludePatterns: string[]): Promise<Candidate[]> {
   const results: Candidate[] = [];
   const excluded = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.apvg']);
   async function walk(dir: string, depth: number): Promise<void> {
@@ -87,6 +89,8 @@ async function discoverCandidates(root: string): Promise<Candidate[]> {
     try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
     for (const entry of entries) {
       if (entry.isDirectory() && !excluded.has(entry.name) && !entry.name.startsWith('.')) {
+        const relativePath = relative(root, resolve(dir, entry.name)).split(sep).join('/');
+        if (isSourcePathExcluded(relativePath, excludePatterns)) continue;
         await walk(resolve(dir, entry.name), depth + 1);
       }
     }
