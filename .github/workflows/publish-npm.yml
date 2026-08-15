@@ -81,6 +81,51 @@ jobs:
 
       - name: Publish CLI
         working-directory: packages/cli
-        run: npm publish --registry https://registry.npmjs.org --access public --tag "$NPM_DIST_TAG"
+        run: npm publish --registry https://registry.npmjs.org --access public --tag "$NPM_DIST_TAG" --loglevel verbose
         env:
           NPM_DIST_TAG: ${{ contains(github.ref_name, '-') && 'next' || 'latest' }}
+
+      - name: Collect npm publish diagnostics
+        if: failure()
+        run: |
+          diagnostics="$RUNNER_TEMP/npm-publish-diagnostics"
+          mkdir -p "$diagnostics/npm-logs"
+
+          npm --version > "$diagnostics/npm-version.txt"
+          node --version > "$diagnostics/node-version.txt"
+          npm config get registry > "$diagnostics/registry.txt"
+
+          {
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "workflow_ref=${GITHUB_WORKFLOW_REF}"
+            echo "ref=${GITHUB_REF}"
+            echo "runner_environment=${RUNNER_ENVIRONMENT}"
+            if [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+              echo "oidc_request_url=present"
+            else
+              echo "oidc_request_url=missing"
+            fi
+            if [ -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+              echo "oidc_request_token=present"
+            else
+              echo "oidc_request_token=missing"
+            fi
+            if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
+              echo "node_auth_token=present"
+            else
+              echo "node_auth_token=missing"
+            fi
+          } > "$diagnostics/environment.txt"
+
+          if [ -d "$HOME/.npm/_logs" ]; then
+            cp -R "$HOME/.npm/_logs/." "$diagnostics/npm-logs/"
+          fi
+
+      - name: Upload npm publish diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: npm-publish-diagnostics-${{ github.run_number }}
+          path: ${{ runner.temp }}/npm-publish-diagnostics/
+          if-no-files-found: error
+          retention-days: 7
