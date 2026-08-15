@@ -1,6 +1,6 @@
 {
   "name": "auto-product-video-generator-workspace",
-  "private": true,
+  "version": "0.2.0",
   "workspaces": [
     "packages/*"
   ],
