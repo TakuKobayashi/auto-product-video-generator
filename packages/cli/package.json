@@ -1,8 +1,9 @@
 {
   "name": "auto-product-video-generator",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "AI-powered promotional video generator for web apps and CLI tools",
   "type": "module",
+  "main": "./dist/index.js",
   "bin": {
     "apvg": "./bin/apvg.js"
   },

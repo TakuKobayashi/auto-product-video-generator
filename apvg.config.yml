@@ -1,9 +1,8 @@
 project:
-  name: "My Web App"
-  description: "A sample web application"
-
+  name: My Web App
+  description: A sample web application
 source:
-  repository: "https://github.com/your-org/your-repo.git"
+  repository: https://github.com/your-org/your-repo.git
   installDeps: false
   platformPriority:
     - web
@@ -16,30 +15,49 @@ source:
     - desktop
     - other
   exclude: []
-
+  startCommand: npm run dev
 target:
-  url: "http://localhost:3000"
-  autoDetectUrl: true
-  type: "web"
-
+  url: http://localhost:3000
+  autoDetectUrl: false
+  type: web
+  cli:
+    image: apvg-cli-recorder:latest
+    shell: /bin/bash
+    columns: 100
+    rows: 30
+    fontSize: 22
+    allowedCommands: []
+    deniedCommandPatterns:
+      - publish
+      - login
+      - logout
+      - token
+      - secret
+      - clean
+      - remove
+      - delete
+      - serve
+      - start
+      - watch
+      - generate
+      - voice
+      - record
+      - render
 video:
-  type: "demo"
+  type: demo
   duration: 60
-  resolution: "1920x1080"
+  resolution: 1920x1080
   fps: 30
-  language: "ja"
+  language: ja
   pageReadyWaitSeconds: 2
   sceneGapSeconds: 1
-
 llm:
-  provider: "ollama"
-  model: "qwen2.5:7b-instruct"
-  ollamaHost: "http://localhost:11434"
-
+  provider: ollama
+  model: qwen2.5:7b-instruct
+  ollamaHost: http://localhost:11434
 voicevox:
-  host: "http://localhost:50021"
+  host: http://localhost:50021
   speakerId: 3
-
 output:
-  dir: "./output"
-  workDir: "./.apvg"
+  dir: ./output
+  workDir: ./.apvg

@@ -70,6 +70,11 @@ jobs:
 
       - name: Publish CLI
         working-directory: packages/cli
-        run: npm publish --access public --tag "$NPM_DIST_TAG"
+        run: |
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || {
+            echo "GitHub OIDC is unavailable; check the id-token: write permission." >&2
+            exit 1
+          }
+          env -u NODE_AUTH_TOKEN npm publish --access public --tag "$NPM_DIST_TAG"
         env:
           NPM_DIST_TAG: ${{ contains(github.ref_name, '-') && 'next' || 'latest' }}
