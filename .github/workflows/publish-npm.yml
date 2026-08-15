@@ -32,12 +32,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          node-version: 24
           package-manager-cache: false
 
       - name: Install npm with trusted publishing support
-        run: npm install --global npm@^11.5.1
+        run: npm install --global npm@11
 
       - name: Enable pnpm
         run: |
@@ -68,13 +67,20 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Publish CLI
-        working-directory: packages/cli
+      - name: Verify npm authentication
         run: |
           test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || {
             echo "GitHub OIDC is unavailable; check the id-token: write permission." >&2
             exit 1
           }
-          env -u NODE_AUTH_TOKEN npm publish --access public --tag "$NPM_DIST_TAG"
+          test -z "${NODE_AUTH_TOKEN:-}" || {
+            echo "NODE_AUTH_TOKEN must not be set when using trusted publishing." >&2
+            exit 1
+          }
+          npm --version
+
+      - name: Publish CLI
+        working-directory: packages/cli
+        run: npm publish --registry https://registry.npmjs.org --access public --tag "$NPM_DIST_TAG"
         env:
           NPM_DIST_TAG: ${{ contains(github.ref_name, '-') && 'next' || 'latest' }}
