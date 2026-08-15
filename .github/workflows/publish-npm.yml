@@ -1,4 +1,4 @@
-name: Publish packages to npm
+name: Publish CLI to npm
 
 on:
   push:
@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: npm-publish-${{ github.ref }}
@@ -19,10 +18,13 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   publish:
-    name: Build and publish
+    name: Build and publish CLI
     needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -33,6 +35,9 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
+
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@^11.5.1
 
       - name: Enable pnpm
         run: |
@@ -48,34 +53,23 @@ jobs:
         run: |
           node <<'NODE'
           const fs = require('node:fs');
-          const path = require('node:path');
-
           if (!/^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(process.env.RELEASE_VERSION)) {
             throw new Error(`Invalid release tag: ${process.env.RELEASE_VERSION}`);
           }
           const expected = process.env.RELEASE_VERSION.replace(/^v/, '');
-          const packageDirectories = fs.readdirSync('packages', { withFileTypes: true })
-            .filter((entry) => entry.isDirectory())
-            .map((entry) => path.join('packages', entry.name, 'package.json'))
-            .filter(fs.existsSync);
-
-          const mismatches = packageDirectories.flatMap((packageFile) => {
-            const packageJson = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
-            return packageJson.version === expected
-              ? []
-              : [`${packageJson.name}: ${packageJson.version} (expected ${expected})`];
-          });
-
-          if (mismatches.length > 0) {
-            throw new Error(`Tag and package versions do not match:\n${mismatches.join('\n')}`);
+          const packageJson = JSON.parse(fs.readFileSync('packages/cli/package.json', 'utf8'));
+          if (packageJson.version !== expected) {
+            throw new Error(
+              `Tag ${process.env.RELEASE_VERSION} does not match ${packageJson.name}@${packageJson.version}`,
+            );
           }
           NODE
 
       - name: Build
         run: pnpm build
 
-      - name: Publish packages
-        run: pnpm publish --recursive --access public --no-git-checks --provenance --tag "$NPM_DIST_TAG"
+      - name: Publish CLI
+        working-directory: packages/cli
+        run: npm publish --access public --tag "$NPM_DIST_TAG"
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_DIST_TAG: ${{ contains(github.ref_name, '-') && 'next' || 'latest' }}

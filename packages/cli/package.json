@@ -1,6 +1,6 @@
 {
   "name": "auto-product-video-generator",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI-powered promotional video generator for web apps and CLI tools",
   "type": "module",
   "bin": {
