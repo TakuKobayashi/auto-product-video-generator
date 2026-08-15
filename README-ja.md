@@ -381,6 +381,69 @@ task build          # または: pnpm run build（CI・配布前の型チェッ�
 pnpm apvg --help     # 整理されたCLIのコマンド一覧
 ```
 
+### npmへの公開
+
+npmへ公開するのは`packages/cli`の`auto-product-video-generator`だけです。`core`、`ai`、
+`recorder`などは開発時のコード整理用で、CLIの`dist/index.js`へバンドルされます。個別のnpm
+パッケージとしては公開しません。
+
+ローカルで公開内容を検証するには次を実行します。
+
+```bash
+pnpm install
+pnpm release:check
+```
+
+#### 初回公開とTrusted Publishingの登録
+
+npmのTrusted Publishingは既に存在するパッケージに対して設定します。パッケージがまだnpmに
+存在しない場合、最初の1回だけローカルから2FAのOTPを使って公開してください。
+
+```bash
+npm login
+cd packages/cli
+npm publish --access public --otp=<認証アプリの6桁コード>
+cd ../..
+```
+
+初回公開後、npm 11.15.0以上を使ってGitHub ActionsをTrusted Publisherとして登録します。
+
+```bash
+npm install --global npm@^11.15.0
+npm trust github auto-product-video-generator --repo TakuKobayashi/auto-product-video-generator --file publish-npm.yml --allow-publish
+npm trust list auto-product-video-generator
+```
+
+登録内容はリポジトリ`TakuKobayashi/auto-product-video-generator`、workflow
+`publish-npm.yml`、許可操作`npm publish`、Environment未指定にします。workflow本体は
+`.github/workflows/publish-npm.yml`にあります。Trusted PublishingはGitHub OIDCの短時間
+認証を使うため、`NPM_TOKEN`などの長期トークンをGitHub Secretsへ登録する必要はありません。
+
+#### タグによる自動公開
+
+`packages/cli/package.json`の`version`を更新してmainへpushし、同じバージョンの`v`タグを
+pushします。例えば`0.2.0`を公開する場合は次のとおりです。
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+GitHub Actionsはテスト、ビルド、タグとCLIバージョンの照合を行い、`packages/cli`だけを
+公開します。通常版にはnpm dist-tag `latest`、`v0.2.0-beta.1`のようなプレリリースには
+`next`を付けます。一度npmへ公開したバージョンは再利用できません。
+
+自動公開が`OIDC token exchange error - package not found`で失敗した場合は、まず次を確認します。
+
+```bash
+npm trust list auto-product-video-generator
+```
+
+`No trust configurations found`なら、上記の`npm trust github ...`を実行してから失敗したActionsを
+再実行できます（そのバージョンがまだnpmへ公開されていない場合）。publish失敗時はActions runの
+Artifactsに`npm-publish-diagnostics-<run番号>`が7日間保存され、npm debug log、Node/npm
+バージョン、OIDC変数の有無を確認できます。認証値そのものはArtifactへ保存しません。
+
 ## ライセンス
 
 MIT

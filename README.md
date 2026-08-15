@@ -340,19 +340,71 @@ pnpm apvg --help     # show the organized CLI command hierarchy
 
 ### Publishing to npm
 
-All workspace packages share one version and are published together because
-the public `auto-product-video-generator` CLI depends on the scoped internal packages.
+Only the `auto-product-video-generator` CLI under `packages/cli` is published.
+The internal `core`, `ai`, `recorder`, and other source packages are bundled
+into `dist/index.js`; they are not published as separate npm packages.
+
+Validate the release locally before publishing:
+
+```bash
+pnpm install
+pnpm release:check
+```
+
+#### First publish and trusted publishing
+
+npm trusted publishing can only be configured for an existing package. If the
+package does not exist yet, publish it once locally with a 2FA OTP:
 
 ```bash
 npm login
-pnpm release:check  # build, test, and show the packages that would be published
-pnpm publish:npm    # publish every package in dependency order
+cd packages/cli
+npm publish --access public --otp=<six-digit-authenticator-code>
+cd ../..
 ```
 
-Before the first release, confirm that the npm account owns the
-`@auto-product-video-generator` scope and that the unscoped `auto-product-video-generator` name is
-available. Publishing requires a clean, committed git working tree. For later
-releases, update all eight package versions together before publishing.
+After the first publish, use npm 11.15.0 or newer to register this repository's
+GitHub Actions workflow as the trusted publisher:
+
+```bash
+npm install --global npm@^11.15.0
+npm trust github auto-product-video-generator --repo TakuKobayashi/auto-product-video-generator --file publish-npm.yml --allow-publish
+npm trust list auto-product-video-generator
+```
+
+The trust configuration must identify repository
+`TakuKobayashi/auto-product-video-generator`, workflow `publish-npm.yml`, the
+allowed `npm publish` action, and no GitHub Environment. The workflow itself is
+`.github/workflows/publish-npm.yml`. Trusted publishing uses short-lived GitHub
+OIDC credentials, so no `NPM_TOKEN` GitHub Actions secret is required.
+
+#### Publishing from a tag
+
+Update `packages/cli/package.json`'s `version`, push that change to `main`, and
+then push a matching `v` tag. For version `0.2.0`:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+GitHub Actions tests and builds the repository, verifies that the tag matches
+the CLI version, and publishes only `packages/cli`. Stable versions receive the
+`latest` npm dist-tag; prereleases such as `v0.2.0-beta.1` receive `next`. npm
+versions cannot be reused after they have been published.
+
+If publishing fails with `OIDC token exchange error - package not found`, run:
+
+```bash
+npm trust list auto-product-video-generator
+```
+
+If it reports `No trust configurations found`, register the trusted publisher
+with the command above, then rerun the failed Actions job if that version is
+still unpublished. Failed publish runs upload an
+`npm-publish-diagnostics-<run number>` artifact for seven days. It contains npm
+debug logs, Node/npm versions, and the presence (not values) of authentication
+environment variables.
 
 ## License
 
