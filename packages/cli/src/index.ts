@@ -1,8 +1,11 @@
 #!/usr/bin/env node
+import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { formatUnknownError } from '@auto-product-video-generator/core';
 import { projectCommand } from './commands/project.js';
 import { videoCommand } from './commands/video.js';
+import { serveCommand, servicesCommand } from './commands/services.js';
+import { setupCommand, doctorCommand } from './commands/environment.js';
 
 // Every command's action handler is async; an unhandled rejection there
 // (network errors, missing files, etc.) would otherwise print a raw Node.js
@@ -18,13 +21,18 @@ process.on('unhandledRejection', (err) => {
 });
 
 const program = new Command();
+const packageVersion = (createRequire(import.meta.url)('../package.json') as { version: string }).version;
 
 program
   .name('apvg')
   .description('AI-powered promotional video generator for web apps and CLI tools')
-  .version('0.1.0');
+  .version(packageVersion);
 
 program.addCommand(projectCommand());
 program.addCommand(videoCommand());
+program.addCommand(serveCommand());
+program.addCommand(servicesCommand());
+program.addCommand(setupCommand());
+program.addCommand(doctorCommand());
 
 program.parse();

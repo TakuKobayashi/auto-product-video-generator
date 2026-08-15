@@ -14,31 +14,68 @@ npmパッケージではNode.jsやパッケージマネージャーのバージ�
 pnpmは必要ありません。gitはリポジトリ取得、Dockerまたは別途起動したVOICEVOX Engineは音声生成、
 Android SDK（`adb`、`emulator`）と作成済みAVDはAndroid録画を使う場合にだけ必要です。SDKは
 `target.android.sdkPath`、`ANDROID_SDK_ROOT`、`ANDROID_HOME`のいずれかで指定できます。
-リポジトリのセットアップコマンドでは、ffmpeg、Playwright、Task、任意でOllamaもまとめて準備します。
+ブラウザ録画用のChromiumは別途インストールします。`GEMINI_API_KEY`を設定する場合、Ollamaは不要です。
+
+## npmからインストール
+
+```bash
+npm install --global auto-product-video-generator
+apvg setup
+apvg doctor
+apvg --help
+```
+
+インストール後は`apvg`コマンドを任意のディレクトリから実行できます。pnpmやこのリポジトリの
+クローンは必要ありません。`apvg setup`はブラウザ録画用のChromiumをインストールします。
+Docker、Ollama、Android SDKなどのOS側ツールは自動インストールせず、`apvg doctor`が不足項目と
+導入先のヒントを表示します。
 
 ## クイックスタート
 
+設定ファイルや生成物を保存する作業ディレクトリを作り、その中で実行します。
+
 ```bash
-git clone <このリポジトリ> && cd auto-product-video-generator
+mkdir my-product-video
+cd my-product-video
 
-task install          # 初回のみ: 必要なもの一式をインストール（内訳は task --list）
-task serve            # ローカルサービスを起動（VOICEVOX、Ollama）
-task doctor           # 何か足りてるか不安なら実行
+# VOICEVOXと、GEMINI_API_KEY未設定時はOllamaを起動
+apvg serve
 
-# 動画化したいプロジェクトを指定（ローカルURLと起動方法はソースから推定）
-pnpm apvg project init --repo https://github.com/you/your-app.git
-#   ローカルに既にある場合は: --source ../your-app
+# GitHubなどのリモートgitリポジトリを使用する場合
+apvg project init --repo https://github.com/you/your-app.git
 
-pnpm apvg video generate # 動画を作る
+# 既にローカルにあるgitリポジトリを使用する場合
+# apvg project init --source ../your-app
+
+apvg video generate
 ```
+
+サービスの状態は`apvg services status`で確認できます。`apvg services stop`はAPVGが起動した
+VOICEVOXコンテナだけを停止します。OllamaはOSのサービスや他のアプリから利用される可能性が
+あるため停止しません。
+
+### 環境構築・サービス管理コマンド
+
+| コマンド | 用途 |
+|---|---|
+| `apvg setup` | APVGが管理するPlaywright Chromiumをインストール |
+| `apvg doctor` | Node.js、git、Docker、動画ツール、Chromium、サービス、設定を診断。不足するOS側ツールは導入ヒントだけを表示 |
+| `apvg serve` | DockerでVOICEVOXを起動し、`GEMINI_API_KEY`未設定時はOllamaの起動とモデル取得も実行 |
+| `apvg serve --no-ollama` | Ollamaを使わずVOICEVOXだけを起動 |
+| `apvg services status` | VOICEVOXとOllamaへの接続状態を確認 |
+| `apvg services stop` | APVGが管理するVOICEVOXコンテナだけを停止 |
+
+Docker、Ollama、git、Android SDKは自動インストールしません。`apvg doctor`が表示するヒントを
+参考に、各自の環境へ導入してください。モデルやVOICEVOXイメージのオプションは
+`apvg serve --help`で確認できます。
 
 Android、Flutter、React Nativeは、GitHub URLまたはローカルソースだけでプラットフォームを判定し、
 Debug APKのビルド、停止中AVDの起動、boot待機、application id検出、APKインストール、録画まで
 自動実行します。
 
 ```bash
-pnpm apvg project init --repo https://github.com/you/your-android-app.git
-pnpm apvg video generate
+apvg project init --repo https://github.com/you/your-android-app.git
+apvg video generate
 ```
 
 接続済み端末があればそれを使い、なければインストール済みAVDの先頭を起動します。AVDが未作成の場合は
@@ -48,7 +85,7 @@ SDKを環境変数で指定しない場合は`target.android.sdkPath`を設定�
 `target.android.activity`は省略可能で、省略時はランチャーActivityを自動起動します。
 生成された端末向けシナリオは、安全のため推測したボタン名をタップせず、起動・待機・スワイプを
 中心にします。実際のラベルが分かる場合は`.apvg/scenario.yml`へ`tap`、`input_text`、
-`back`などを追加してから`pnpm apvg video record`を実行できます。
+`back`などを追加してから`apvg video record`を実行できます。
 
 Unityのバッチモードはプロジェクト固有のBuild Methodが必要なため、Unityでは既存APK、または
 `target.android.buildCommand`を指定します。生成後のAVD起動・インストール・ADB録画は同じく自動です。
@@ -70,23 +107,13 @@ iOSとUnity Desktopの録画は未対応です。
 `--platform-priority web,android,flutter`と指定できます。
 依存関係はモノレポのルートで、開発サーバーは選択したアプリのディレクトリで自動実行されます。
 
-VOICEVOX EngineやOllamaを別の`docker compose up -d`で起動している場合、`task serve`は
-省略できます。その場合もホスト側からVOICEVOXの`http://localhost:50021`とOllamaの
-`http://localhost:11434`へ到達できるよう、Composeでポートを公開してください。
-`task doctor`、または次のコマンドで起動状態を確認できます。
+VOICEVOX Engineはホストの`http://localhost:50021`で起動してください。Ollamaを使う場合は
+`http://localhost:11434`で起動します。次のコマンドで起動状態を確認できます。
 
 ```bash
 curl http://localhost:50021/version
 curl http://localhost:11434/api/tags  # Ollamaを使う場合のみ
 ```
-
-`pnpm apvg`は`development`条件付きexportsと`tsx`を使って、すべてのワークスペースの
-TypeScriptソースを直接実行するため、クリーンなcheckoutでも事前の
-`pnpm build`は不要です。`pnpm build`はCI・配布前の型チェックとJavaScript生成にだけ使います。
-
-`task`コマンドが無くても、下記はすべて`pnpm install`だけで動きます — 各`task`コマンドが
-実際に何をしているかは[Taskfile.yml](./Taskfile.yml)に、`pnpm run <name>`という
-素のエイリアスは[package.json](./package.json)にあります。
 
 出力先は完成動画が`output/final.mp4`、途中生成物が`output/artifacts/`です。
 `artifacts/`にはscenario/script、字幕、WAV音声、シーン録画、スクリーンショット、
@@ -150,17 +177,17 @@ flowchart TD
 通常は次の一括実行だけで構いません。
 
 ```bash
-pnpm apvg video generate
+apvg video generate
 ```
 
 内容を途中で確認・編集したい場合は、必ず次の順番で個別実行します。
 
 ```bash
-pnpm apvg project analyze
-pnpm apvg video scenario generate
-pnpm apvg video voice     # WAV生成後、実音声の長さでscript/subtitlesを更新
-pnpm apvg video record    # 更新済みscriptとWAVが必須
-pnpm apvg video render
+apvg project analyze
+apvg video scenario generate
+apvg video voice     # WAV生成後、実音声の長さでscript/subtitlesを更新
+apvg video record    # 更新済みscriptとWAVが必須
+apvg video render
 ```
 
 各コマンドは直前の生成物を使います。途中で止まった場合、成功済みの工程を繰り返す必要は
@@ -168,50 +195,50 @@ pnpm apvg video render
 
 | 最後に成功した工程／変更内容 | 再開コマンド |
 |---|---|
-| `analyze`まで成功 | `pnpm apvg video scenario generate` |
-| `scenario generate`まで成功 | `pnpm apvg video voice` |
-| `voice`まで成功 | `pnpm apvg video record` |
-| `record`まで成功 | `pnpm apvg video render` |
-| narration・テロップ文言を変更 | `pnpm apvg video voice`から |
-| 画面操作だけを変更 | `pnpm apvg video record`から |
-| 録画・音声は完成済みで合成設定だけ変更 | `pnpm apvg video render`のみ |
+| `analyze`まで成功 | `apvg video scenario generate` |
+| `scenario generate`まで成功 | `apvg video voice` |
+| `voice`まで成功 | `apvg video record` |
+| `record`まで成功 | `apvg video render` |
+| narration・テロップ文言を変更 | `apvg video voice`から |
+| 画面操作だけを変更 | `apvg video record`から |
+| 録画・音声は完成済みで合成設定だけ変更 | `apvg video render`のみ |
 
 | コマンド | 生成物 | 補足 |
 |---|---|---|
-| `pnpm apvg project init --repo <URL>` | `apvg.config.yml` | 初回のみ。ローカルの場合は`--source <パス>` |
-| `pnpm apvg project analyze` | `.apvg/source-context.json`、`.apvg/project-summary.json` | 決定論的なソース走査 + AIによる分類 |
-| `pnpm apvg video scenario generate` | `.apvg/scenario.yml`、`.apvg/script.yml`、`.apvg/subtitles.srt` | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
-| `pnpm apvg video voice` | `.apvg/voice/*.wav` | 実音声の長さでscript/subtitlesの時刻も更新 |
-| `pnpm apvg video record` | `.apvg/recordings/*.mp4` | 音声の実時間に合わせて操作し、到達不能なら停止 |
-| `pnpm apvg video render` | `output/final.mp4`、`output/artifacts/` | 完成動画と途中生成物一式を出力 |
+| `apvg project init --repo <URL>` | `apvg.config.yml` | 初回のみ。ローカルの場合は`--source <パス>` |
+| `apvg project analyze` | `.apvg/source-context.json`、`.apvg/project-summary.json` | 決定論的なソース走査 + AIによる分類 |
+| `apvg video scenario generate` | `.apvg/scenario.yml`、`.apvg/script.yml`、`.apvg/subtitles.srt` | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
+| `apvg video voice` | `.apvg/voice/*.wav` | 実音声の長さでscript/subtitlesの時刻も更新 |
+| `apvg video record` | `.apvg/recordings/*.mp4` | 音声の実時間に合わせて操作し、到達不能なら停止 |
+| `apvg video render` | `output/final.mp4`、`output/artifacts/` | 完成動画と途中生成物一式を出力 |
 
 各工程は入出力パスを明示指定できます。複数の実行やCIジョブ、動画のバリエーションごとに
 `.apvg/`を共有せず、任意の中間ファイルを次の工程へ渡せます。
 
 ```bash
-pnpm apvg project analyze \
+apvg project analyze \
   --source-context tmp/source-context.json \
   --project-summary tmp/project-summary.json
 
-pnpm apvg video scenario generate \
+apvg video scenario generate \
   --project-summary tmp/project-summary.json \
   --scenario tmp/scenario.yml \
   --script tmp/script.yml \
   --subtitles tmp/subtitles.srt
 
-pnpm apvg video voice \
+apvg video voice \
   --script tmp/script.yml \
   --voice-dir tmp/voice \
   --subtitles tmp/subtitles.srt
 
-pnpm apvg video record \
+apvg video record \
   --scenario tmp/scenario.yml \
   --script tmp/script.yml \
   --voice-dir tmp/voice \
   --recordings-dir tmp/recordings \
   --screenshots-dir tmp/screenshots
 
-pnpm apvg video render \
+apvg video render \
   --scenario tmp/scenario.yml \
   --script tmp/script.yml \
   --voice-dir tmp/voice \
@@ -227,10 +254,10 @@ pnpm apvg video render \
 上表の既定パスを使います。source clone/cacheやdev server logのパスも指定できるため、
 詳細は各コマンドの`--help`を参照してください。
 
-`pnpm apvg video generate [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
+`apvg video generate [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
 は上記5つをまとめて実行し、指定したステップだけ既存の生成物を使って
 スキップできます。各コマンドの全オプションは`--help`で確認できます
-（例: `pnpm apvg project analyze --help`）。CLI全体は`pnpm apvg --help`で確認できます。
+（例: `apvg project analyze --help`）。CLI全体は`apvg --help`で確認できます。
 
 `--skip-voice`と録画を組み合わせる場合も、既存の`.apvg/voice/*.wav`が必要です。
 録画前に既存WAVを測り直すため、音声なしの状態で録画だけを先行することはできません。
@@ -305,25 +332,28 @@ CLI用一時ワークスペースの両方から除外されます。
 `analyze`側の設定は変えなくて大丈夫です。警告メッセージには、モデルが具体的に
 どのフィールドを間違えたかも表示されます。
 
-### `pnpm install`がffmpegやtaskのダウンロードで失敗する
+### `npm install --global`がffmpegのダウンロードで失敗する
 
-`ffmpeg-static`や`@go-task/cli`はGitHubリリースからバイナリをダウンロードする
-postinstallスクリプトを持っており、社内プロキシ等でブロックされると失敗することが
-あります。まず再実行してみてください。ffmpegは手動インストールしても自動検出されます
-（`winget install ffmpeg` / `brew install ffmpeg` / `apt install ffmpeg`）。`task`が
-無くても`pnpm run <name>`側で代替できます。
+`ffmpeg-static`はインストール時にバイナリをダウンロードします。社内プロキシなどで
+ブロックされた場合は、ネットワーク設定を確認してから再実行してください。ffmpegを
+手動インストールした場合も自動検出されます
+（`winget install ffmpeg` / `brew install ffmpeg` / `apt install ffmpeg`）。
 
-### `pnpm run build`や`pnpm apvg`が`ERR_PNPM_IGNORED_BUILDS`で失敗する
+### インストール後に`apvg`コマンドが見つからない
+
+ターミナルを開き直し、npmのグローバルbinディレクトリが`PATH`に含まれているか確認してください。
+グローバルインストール先は`npm prefix --global`で確認できます。
+
+### Chromiumを起動できない
 
 ```bash
-pnpm approve-builds
+apvg setup
 ```
-を実行し、`ffmpeg-static` / `@go-task/cli` / `esbuild`を承認してください。
 
-### `pnpm apvg project init`が「--repo か --source が必要」と言う
+### `apvg project init`が「--repo か --source が必要」と言う
 
 `analyze`が実際のソースコードを読む設計のため、`init`の時点で対象を指定する必要が
-あります: `pnpm apvg project init --repo <URL>` または `--source <パス>`（gitリポジトリ
+あります: `apvg project init --repo <URL>` または `--source <パス>`（gitリポジトリ
 である必要あり）。
 
 ### `scenario.yml`のURLが実際のページと合っていない
@@ -336,8 +366,8 @@ pnpm approve-builds
 ### VOICEVOX / Ollamaに接続できない
 
 ```bash
-task serve          # 両方まとめて起動を試みる
-task doctor          # 何が足りないか診断
+apvg serve          # 必要なサービスを起動
+apvg doctor         # 不足している外部環境を診断
 ```
 
 Docker Composeを使う場合は、少なくともVOICEVOXの`50021:50021`を公開してください。
@@ -348,13 +378,13 @@ Ollamaもコンテナで動かす場合は`11434:11434`が必要です。`voice`
 
 まず`target.url`を通常のブラウザで開けるか確認してください。次に`.apvg/scenario.yml`の
 `goto`、`click`、`wait_visible`が実際の画面と合っているか確認します。修正後は音声を
-変えていなければ`pnpm apvg video record`、ナレーションも変えた場合は
-`pnpm apvg video voice`から再実行してください。
+変えていなければ`apvg video record`、ナレーションも変えた場合は
+`apvg video voice`から再実行してください。
 
 ### とにかく何もわからない
 
 ```bash
-task doctor
+apvg doctor
 ```
 
 ---
@@ -372,13 +402,13 @@ packages/
 ├── voicevox/     音声合成
 └── renderer/     ffmpegレンダリング
 
-scripts/doctor.ts   環境診断（task doctor）
+scripts/doctor.ts   環境診断（pnpm doctor）
 Taskfile.yml        環境構築・サーバー起動
 ```
 
 ```bash
-task build          # または: pnpm run build（CI・配布前の型チェック／JS生成）
-pnpm apvg --help     # 整理されたCLIのコマンド一覧
+pnpm build          # CI・配布前の型チェック／JS生成
+pnpm apvg --help    # ソースからCLIのコマンド一覧を確認
 ```
 
 ### npmへの公開
