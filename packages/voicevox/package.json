@@ -1,6 +1,7 @@
 {
   "name": "@auto-product-video-generator/voicevox",
   "version": "0.1.0",
+  "private": true,
   "description": "VOICEVOX voice synthesis integration for auto-product-video-generator",
   "files": ["dist/"],
   "license": "MIT",
@@ -23,7 +24,5 @@
     "dev": "tsc -b --watch",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@auto-product-video-generator/core": "workspace:*"
-  }
+  "dependencies": {}
 }

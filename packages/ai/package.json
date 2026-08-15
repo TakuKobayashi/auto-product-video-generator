@@ -1,6 +1,7 @@
 {
   "name": "@auto-product-video-generator/ai",
   "version": "0.1.0",
+  "private": true,
   "description": "AI/LLM integration for auto-product-video-generator",
   "files": ["dist/"],
   "license": "MIT",
@@ -24,8 +25,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@auto-product-video-generator/core": "workspace:*",
-    "@auto-product-video-generator/source": "workspace:*",
     "@google/generative-ai": "^0.21.0",
     "zod": "^3.23.0"
   }

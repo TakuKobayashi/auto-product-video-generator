@@ -1,6 +1,7 @@
 {
   "name": "@auto-product-video-generator/recorder",
   "version": "0.1.0",
+  "private": true,
   "description": "Platform recording drivers for auto-product-video-generator",
   "files": ["dist/", "docker/"],
   "license": "MIT",
@@ -14,8 +15,6 @@
   "exports": { ".": { "development": "./src/index.ts", "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
   "scripts": { "build": "tsc -b", "clean": "rm -rf dist" },
   "dependencies": {
-    "@auto-product-video-generator/core": "workspace:*",
-    "@auto-product-video-generator/playwright": "workspace:*",
     "playwright": "^1.47.0"
   }
 }

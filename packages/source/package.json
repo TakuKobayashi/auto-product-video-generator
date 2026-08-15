@@ -1,6 +1,7 @@
 {
   "name": "@auto-product-video-generator/source",
   "version": "0.1.0",
+  "private": true,
   "description": "Deterministic project source ingestion for auto-product-video-generator: git clone/local checkout + web route discovery",
   "files": ["dist/"],
   "license": "MIT",
@@ -23,7 +24,5 @@
     "dev": "tsc -b --watch",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@auto-product-video-generator/core": "workspace:*"
-  }
+  "dependencies": {}
 }

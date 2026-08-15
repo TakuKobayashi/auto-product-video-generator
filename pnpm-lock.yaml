@@ -27,6 +27,9 @@ importers:
       eslint:
         specifier: ^9.39.5
         version: 9.39.5
+      esbuild:
+        specifier: ^0.28.1
+        version: 0.28.1
       ffmpeg-static:
         specifier: ^5.3.0
         version: 5.3.0
@@ -48,12 +51,6 @@ importers:
 
   packages/ai:
     dependencies:
-      '@auto-product-video-generator/core':
-        specifier: workspace:*
-        version: link:../core
-      '@auto-product-video-generator/source':
-        specifier: workspace:*
-        version: link:../source
       '@google/generative-ai':
         specifier: ^0.21.0
         version: 0.21.0
@@ -63,30 +60,27 @@ importers:
 
   packages/cli:
     dependencies:
-      '@auto-product-video-generator/ai':
-        specifier: workspace:*
-        version: link:../ai
-      '@auto-product-video-generator/core':
-        specifier: workspace:*
-        version: link:../core
-      '@auto-product-video-generator/playwright':
-        specifier: workspace:*
-        version: link:../playwright
-      '@auto-product-video-generator/recorder':
-        specifier: workspace:*
-        version: link:../recorder
-      '@auto-product-video-generator/renderer':
-        specifier: workspace:*
-        version: link:../renderer
-      '@auto-product-video-generator/source':
-        specifier: workspace:*
-        version: link:../source
-      '@auto-product-video-generator/voicevox':
-        specifier: workspace:*
-        version: link:../voicevox
+      '@google/generative-ai':
+        specifier: ^0.21.0
+        version: 0.21.0
       commander:
         specifier: ^12.1.0
         version: 12.1.0
+      ffmpeg-static:
+        specifier: ^5.3.0
+        version: 5.3.0
+      ffprobe-static:
+        specifier: ^3.1.0
+        version: 3.1.0
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.2.0
+      playwright:
+        specifier: ^1.61.1
+        version: 1.61.1
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
 
   packages/core:
     dependencies:
@@ -112,42 +106,21 @@ importers:
 
   packages/playwright:
     dependencies:
-      '@auto-product-video-generator/core':
-        specifier: workspace:*
-        version: link:../core
       playwright:
         specifier: ^1.47.0
         version: 1.61.1
 
   packages/recorder:
     dependencies:
-      '@auto-product-video-generator/core':
-        specifier: workspace:*
-        version: link:../core
-      '@auto-product-video-generator/playwright':
-        specifier: workspace:*
-        version: link:../playwright
       playwright:
         specifier: ^1.47.0
         version: 1.61.1
 
-  packages/renderer:
-    dependencies:
-      '@auto-product-video-generator/core':
-        specifier: workspace:*
-        version: link:../core
+  packages/renderer: {}
 
-  packages/source:
-    dependencies:
-      '@auto-product-video-generator/core':
-        specifier: workspace:*
-        version: link:../core
+  packages/source: {}
 
-  packages/voicevox:
-    dependencies:
-      '@auto-product-video-generator/core':
-        specifier: workspace:*
-        version: link:../core
+  packages/voicevox: {}
 
 packages:
 

@@ -1,6 +1,7 @@
 {
   "name": "@auto-product-video-generator/core",
   "version": "0.1.0",
+  "private": true,
   "description": "Core types, schemas, and utilities for auto-product-video-generator",
   "files": ["dist/"],
   "license": "MIT",

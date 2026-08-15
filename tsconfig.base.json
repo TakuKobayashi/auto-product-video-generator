@@ -3,6 +3,16 @@
     "target": "ES2022",
     "module": "Node16",
     "moduleResolution": "Node16",
+    "baseUrl": ".",
+    "paths": {
+      "@auto-product-video-generator/ai": ["packages/ai/src/index.ts"],
+      "@auto-product-video-generator/core": ["packages/core/src/index.ts"],
+      "@auto-product-video-generator/playwright": ["packages/playwright/src/index.ts"],
+      "@auto-product-video-generator/recorder": ["packages/recorder/src/index.ts"],
+      "@auto-product-video-generator/renderer": ["packages/renderer/src/index.ts"],
+      "@auto-product-video-generator/source": ["packages/source/src/index.ts"],
+      "@auto-product-video-generator/voicevox": ["packages/voicevox/src/index.ts"]
+    },
     "lib": ["ES2022"],
     "strict": true,
     "esModuleInterop": true,
