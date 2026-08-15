@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { join } from 'node:path';
 import { CliRecorder } from './cli-recorder.js';
 
 describe('CliRecorder', () => {
@@ -17,6 +18,6 @@ describe('CliRecorder', () => {
       headed: false, slowMo: 0, outputDir: '/tmp/apvg-cli-test',
       screenshotDir: '/tmp/apvg-cli-test/screenshots', dryRun: true,
     });
-    expect(output).toBe('/tmp/apvg-cli-test/scene-help.mp4');
+    expect(output).toBe(join('/tmp/apvg-cli-test', 'scene-help.mp4'));
   });
 });
