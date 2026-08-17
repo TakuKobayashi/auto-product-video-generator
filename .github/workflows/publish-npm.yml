@@ -28,6 +28,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -129,3 +131,25 @@ jobs:
           path: ${{ runner.temp }}/npm-publish-diagnostics/
           if-no-files-found: error
           retention-days: 7
+
+  release:
+    name: Create GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository with release history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create AI-generated release notes
+        id: release-notes
+        uses: ./.github/actions/ai-release-notes
+        with:
+          github-token: ${{ github.token }}
+          tag: ${{ github.ref_name }}
+          model: qwen2.5-coder:7b-instruct
+          language: jp
