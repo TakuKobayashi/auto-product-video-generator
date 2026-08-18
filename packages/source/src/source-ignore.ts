@@ -2,12 +2,26 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+const NON_SOURCE_EXTENSIONS = [
+  // Archives, installers, and distributable packages
+  '7z', 'aab', 'apk', 'appimage', 'bz2', 'cab', 'dmg', 'gz', 'ipa', 'iso', 'rar', 'tar', 'tgz', 'unitypackage', 'xz', 'zip',
+  // Compiled executables and libraries
+  'a', 'class', 'dll', 'dylib', 'elf', 'exe', 'jar', 'lib', 'o', 'pyc', 'so', 'wasm', 'war',
+  // Fonts and binary documents
+  'doc', 'docx', 'eot', 'odg', 'odp', 'ods', 'odt', 'otf', 'pdf', 'ppt', 'pptx', 'ttf', 'woff', 'woff2', 'xls', 'xlsb', 'xlsx',
+  // Databases, datasets, and serialized data
+  'arrow', 'db', 'feather', 'h5', 'hdf5', 'mdb', 'npy', 'npz', 'parquet', 'pickle', 'pkl', 'sqlite', 'sqlite3',
+  // Machine-learning models and weights
+  'bin', 'ckpt', 'gguf', 'mlmodel', 'onnx', 'pb', 'pt', 'pth', 'safetensors', 'tflite',
+  // Game-engine bundles, generated metadata, and credential containers
+  'assetbundle', 'jks', 'keystore', 'map', 'p12', 'pak', 'pfx', 'uasset', 'umap', 'unity3d',
+];
+
 export const DEFAULT_SOURCE_EXCLUDES = [
   '.git/**', 'node_modules/**', '.apvg/**', 'dist/**', 'build/**', '.next/**',
   'out/**', '.output/**', '.turbo/**', '.vercel/**', 'coverage/**', '.cache/**',
   'output/**', 'artifacts/**', 'recordings/**', 'screenshots/**',
-  '**/*.mp4', '**/*.webm', '**/*.mov', '**/*.wav', '**/*.mp3', '**/*.aac',
-  '**/*.zip', '**/*.tar', '**/*.gz',
+  ...NON_SOURCE_EXTENSIONS.map((extension) => `**/*.${extension}`),
 ];
 
 /** Root .gitignore rules plus APVG/config rules, in matching precedence order. */

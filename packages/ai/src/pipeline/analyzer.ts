@@ -21,7 +21,9 @@ plain language. Prefer user workflows such as "browse work", "find information",
 You will be given: the project's package.json (name/description/scripts/dependencies),
 its README, deterministic platform signals, the detected web framework (if any), and
 either a list of discovered routes (URL paths mapped from actual page/route files) or a
-general file listing when routes couldn't be auto-discovered.
+general file listing when routes couldn't be auto-discovered. A separately capped list
+of promotional asset paths may also be provided. Treat asset names only as hints; never
+claim to have inspected their visual, audio, video, or 3D contents.
 
 Respond ONLY with one valid JSON object. This is strict JSON, not TypeScript.
 Every top-level key shown below is REQUIRED. NEVER output null anywhere.
@@ -130,6 +132,7 @@ export class ProjectAnalyzer {
 
 function buildPrompt(context: ProjectSourceContext, targetUrl?: string): string {
   const pkg = context.packageJson;
+  const assetFiles = context.assetFiles ?? [];
   const concreteRoutes = context.routes.filter((route) => isConcreteWebRoute(route.path));
   const omittedTemplateCount = context.routes.length - concreteRoutes.length;
 
@@ -172,6 +175,9 @@ Key dependencies: ${(pkg?.dependencies || []).slice(0, 40).join(', ') || '(none 
 ${context.readme ? `README:\n${context.readme}\n` : '(No README found)'}
 
 ${routesSection}
+
+Representative promotional asset paths (names only; contents were not inspected):
+${assetFiles.length > 0 ? assetFiles.map((file) => `- ${file}`).join('\n') : '(none found)'}
 
 ${buildSetupPlanningPrompt(targetUrl, platformHint)}
 

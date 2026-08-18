@@ -1,6 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { extname, join, relative, sep } from 'node:path';
 import { logger } from '@auto-product-video-generator/core';
 import { findRepositoryRoot } from './workspace-selector.js';
 import { isSourcePathExcluded, loadSourceExcludePatterns } from './source-ignore.js';
@@ -43,6 +43,8 @@ export interface ProjectSourceContext {
   routes: RouteInfo[];
   /** A capped, filtered listing of source files for extra AI context when no routes were discoverable. */
   fileTree: string[];
+  /** A separately capped list of visual/media asset paths useful for planning a promotional video. */
+  assetFiles: string[];
   /**
    * Deterministic, file-based signals for what platform this project targets
    * (e.g. "Podfile found (iOS/CocoaPods)"). Passed to the AI as grounding
@@ -61,7 +63,18 @@ const EXCLUDED_DIRS = new Set([
 
 const MAX_README_CHARS = 4000;
 const MAX_FILE_TREE_ENTRIES = 200;
+const MAX_ASSET_FILE_ENTRIES = 40;
+const MAX_INSPECTED_FILE_ENTRIES = 1000;
 const MAX_WALK_DEPTH = 6;
+
+const PROMOTIONAL_ASSET_EXTENSIONS = new Set([
+  // Images and editable design files
+  '.ai', '.avif', '.bmp', '.eps', '.fig', '.gif', '.heic', '.heif', '.ico', '.jpeg', '.jpg', '.png', '.psd', '.sketch', '.svg', '.tga', '.tif', '.tiff', '.webp', '.xd',
+  // Video and audio (TypeScript's .ts is intentionally not included)
+  '.3gp', '.aac', '.aiff', '.alac', '.avi', '.flac', '.flv', '.m2ts', '.m4a', '.m4v', '.mid', '.midi', '.mkv', '.mov', '.mp3', '.mp4', '.mpeg', '.mpg', '.oga', '.ogg', '.ogv', '.opus', '.wav', '.webm', '.wma', '.wmv',
+  // 3D and CAD source assets
+  '.3ds', '.abc', '.blend', '.dae', '.dwg', '.dxf', '.fbx', '.glb', '.gltf', '.iges', '.igs', '.obj', '.ply', '.step', '.stl', '.stp', '.usd', '.usda', '.usdc', '.usdz',
+]);
 
 export async function inspectProject(rootDir: string, configuredExcludes: string[] = []): Promise<ProjectSourceContext> {
   logger.step('source', `Inspecting project at ${rootDir}...`);
@@ -111,7 +124,9 @@ export async function inspectProject(rootDir: string, configuredExcludes: string
     framework = 'create-react-app';
   }
 
-  const fileTree = routes.length === 0 ? await buildFileTree(rootDir, excludePatterns) : [];
+  const fileIndex = await buildProjectFileIndex(rootDir, excludePatterns);
+  const fileTree = routes.length === 0 ? fileIndex.sourceFiles : [];
+  const assetFiles = fileIndex.assetFiles;
   const platformHints = await detectPlatformHints(rootDir, packageJson, deps);
 
   logger.success(
@@ -121,7 +136,7 @@ export async function inspectProject(rootDir: string, configuredExcludes: string
   );
 
   const projectPath = relative(repositoryRoot, rootDir) || '.';
-  return { rootDir, repositoryRoot, projectPath, packageManager, packageJson, readme, framework, routes, fileTree, platformHints };
+  return { rootDir, repositoryRoot, projectPath, packageManager, packageJson, readme, framework, routes, fileTree, assetFiles, platformHints };
 }
 
 function detectPackageManager(root: string): 'pnpm' | 'yarn' | 'npm' | 'bun' {
@@ -333,11 +348,20 @@ async function detectPlatformHints(
 
   return hints;
 }
-async function buildFileTree(rootDir: string, excludePatterns: string[]): Promise<string[]> {
-  const results: string[] = [];
+async function buildProjectFileIndex(
+  rootDir: string,
+  excludePatterns: string[],
+): Promise<{ sourceFiles: string[]; assetFiles: string[] }> {
+  const sourceFiles: string[] = [];
+  const assetFiles: string[] = [];
+  let inspectedFileEntries = 0;
 
   async function walk(dir: string, depth: number): Promise<void> {
-    if (depth > MAX_WALK_DEPTH || results.length >= MAX_FILE_TREE_ENTRIES) return;
+    if (
+      depth > MAX_WALK_DEPTH ||
+      inspectedFileEntries >= MAX_INSPECTED_FILE_ENTRIES ||
+      (sourceFiles.length >= MAX_FILE_TREE_ENTRIES && assetFiles.length >= MAX_ASSET_FILE_ENTRIES)
+    ) return;
 
     let entries;
     try {
@@ -347,7 +371,10 @@ async function buildFileTree(rootDir: string, excludePatterns: string[]): Promis
     }
 
     for (const entry of entries) {
-      if (results.length >= MAX_FILE_TREE_ENTRIES) return;
+      if (
+        inspectedFileEntries >= MAX_INSPECTED_FILE_ENTRIES ||
+        (sourceFiles.length >= MAX_FILE_TREE_ENTRIES && assetFiles.length >= MAX_ASSET_FILE_ENTRIES)
+      ) return;
       if (entry.name.startsWith('.') && entry.name !== '.env.example') continue;
 
       const relativePath = relative(rootDir, join(dir, entry.name)).split(sep).join('/');
@@ -357,11 +384,16 @@ async function buildFileTree(rootDir: string, excludePatterns: string[]): Promis
         if (EXCLUDED_DIRS.has(entry.name)) continue;
         await walk(join(dir, entry.name), depth + 1);
       } else {
-        results.push(relativePath);
+        inspectedFileEntries += 1;
+        if (PROMOTIONAL_ASSET_EXTENSIONS.has(extname(entry.name).toLowerCase())) {
+          if (assetFiles.length < MAX_ASSET_FILE_ENTRIES) assetFiles.push(relativePath);
+        } else if (sourceFiles.length < MAX_FILE_TREE_ENTRIES) {
+          sourceFiles.push(relativePath);
+        }
       }
     }
   }
 
   await walk(rootDir, 0);
-  return results;
+  return { sourceFiles, assetFiles };
 }
