@@ -51,16 +51,16 @@ model. If either is unavailable, it exits with a concrete `ollama serve` or
 ```powershell
 # Run `ollama serve` in another terminal first if Ollama is not already running.
 ollama pull qwen2.5-coder:7b-instruct
-$env:INPUT_DRY_RUN = "true"
-$env:INPUT_LANGUAGE = "jp"
-$env:INPUT_MODEL = "qwen2.5-coder:7b-instruct"
-$env:INPUT_OUTPUT_FILE = "release-notes-preview.md"
-node .github/actions/ai-release-notes/generate-release-notes.mjs
+node .github/actions/ai-release-notes/generate-release-notes.mjs `
+  --dry-run `
+  --language jp `
+  --model qwen2.5-coder:7b-instruct `
+  --output-file release-notes-preview.md
 ```
 
-Delete those `INPUT_*` environment variables after the preview if they are no
-longer needed in the current shell. Set `INPUT_TAG` to an existing tag to
-preview that tag instead of `HEAD`.
+Pass `--tag v1.2.3` to preview an existing tag instead of `HEAD`. Run the script
+with `--help` for all options. The `INPUT_*` environment variables remain
+supported because the composite action uses them internally.
 
 To publish this in GitHub Marketplace later, move this directory into a public,
 dedicated repository so that `action.yml` is at its root, then replace the local

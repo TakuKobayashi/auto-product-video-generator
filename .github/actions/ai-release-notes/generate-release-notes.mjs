@@ -1,14 +1,53 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, writeFileSync } from "node:fs";
 
+function parseArgs(argv) {
+  const options = {};
+  const booleanOptions = new Set(["dry-run", "fail-on-llm-error"]);
+  const valueOptions = new Set(["tag", "model", "language", "ollama-host", "output-file", "max-diff-chars", "github-token"]);
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument === "--help" || argument === "-h") {
+      console.log(`Usage: node generate-release-notes.mjs [options]
+
+Options:
+  --dry-run                 Generate notes without changing a GitHub Release
+  --tag <tag>               Target tag (defaults to HEAD in dry-run mode)
+  --language <language>     en for English only; e.g. jp for English + Japanese
+  --model <model>           Ollama model name
+  --ollama-host <url>       Ollama API base URL
+  --output-file <path>      Write generated Markdown to this path
+  --max-diff-chars <count>  Maximum number of diff characters sent to Ollama
+  --fail-on-llm-error       Disable deterministic fallback notes
+  --github-token <token>    GitHub token (prefer INPUT_GITHUB_TOKEN for secrecy)
+  -h, --help                Show this help`);
+      process.exit(0);
+    }
+    if (!argument.startsWith("--")) throw new Error(`Unexpected argument: ${argument}`);
+    const [rawName, inlineValue] = argument.slice(2).split("=", 2);
+    if (booleanOptions.has(rawName)) {
+      options[rawName] = inlineValue === undefined ? true : inlineValue === "true";
+      continue;
+    }
+    if (!valueOptions.has(rawName)) throw new Error(`Unknown option: --${rawName}. Use --help for usage.`);
+    const value = inlineValue ?? argv[++index];
+    if (!value || value.startsWith("--")) throw new Error(`Option --${rawName} requires a value`);
+    options[rawName] = value;
+  }
+  return options;
+}
+
+const args = parseArgs(process.argv.slice(2));
 const env = process.env;
-const dryRun = env.INPUT_DRY_RUN === "true";
-const token = env.INPUT_GITHUB_TOKEN;
-const tag = env.INPUT_TAG || (dryRun ? "HEAD" : "");
+const dryRun = args["dry-run"] ?? env.INPUT_DRY_RUN === "true";
+const failOnLlmError = args["fail-on-llm-error"] ?? env.INPUT_FAIL_ON_LLM_ERROR === "true";
+const token = args["github-token"] || env.INPUT_GITHUB_TOKEN;
+const tag = args.tag || env.INPUT_TAG || (dryRun ? "HEAD" : "");
 const repository = env.GITHUB_REPOSITORY;
-const model = env.INPUT_MODEL || "qwen2.5-coder:7b-instruct";
-const ollamaHost = (env.INPUT_OLLAMA_HOST || "http://127.0.0.1:11434").replace(/\/$/, "");
-const requestedLanguage = (env.INPUT_LANGUAGE || "en").trim().toLowerCase();
+const model = args.model || env.INPUT_MODEL || "qwen2.5-coder:7b-instruct";
+const ollamaHost = (args["ollama-host"] || env.INPUT_OLLAMA_HOST || "http://127.0.0.1:11434").replace(/\/$/, "");
+const outputFile = args["output-file"] || env.INPUT_OUTPUT_FILE;
+const requestedLanguage = (args.language || env.INPUT_LANGUAGE || "en").trim().toLowerCase();
 const languageAliases = {
   en: "English",
   ja: "Japanese",
@@ -25,7 +64,7 @@ const languageAliases = {
 };
 const targetLanguage = languageAliases[requestedLanguage] || requestedLanguage;
 const isEnglishOnly = requestedLanguage === "en" || requestedLanguage.startsWith("en-");
-const maxDiffChars = Number.parseInt(env.INPUT_MAX_DIFF_CHARS || "60000", 10);
+const maxDiffChars = Number.parseInt(args["max-diff-chars"] || env.INPUT_MAX_DIFF_CHARS || "60000", 10);
 
 if (!tag || (!dryRun && (!token || !repository))) {
   throw new Error("tag is required; github-token and GITHUB_REPOSITORY are also required unless dry-run is true");
@@ -174,7 +213,7 @@ await verifyOllama();
 if (!dryRun) git("fetch", "--force", "--tags", "--prune", "origin");
 git("rev-parse", "--verify", `${tag}^{commit}`);
 
-const tags = git("tag", "--merged", `${tag}^{commit}", "--sort=-version:refname")
+const tags = git("tag", "--merged", `${tag}^{commit}`, "--sort=-version:refname")
   .split("\n")
   .filter((candidate) => candidate && candidate !== tag && isReleaseTag(candidate));
 const previousTag = tags[0] || "";
@@ -191,18 +230,18 @@ let usedLlm = true;
 try {
   notes = await generateWithModel(previousTag, commits, changedFiles, diff);
 } catch (error) {
-  if (env.INPUT_FAIL_ON_LLM_ERROR === "true") throw error;
+  if (failOnLlmError) throw error;
   usedLlm = false;
   console.warn(`::warning::${String(error).replaceAll("\n", " ")}. Publishing fallback notes.`);
   notes = fallbackNotes(previousTag, commits, changedFiles);
 }
 
-if (env.INPUT_OUTPUT_FILE) {
-  writeFileSync(env.INPUT_OUTPUT_FILE, `${notes}\n`);
-  console.log(`Wrote release-note preview to ${env.INPUT_OUTPUT_FILE}`);
+if (outputFile) {
+  writeFileSync(outputFile, `${notes}\n`);
+  console.log(`Wrote release-note preview to ${outputFile}`);
 }
 if (dryRun) {
-  if (!env.INPUT_OUTPUT_FILE) console.log(notes);
+  if (!outputFile) console.log(notes);
   if (env.GITHUB_OUTPUT) {
     appendFileSync(env.GITHUB_OUTPUT, `release-url=\nprevious-tag=${previousTag}\nused-llm=${usedLlm}\n`);
   }
