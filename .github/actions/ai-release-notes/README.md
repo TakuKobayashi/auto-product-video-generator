@@ -31,6 +31,16 @@ deterministic notes containing the commit list and diff summary. Set
 `fail-on-llm-error: "true"` to disable that fallback. Use `ollama-host` to point
 at an existing Ollama server.
 
+Non-source and binary contents are excluded from the patch sent to Ollama. This
+includes image, video, audio and 3D files; archives and packages such as
+`unitypackage`; executables and libraries; fonts and binary office documents;
+databases and datasets; ML weights; game-engine bundles; source maps; and
+credential containers. Their paths, change statuses, and diff statistics remain
+available as supporting context. When a release changes only excluded files,
+the action tells the model to derive the summary primarily from commit messages
+rather than pretending to inspect their contents. Lockfiles and ordinary text
+configuration such as JSON and YAML remain part of the analyzed diff.
+
 `language` defaults to `en` and produces notes only in the selected language.
 Set `bilingual: "true"` to include English first and the selected language
 second. Both `ja` (the standard language code) and `jp` are accepted for

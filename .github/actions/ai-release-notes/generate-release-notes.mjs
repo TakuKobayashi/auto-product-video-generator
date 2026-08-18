@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, writeFileSync } from "node:fs";
+import { extname } from "node:path";
 
 function parseArgs(argv) {
   const options = {};
@@ -71,6 +72,31 @@ const isEnglishOnly = normalizedLanguage === "en" || normalizedLanguage.startsWi
 const shouldPublishBilingual = bilingual && !isEnglishOnly;
 const maxDiffChars = Number.parseInt(args["max-diff-chars"] || env.INPUT_MAX_DIFF_CHARS || "60000", 10);
 
+const excludedContentExtensions = new Set([
+  // Images and design assets
+  ".ai", ".avif", ".bmp", ".eps", ".fig", ".gif", ".heic", ".heif", ".ico", ".jpeg", ".jpg", ".png", ".psd", ".sketch", ".svg", ".tga", ".tif", ".tiff", ".webp", ".xd",
+  // Video
+  ".3gp", ".avi", ".flv", ".m2ts", ".m4v", ".mkv", ".mov", ".mp4", ".mpeg", ".mpg", ".ogv", ".webm", ".wmv",
+  // Audio
+  ".aac", ".aiff", ".alac", ".flac", ".m4a", ".mid", ".midi", ".mp3", ".oga", ".ogg", ".opus", ".wav", ".wma",
+  // 3D models, scenes, and binary geometry
+  ".3ds", ".abc", ".blend", ".dae", ".dwg", ".dxf", ".fbx", ".glb", ".gltf", ".iges", ".igs", ".obj", ".ply", ".step", ".stl", ".stp", ".usd", ".usda", ".usdc", ".usdz",
+  // Archives, packages, and distributable images
+  ".7z", ".aab", ".apk", ".appimage", ".bz2", ".cab", ".dmg", ".gz", ".ipa", ".iso", ".rar", ".tar", ".tgz", ".unitypackage", ".xz", ".zip",
+  // Compiled executables and libraries
+  ".a", ".class", ".dll", ".dylib", ".elf", ".exe", ".jar", ".lib", ".o", ".obj", ".pyc", ".so", ".wasm", ".war",
+  // Fonts and binary documents
+  ".doc", ".docx", ".eot", ".odg", ".odp", ".ods", ".odt", ".otf", ".pdf", ".ppt", ".pptx", ".ttf", ".woff", ".woff2", ".xls", ".xlsb", ".xlsx",
+  // Databases, datasets, and serialized data
+  ".arrow", ".db", ".feather", ".h5", ".hdf5", ".mdb", ".npy", ".npz", ".parquet", ".pickle", ".pkl", ".sqlite", ".sqlite3",
+  // Machine-learning models and weights
+  ".bin", ".ckpt", ".gguf", ".mlmodel", ".onnx", ".pb", ".pt", ".pth", ".safetensors", ".tflite",
+  // Game-engine binary assets and generated bundles
+  ".assetbundle", ".pak", ".uasset", ".umap", ".unity3d",
+  // Generated debug metadata and credential containers
+  ".jks", ".keystore", ".map", ".p12", ".pfx",
+]);
+
 if (!tag || (!dryRun && (!token || !repository))) {
   throw new Error("tag is required; github-token and GITHUB_REPOSITORY are also required unless dry-run is true");
 }
@@ -84,6 +110,22 @@ function git(...args) {
 
 function isReleaseTag(value) {
   return /^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value);
+}
+
+function isExcludedContent(filePath) {
+  return excludedContentExtensions.has(extname(filePath).toLowerCase());
+}
+
+function collectTextDiff(base, target, paths) {
+  if (paths.length === 0) return "";
+  const chunks = [];
+  // Keep command lines below platform limits while preserving paths containing spaces.
+  for (let index = 0; index < paths.length; index += 100) {
+    const chunk = git("diff", "--no-ext-diff", "--unified=2", base, target, "--", ...paths.slice(index, index + 100));
+    if (chunk) chunks.push(chunk);
+    if (chunks.join("\n").length >= maxDiffChars) break;
+  }
+  return chunks.join("\n");
 }
 
 function githubHeaders() {
@@ -189,8 +231,14 @@ function fallbackNotes(previousTag, commits, changedFiles) {
   return `# English\n\n${english}\n\n---\n\n# ${targetLanguage}\n\n${localized}`;
 }
 
-async function generateWithModel(previousTag, commits, changedFiles, diff) {
+async function generateWithModel(previousTag, commits, changedFiles, excludedFiles, diff, excludedOnly) {
   const range = previousTag ? `${previousTag}...${tag}` : tag;
+  const evidenceGuidance = excludedOnly
+    ? "All changed files are non-source assets or binary artifacts. Base the substantive release-note summary on commit messages. Use filenames and statuses only as supporting evidence; do not claim to have inspected their contents."
+    : excludedFiles
+      ? "Non-source asset and binary-artifact contents were intentionally excluded from the patch. Use their filenames and statuses only as supporting evidence, and derive code behavior only from the included text diff."
+      : "Use the commit history, changed-file summary, and text diff as evidence.";
+  const sourceMaterial = `EVIDENCE POLICY:\n${evidenceGuidance}\n\nCOMMITS:\n${commits}\n\nCHANGED FILES:\n${changedFiles}\n\nNON-SOURCE ASSETS / BINARY ARTIFACTS (content excluded):\n${excludedFiles || "None"}\n\nTEXT DIFF (may be truncated):\n${diff || "No text diff was included."}`;
   const response = await fetch(`${ollamaHost}/api/chat`, {
     method: "POST",
     headers: {
@@ -216,8 +264,8 @@ async function generateWithModel(previousTag, commits, changedFiles, diff) {
         {
           role: "user",
           content: shouldPublishBilingual
-            ? `Write bilingual release notes for ${range}. First write a complete English version under the heading '# English'. Then write an equivalent ${targetLanguage} translation under the heading '# ${targetLanguage}', separated from English by a horizontal rule. Keep both versions semantically equivalent.\n\nCOMMITS:\n${commits}\n\nCHANGED FILES:\n${changedFiles}\n\nDIFF (may be truncated):\n${diff}`
-            : `Write the release notes in ${targetLanguage} only for ${range}. Do not duplicate or translate the notes into another language.\n\nCOMMITS:\n${commits}\n\nCHANGED FILES:\n${changedFiles}\n\nDIFF (may be truncated):\n${diff}`,
+            ? `Write bilingual release notes for ${range}. First write a complete English version under the heading '# English'. Then write an equivalent ${targetLanguage} translation under the heading '# ${targetLanguage}', separated from English by a horizontal rule. Keep both versions semantically equivalent.\n\n${sourceMaterial}`
+            : `Write the release notes in ${targetLanguage} only for ${range}. Do not duplicate or translate the notes into another language.\n\n${sourceMaterial}`,
         },
       ],
     }),
@@ -241,9 +289,19 @@ const tags = git("tag", "--merged", `${tag}^{commit}`, "--sort=-version:refname"
   .filter((candidate) => candidate && candidate !== tag && isReleaseTag(candidate));
 const previousTag = tags[0] || "";
 const range = previousTag ? `${previousTag}..${tag}` : tag;
+const diffBase = previousTag || "4b825dc642cb6eb9a060e54bf8d69288fbee4904"; // Git's canonical empty tree.
 const commits = git("log", range, "--no-merges", "--pretty=format:%h %s (%an)");
-const changedFiles = git("diff", "--stat", previousTag || git("hash-object", "-t", "tree", "/dev/null"), tag);
-const rawDiff = git("diff", "--no-ext-diff", "--unified=2", previousTag || git("hash-object", "-t", "tree", "/dev/null"), tag);
+const changedFiles = git("diff", "--stat", diffBase, tag);
+const changedFileNames = git("diff", "--name-only", "-z", diffBase, tag).split("\0").filter(Boolean);
+const textFiles = changedFileNames.filter((filePath) => !isExcludedContent(filePath));
+const excludedFileNames = changedFileNames.filter(isExcludedContent);
+const nameStatus = git("diff", "--name-status", diffBase, tag);
+const excludedFiles = nameStatus
+  .split("\n")
+  .filter((line) => excludedFileNames.includes(line.split("\t").at(-1)))
+  .join("\n");
+const excludedOnly = changedFileNames.length > 0 && textFiles.length === 0;
+const rawDiff = collectTextDiff(diffBase, tag, textFiles);
 const diff = rawDiff.length > maxDiffChars
   ? `${rawDiff.slice(0, maxDiffChars)}\n\n[diff truncated at ${maxDiffChars} characters]`
   : rawDiff;
@@ -251,7 +309,7 @@ const diff = rawDiff.length > maxDiffChars
 let notes;
 let usedLlm = true;
 try {
-  notes = await generateWithModel(previousTag, commits, changedFiles, diff);
+  notes = await generateWithModel(previousTag, commits, changedFiles, excludedFiles, diff, excludedOnly);
 } catch (error) {
   if (failOnLlmError) throw error;
   usedLlm = false;
