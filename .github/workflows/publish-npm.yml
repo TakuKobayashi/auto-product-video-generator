@@ -153,3 +153,4 @@ jobs:
           tag: ${{ github.ref_name }}
           model: qwen2.5-coder:7b-instruct
           language: jp
+          bilingual: "true"

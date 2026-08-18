@@ -20,6 +20,7 @@ steps:
       tag: ${{ github.ref_name }}
       model: qwen2.5-coder:7b-instruct
       language: jp
+      bilingual: "true"
 ```
 
 The action gives commit subjects, authors, a diff summary, and at most 60,000
@@ -30,10 +31,10 @@ deterministic notes containing the commit list and diff summary. Set
 `fail-on-llm-error: "true"` to disable that fallback. Use `ollama-host` to point
 at an existing Ollama server.
 
-`language` defaults to `en`, which produces English-only notes. Any other value
-produces bilingual notes with English first and the requested language second.
-Both `ja` (the standard language code) and `jp` are accepted for Japanese; this
-repository deliberately passes `jp` and therefore publishes English and Japanese.
+`language` defaults to `en` and produces notes only in the selected language.
+Set `bilingual: "true"` to include English first and the selected language
+second. Both `ja` (the standard language code) and `jp` are accepted for
+Japanese; this repository passes `jp` with bilingual mode enabled.
 
 Outputs are `release-url`, `previous-tag`, and `used-llm`.
 
@@ -54,6 +55,7 @@ ollama pull qwen2.5-coder:7b-instruct
 node .github/actions/ai-release-notes/generate-release-notes.mjs `
   --dry-run `
   --language jp `
+  --bilingual `
   --model qwen2.5-coder:7b-instruct `
   --output-file release-notes-preview.md
 ```

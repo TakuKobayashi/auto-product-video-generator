@@ -3,7 +3,7 @@ import { appendFileSync, writeFileSync } from "node:fs";
 
 function parseArgs(argv) {
   const options = {};
-  const booleanOptions = new Set(["dry-run", "fail-on-llm-error"]);
+  const booleanOptions = new Set(["dry-run", "fail-on-llm-error", "bilingual"]);
   const valueOptions = new Set(["tag", "model", "language", "ollama-host", "output-file", "max-diff-chars", "github-token"]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -13,7 +13,8 @@ function parseArgs(argv) {
 Options:
   --dry-run                 Generate notes without changing a GitHub Release
   --tag <tag>               Target tag (defaults to HEAD in dry-run mode)
-  --language <language>     en for English only; e.g. jp for English + Japanese
+  --language <language>     Primary release-note language
+  --bilingual               Include English before the selected non-English language
   --model <model>           Ollama model name
   --ollama-host <url>       Ollama API base URL
   --output-file <path>      Write generated Markdown to this path
@@ -41,6 +42,7 @@ const args = parseArgs(process.argv.slice(2));
 const env = process.env;
 const dryRun = args["dry-run"] ?? env.INPUT_DRY_RUN === "true";
 const failOnLlmError = args["fail-on-llm-error"] ?? env.INPUT_FAIL_ON_LLM_ERROR === "true";
+const bilingual = args.bilingual ?? env.INPUT_BILINGUAL === "true";
 const token = args["github-token"] || env.INPUT_GITHUB_TOKEN;
 const tag = args.tag || env.INPUT_TAG || (dryRun ? "HEAD" : "");
 const repository = env.GITHUB_REPOSITORY;
@@ -48,10 +50,12 @@ const model = args.model || env.INPUT_MODEL || "qwen2.5-coder:7b-instruct";
 const ollamaHost = (args["ollama-host"] || env.INPUT_OLLAMA_HOST || "http://127.0.0.1:11434").replace(/\/$/, "");
 const outputFile = args["output-file"] || env.INPUT_OUTPUT_FILE;
 const requestedLanguage = (args.language || env.INPUT_LANGUAGE || "en").trim().toLowerCase();
+// `ja` is the ISO 639 language code. Accept the commonly supplied `jp`
+// country code as a convenience alias, then use only the normalized value.
+const normalizedLanguage = requestedLanguage === "jp" ? "ja" : requestedLanguage;
 const languageAliases = {
   en: "English",
   ja: "Japanese",
-  jp: "Japanese",
   de: "German",
   es: "Spanish",
   fr: "French",
@@ -62,8 +66,9 @@ const languageAliases = {
   "zh-cn": "Simplified Chinese",
   "zh-tw": "Traditional Chinese",
 };
-const targetLanguage = languageAliases[requestedLanguage] || requestedLanguage;
-const isEnglishOnly = requestedLanguage === "en" || requestedLanguage.startsWith("en-");
+const targetLanguage = languageAliases[normalizedLanguage] || normalizedLanguage;
+const isEnglishOnly = normalizedLanguage === "en" || normalizedLanguage.startsWith("en-");
+const shouldPublishBilingual = bilingual && !isEnglishOnly;
 const maxDiffChars = Number.parseInt(args["max-diff-chars"] || env.INPUT_MAX_DIFF_CHARS || "60000", 10);
 
 if (!tag || (!dryRun && (!token || !repository))) {
@@ -146,9 +151,27 @@ function fallbackNotes(previousTag, commits, changedFiles) {
     "",
     `Comparison: \`${rangeLabel}\``,
   ].join("\n");
-  if (isEnglishOnly) return english;
+  if (!shouldPublishBilingual) {
+    if (isEnglishOnly) return english;
+    if (normalizedLanguage === "ja") {
+      return [
+        "## 変更内容",
+        "",
+        commitLines || "- このリリースに含まれるコミット情報はありません。",
+        "",
+        "## 変更ファイル",
+        "",
+        "```text",
+        changedFiles || "変更ファイル情報なし",
+        "```",
+        "",
+        `比較範囲: \`${rangeLabel}\``,
+      ].join("\n");
+    }
+    return `## Changes (${targetLanguage})\n\n${commitLines || "- No commit information is available for this release."}\n\nComparison: \`${rangeLabel}\``;
+  }
 
-  const localized = requestedLanguage === "ja" || requestedLanguage === "jp"
+  const localized = normalizedLanguage === "ja"
     ? [
         "## 変更内容",
         "",
@@ -192,9 +215,9 @@ async function generateWithModel(previousTag, commits, changedFiles, diff) {
         },
         {
           role: "user",
-          content: isEnglishOnly
-            ? `Write the release notes in English only for ${range}. Do not duplicate the notes in another language.\n\nCOMMITS:\n${commits}\n\nCHANGED FILES:\n${changedFiles}\n\nDIFF (may be truncated):\n${diff}`
-            : `Write bilingual release notes for ${range}. First write a complete English version under the heading '# English'. Then write an equivalent ${targetLanguage} translation under the heading '# ${targetLanguage}', separated from English by a horizontal rule. Keep both versions semantically equivalent.\n\nCOMMITS:\n${commits}\n\nCHANGED FILES:\n${changedFiles}\n\nDIFF (may be truncated):\n${diff}`,
+          content: shouldPublishBilingual
+            ? `Write bilingual release notes for ${range}. First write a complete English version under the heading '# English'. Then write an equivalent ${targetLanguage} translation under the heading '# ${targetLanguage}', separated from English by a horizontal rule. Keep both versions semantically equivalent.\n\nCOMMITS:\n${commits}\n\nCHANGED FILES:\n${changedFiles}\n\nDIFF (may be truncated):\n${diff}`
+            : `Write the release notes in ${targetLanguage} only for ${range}. Do not duplicate or translate the notes into another language.\n\nCOMMITS:\n${commits}\n\nCHANGED FILES:\n${changedFiles}\n\nDIFF (may be truncated):\n${diff}`,
         },
       ],
     }),

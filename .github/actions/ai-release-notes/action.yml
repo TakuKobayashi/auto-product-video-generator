@@ -19,9 +19,13 @@ inputs:
     required: false
     default: http://127.0.0.1:11434
   language:
-    description: Additional release-note language. Use en for English only; other values produce English plus that language
+    description: Primary language used for release notes
     required: false
     default: en
+  bilingual:
+    description: Also include an English version when the selected language is not English
+    required: false
+    default: "false"
   max-diff-chars:
     description: Maximum number of diff characters sent to the model
     required: false
@@ -99,6 +103,7 @@ runs:
         INPUT_MODEL: ${{ inputs.model }}
         INPUT_OLLAMA_HOST: ${{ inputs.ollama-host }}
         INPUT_LANGUAGE: ${{ inputs.language }}
+        INPUT_BILINGUAL: ${{ inputs.bilingual }}
         INPUT_MAX_DIFF_CHARS: ${{ inputs.max-diff-chars }}
         INPUT_FAIL_ON_LLM_ERROR: ${{ inputs.fail-on-llm-error }}
         INPUT_DRY_RUN: ${{ inputs.dry-run }}
