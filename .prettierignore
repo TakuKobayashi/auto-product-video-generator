@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.apvg/
+.dvg/
+output/
+pnpm-lock.yaml
+*.tsbuildinfo
+*.log

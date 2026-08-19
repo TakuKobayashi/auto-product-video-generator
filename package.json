@@ -9,6 +9,8 @@
     "build": "task build",
     "build:watch": "task build:watch",
     "clean": "task clean",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint packages/*/src/**/*.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -37,6 +39,7 @@
     "ffprobe-static": "^3.1.0",
     "js-yaml": "^4.1.0",
     "playwright": "^1.61.1",
+    "prettier": "^3.9.6",
     "typescript": "^5.9.3",
     "vitest": "^2.1.9"
   }
