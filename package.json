@@ -14,6 +14,7 @@
     "lint": "eslint packages/*/src/**/*.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "version:set": "tsx scripts/set-version.ts",
     "release:check": "task release:check",
     "publish:npm": "task publish:npm",
     "setup": "task install",
