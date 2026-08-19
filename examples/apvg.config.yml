@@ -1,14 +1,14 @@
 project:
-  name: "My Web App"
-  description: "An awesome web application"
+  name: 'My Web App'
+  description: 'An awesome web application'
 
 # Where the AI reads the actual project from, to plan the recording.
 # Exactly one of repository / localPath — pick ONE of the two blocks below.
 source:
   # Option A — a remote git repository (cloned into .apvg/source-repo):
-  repository: "https://github.com/your-org/your-repo.git"
+  repository: 'https://github.com/your-org/your-repo.git'
   # ref: "main"              # optional branch/tag/commit; defaults to the
-                              # repository's default branch if omitted
+  # repository's default branch if omitted
   #
   # Option B — a project you already have checked out locally
   # (must itself be a git repository):
@@ -40,12 +40,12 @@ source:
 # automatically whenever this isn't already reachable — otherwise start your
 # dev server yourself (e.g. `npm run dev`) first.
 target:
-  url: "http://localhost:3000"
+  url: 'http://localhost:3000'
   # true means analyze replaces the URL above with a localhost URL inferred
   # from the project's scripts/README. `project init` sets this automatically
   # when --url is omitted.
   autoDetectUrl: false
-  type: "web"
+  type: 'web'
   # Optional authentication for web recording. Run `pnpm apvg auth login`
   # once, complete login in the opened browser, and the saved Playwright state
   # is reused by subsequent `video record` / `video generate` commands.
@@ -87,11 +87,11 @@ target:
   #   autoInstall: true
 
 video:
-  type: "demo"       # teaser | shorts | demo | tutorial
-  duration: 90       # target seconds
-  resolution: "1920x1080"
+  type: 'demo' # teaser | shorts | demo | tutorial
+  duration: 90 # target seconds
+  resolution: '1920x1080'
   fps: 30
-  language: "ja"
+  language: 'ja'
   singleLineSubtitles: true # split narration into short sequential one-line cues
   pageReadyWaitSeconds: 2 # extra wait after the first web page is fully loaded
   sceneGapSeconds: 1 # silence between narration clips/scenes, in seconds
@@ -100,8 +100,8 @@ llm:
   # Primary provider: gemini | openai | claude | groq | ollama
   #
   # Option A — cloud only (needs GEMINI_API_KEY):
-  provider: "gemini"
-  model: "gemini-2.5-pro"
+  provider: 'gemini'
+  model: 'gemini-2.5-pro'
   # apiKeyEnv: "GEMINI_API_KEY"  # defaults to GEMINI_API_KEY
   #
   # Option B — fully local via Ollama (no API key, no network needed):
@@ -128,9 +128,9 @@ llm:
   #       model: "gemini-2.5-pro"
 
 voicevox:
-  host: "http://localhost:50021"
+  host: 'http://localhost:50021'
   speakerId: 3
 
 output:
-  dir: "./output"
-  workDir: "./.apvg"
+  dir: './output'
+  workDir: './.apvg'

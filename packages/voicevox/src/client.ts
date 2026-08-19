@@ -1,7 +1,12 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { Script, VoicevoxConfig, logger, getAudioDurationSeconds } from '@auto-product-video-generator/core';
+import {
+  Script,
+  VoicevoxConfig,
+  logger,
+  getAudioDurationSeconds,
+} from '@auto-product-video-generator/core';
 
 export interface SynthesizeOptions {
   outputDir: string;
@@ -31,7 +36,7 @@ export class VoicevoxClient {
     text: string,
     speakerId: number,
     outputPath: string,
-    dryRun: boolean,
+    dryRun: boolean
   ): Promise<void> {
     logger.step('voice', `Synthesizing: "${text.slice(0, 40)}${text.length > 40 ? '...' : ''}"`);
     logger.dim(`  → ${outputPath}`);
@@ -54,7 +59,7 @@ export class VoicevoxClient {
       const body = await queryRes.text();
       throw new Error(
         `VOICEVOX audio_query failed (${queryRes.status}): ${body}\n` +
-        `Make sure VOICEVOX Engine is running at ${this.config.host}`,
+          `Make sure VOICEVOX Engine is running at ${this.config.host}`
       );
     }
 

@@ -26,13 +26,14 @@ export async function captureWebAuthState(options: CaptureWebAuthOptions): Promi
 
     if (options.successUrl) {
       logger.info(`Waiting for successful login at: ${options.successUrl}`);
-      await page.waitForURL(
-        (url) => url.href.startsWith(options.successUrl!),
-        { timeout: options.timeoutMs ?? 10 * 60 * 1000 },
-      );
+      await page.waitForURL((url) => url.href.startsWith(options.successUrl!), {
+        timeout: options.timeoutMs ?? 10 * 60 * 1000,
+      });
     } else {
       if (!options.waitForManualConfirmation) {
-        throw new Error('Manual login confirmation is unavailable. Configure target.auth.successUrl.');
+        throw new Error(
+          'Manual login confirmation is unavailable. Configure target.auth.successUrl.'
+        );
       }
       await options.waitForManualConfirmation();
     }

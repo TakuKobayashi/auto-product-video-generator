@@ -57,8 +57,18 @@ export interface ProjectSourceContext {
 }
 
 const EXCLUDED_DIRS = new Set([
-  'node_modules', '.git', 'dist', 'build', '.next', 'out', '.turbo',
-  '.vercel', 'coverage', '.cache', '.apvg', '.output',
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  '.next',
+  'out',
+  '.turbo',
+  '.vercel',
+  'coverage',
+  '.cache',
+  '.apvg',
+  '.output',
 ]);
 
 const MAX_README_CHARS = 4000;
@@ -69,25 +79,99 @@ const MAX_WALK_DEPTH = 6;
 
 const PROMOTIONAL_ASSET_EXTENSIONS = new Set([
   // Images and editable design files
-  '.ai', '.avif', '.bmp', '.eps', '.fig', '.gif', '.heic', '.heif', '.ico', '.jpeg', '.jpg', '.png', '.psd', '.sketch', '.svg', '.tga', '.tif', '.tiff', '.webp', '.xd',
+  '.ai',
+  '.avif',
+  '.bmp',
+  '.eps',
+  '.fig',
+  '.gif',
+  '.heic',
+  '.heif',
+  '.ico',
+  '.jpeg',
+  '.jpg',
+  '.png',
+  '.psd',
+  '.sketch',
+  '.svg',
+  '.tga',
+  '.tif',
+  '.tiff',
+  '.webp',
+  '.xd',
   // Video and audio (TypeScript's .ts is intentionally not included)
-  '.3gp', '.aac', '.aiff', '.alac', '.avi', '.flac', '.flv', '.m2ts', '.m4a', '.m4v', '.mid', '.midi', '.mkv', '.mov', '.mp3', '.mp4', '.mpeg', '.mpg', '.oga', '.ogg', '.ogv', '.opus', '.wav', '.webm', '.wma', '.wmv',
+  '.3gp',
+  '.aac',
+  '.aiff',
+  '.alac',
+  '.avi',
+  '.flac',
+  '.flv',
+  '.m2ts',
+  '.m4a',
+  '.m4v',
+  '.mid',
+  '.midi',
+  '.mkv',
+  '.mov',
+  '.mp3',
+  '.mp4',
+  '.mpeg',
+  '.mpg',
+  '.oga',
+  '.ogg',
+  '.ogv',
+  '.opus',
+  '.wav',
+  '.webm',
+  '.wma',
+  '.wmv',
   // 3D and CAD source assets
-  '.3ds', '.abc', '.blend', '.dae', '.dwg', '.dxf', '.fbx', '.glb', '.gltf', '.iges', '.igs', '.obj', '.ply', '.step', '.stl', '.stp', '.usd', '.usda', '.usdc', '.usdz',
+  '.3ds',
+  '.abc',
+  '.blend',
+  '.dae',
+  '.dwg',
+  '.dxf',
+  '.fbx',
+  '.glb',
+  '.gltf',
+  '.iges',
+  '.igs',
+  '.obj',
+  '.ply',
+  '.step',
+  '.stl',
+  '.stp',
+  '.usd',
+  '.usda',
+  '.usdc',
+  '.usdz',
 ]);
 
-export async function inspectProject(rootDir: string, configuredExcludes: string[] = []): Promise<ProjectSourceContext> {
+export async function inspectProject(
+  rootDir: string,
+  configuredExcludes: string[] = []
+): Promise<ProjectSourceContext> {
   logger.step('source', `Inspecting project at ${rootDir}...`);
 
   const repositoryRoot = findRepositoryRoot(rootDir);
   const excludePatterns = await loadSourceExcludePatterns(repositoryRoot, configuredExcludes);
   const packageManager = detectPackageManager(repositoryRoot);
   const packageJson = await readPackageJson(rootDir);
-  const readme = await readReadme(rootDir) ||
+  const readme =
+    (await readReadme(rootDir)) ||
     (rootDir !== repositoryRoot ? await readReadme(repositoryRoot) : null);
 
-  const deps = new Set([...(packageJson?.dependencies || []), ...(packageJson?.devDependencies || [])]);
-  const looksLikeNextProject = deps.has('next') || existsSync(join(rootDir, 'next.config.js')) || existsSync(join(rootDir, 'next.config.mjs')) || existsSync(join(rootDir, 'next.config.ts'));
+  const deps = new Set([
+    ...(packageJson?.dependencies || []),
+    ...(packageJson?.devDependencies || []),
+  ]);
+  const looksLikeNextProject =
+    deps.has('next') ||
+    existsSync(join(rootDir, 'next.config.js')) ||
+    existsSync(join(rootDir, 'next.config.mjs')) ||
+    existsSync(join(rootDir, 'next.config.ts'));
 
   // Directory presence alone isn't enough evidence — an "app/" (or "pages/")
   // directory can exist for unrelated reasons (e.g. an Android project's
@@ -95,7 +179,9 @@ export async function inspectProject(rootDir: string, configuredExcludes: string
   // project (an explicit dependency/config file), or if we find real
   // page.* route files inside it.
   const appRouterDir = looksLikeNextProject ? await findFirst(rootDir, ['app', 'src/app']) : null;
-  const pagesRouterDir = looksLikeNextProject ? await findFirst(rootDir, ['pages', 'src/pages']) : null;
+  const pagesRouterDir = looksLikeNextProject
+    ? await findFirst(rootDir, ['pages', 'src/pages'])
+    : null;
 
   let framework: DetectedFramework = 'unknown';
   let routes: RouteInfo[] = [];
@@ -131,12 +217,26 @@ export async function inspectProject(rootDir: string, configuredExcludes: string
 
   logger.success(
     `Detected: ${framework}` +
-    (routes.length > 0 ? `, ${routes.length} route(s) discovered` : ', no routes auto-discovered') +
-    (platformHints.length > 0 ? `; platform hints: ${platformHints.length}` : ''),
+      (routes.length > 0
+        ? `, ${routes.length} route(s) discovered`
+        : ', no routes auto-discovered') +
+      (platformHints.length > 0 ? `; platform hints: ${platformHints.length}` : '')
   );
 
   const projectPath = relative(repositoryRoot, rootDir) || '.';
-  return { rootDir, repositoryRoot, projectPath, packageManager, packageJson, readme, framework, routes, fileTree, assetFiles, platformHints };
+  return {
+    rootDir,
+    repositoryRoot,
+    projectPath,
+    packageManager,
+    packageJson,
+    readme,
+    framework,
+    routes,
+    fileTree,
+    assetFiles,
+    platformHints,
+  };
 }
 
 function detectPackageManager(root: string): 'pnpm' | 'yarn' | 'npm' | 'bun' {
@@ -178,7 +278,9 @@ async function readReadme(rootDir: string): Promise<string | null> {
     const path = join(rootDir, name);
     if (existsSync(path)) {
       const raw = await readFile(path, 'utf-8');
-      return raw.length > MAX_README_CHARS ? raw.slice(0, MAX_README_CHARS) + '\n...(truncated)' : raw;
+      return raw.length > MAX_README_CHARS
+        ? raw.slice(0, MAX_README_CHARS) + '\n...(truncated)'
+        : raw;
     }
   }
   return null;
@@ -289,7 +391,7 @@ async function discoverNextPagesRoutes(rootDir: string, pagesRelDir: string): Pr
 async function detectPlatformHints(
   rootDir: string,
   packageJson: PackageJsonSummary | null,
-  deps: Set<string>,
+  deps: Set<string>
 ): Promise<string[]> {
   const hints: string[] = [];
 
@@ -303,8 +405,10 @@ async function detectPlatformHints(
   }
 
   // iOS (Xcode / Swift)
-  if (topLevel.some((n) => n.endsWith('.xcodeproj'))) hints.push('*.xcodeproj found (iOS/macOS, Xcode)');
-  if (topLevel.some((n) => n.endsWith('.xcworkspace'))) hints.push('*.xcworkspace found (iOS/macOS, Xcode)');
+  if (topLevel.some((n) => n.endsWith('.xcodeproj')))
+    hints.push('*.xcodeproj found (iOS/macOS, Xcode)');
+  if (topLevel.some((n) => n.endsWith('.xcworkspace')))
+    hints.push('*.xcworkspace found (iOS/macOS, Xcode)');
   if (topLevel.includes('Podfile')) hints.push('Podfile found (iOS, CocoaPods)');
   if (topLevel.includes('Package.swift')) hints.push('Package.swift found (Swift Package Manager)');
 
@@ -333,15 +437,19 @@ async function detectPlatformHints(
   // React Native (package.json-based; often also has ios/ and android/ dirs)
   if (deps.has('react-native')) hints.push('package.json depends on react-native');
   if (topLevel.includes('ios') && topLevel.includes('android') && packageJson) {
-    hints.push('ios/ and android/ directories alongside package.json (likely React Native or similar)');
+    hints.push(
+      'ios/ and android/ directories alongside package.json (likely React Native or similar)'
+    );
   }
 
   // Desktop (Electron / Tauri)
   if (deps.has('electron')) hints.push('package.json depends on electron');
-  if (deps.has('@tauri-apps/cli') || topLevel.includes('src-tauri')) hints.push('Tauri project (src-tauri/ or @tauri-apps/cli dependency)');
+  if (deps.has('@tauri-apps/cli') || topLevel.includes('src-tauri'))
+    hints.push('Tauri project (src-tauri/ or @tauri-apps/cli dependency)');
 
   // CLI applications
-  if (packageJson?.bin) hints.push('package.json declares bin command(s) (command-line application)');
+  if (packageJson?.bin)
+    hints.push('package.json declares bin command(s) (command-line application)');
   if (deps.has('commander') || deps.has('yargs') || deps.has('oclif')) {
     hints.push('package.json depends on a command-line framework');
   }
@@ -350,7 +458,7 @@ async function detectPlatformHints(
 }
 async function buildProjectFileIndex(
   rootDir: string,
-  excludePatterns: string[],
+  excludePatterns: string[]
 ): Promise<{ sourceFiles: string[]; assetFiles: string[] }> {
   const sourceFiles: string[] = [];
   const assetFiles: string[] = [];
@@ -361,7 +469,8 @@ async function buildProjectFileIndex(
       depth > MAX_WALK_DEPTH ||
       inspectedFileEntries >= MAX_INSPECTED_FILE_ENTRIES ||
       (sourceFiles.length >= MAX_FILE_TREE_ENTRIES && assetFiles.length >= MAX_ASSET_FILE_ENTRIES)
-    ) return;
+    )
+      return;
 
     let entries;
     try {
@@ -374,7 +483,8 @@ async function buildProjectFileIndex(
       if (
         inspectedFileEntries >= MAX_INSPECTED_FILE_ENTRIES ||
         (sourceFiles.length >= MAX_FILE_TREE_ENTRIES && assetFiles.length >= MAX_ASSET_FILE_ENTRIES)
-      ) return;
+      )
+        return;
       if (entry.name.startsWith('.') && entry.name !== '.env.example') continue;
 
       const relativePath = relative(rootDir, join(dir, entry.name)).split(sep).join('/');

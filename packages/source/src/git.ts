@@ -33,7 +33,7 @@ export async function resolveProjectSource(options: ResolveSourceOptions): Promi
   }
 
   throw new Error(
-    'No project source configured. Set source.repository (git URL) or source.localPath in apvg.config.yml.',
+    'No project source configured. Set source.repository (git URL) or source.localPath in apvg.config.yml.'
   );
 }
 
@@ -48,8 +48,8 @@ async function resolveLocalPath(localPath: string): Promise<string> {
   if (!isRepo) {
     throw new Error(
       `source.localPath is not a git repository: ${absPath}\n` +
-      `apvg analyzes version-controlled projects. Run 'git init' there first, or point ` +
-      `source.repository at a remote instead.`,
+        `apvg analyzes version-controlled projects. Run 'git init' there first, or point ` +
+        `source.repository at a remote instead.`
     );
   }
 
@@ -57,7 +57,11 @@ async function resolveLocalPath(localPath: string): Promise<string> {
   return absPath;
 }
 
-async function cloneOrUpdate(repository: string, ref: string | undefined, cloneDir: string): Promise<string> {
+async function cloneOrUpdate(
+  repository: string,
+  ref: string | undefined,
+  cloneDir: string
+): Promise<string> {
   const absCloneDir = resolve(cloneDir);
   await mkdir(dirname(absCloneDir), { recursive: true });
 
@@ -72,12 +76,17 @@ async function cloneOrUpdate(repository: string, ref: string | undefined, cloneD
       logger.success('Clone updated.');
       return absCloneDir;
     } catch (err) {
-      logger.warn(`Failed to update existing clone (${(err as Error).message}); re-cloning from scratch.`);
+      logger.warn(
+        `Failed to update existing clone (${(err as Error).message}); re-cloning from scratch.`
+      );
       await rm(absCloneDir, { recursive: true, force: true });
     }
   }
 
-  logger.step('source', `Cloning ${repository}${ref ? ` (ref: ${ref})` : ''} into ${absCloneDir}...`);
+  logger.step(
+    'source',
+    `Cloning ${repository}${ref ? ` (ref: ${ref})` : ''} into ${absCloneDir}...`
+  );
   const args = ['clone', '--depth', '1'];
   if (ref) args.push('--branch', ref);
   args.push(repository, absCloneDir);
@@ -87,7 +96,7 @@ async function cloneOrUpdate(repository: string, ref: string | undefined, cloneD
   } catch (err) {
     throw new Error(
       `git clone failed: ${(err as Error).message}\n` +
-      `Check that '${repository}' is reachable and, if private, that your git credentials are configured.`,
+        `Check that '${repository}' is reachable and, if private, that your git credentials are configured.`
     );
   }
 
@@ -108,7 +117,11 @@ function git(args: string[]): Promise<string> {
     proc.stderr.on('data', (d: Buffer) => (stderr += d.toString()));
     proc.on('error', (err) => {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-        reject(new Error("git is not installed or not on PATH. Install it: https://git-scm.com/downloads"));
+        reject(
+          new Error(
+            'git is not installed or not on PATH. Install it: https://git-scm.com/downloads'
+          )
+        );
       } else {
         reject(err);
       }

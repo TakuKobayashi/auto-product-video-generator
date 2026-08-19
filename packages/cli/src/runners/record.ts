@@ -1,8 +1,20 @@
 import { basename, dirname, join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { ensureDir, loadConfig, readYaml, logger, ScenarioSchema, ScriptSchema } from '@auto-product-video-generator/core';
+import {
+  ensureDir,
+  loadConfig,
+  readYaml,
+  logger,
+  ScenarioSchema,
+  ScriptSchema,
+} from '@auto-product-video-generator/core';
 import { createPlatformRecorder } from '@auto-product-video-generator/recorder';
-import { resolveProjectSource, ensureAppRunning, findRepositoryRoot, loadSourceExcludePatterns } from '@auto-product-video-generator/source';
+import {
+  resolveProjectSource,
+  ensureAppRunning,
+  findRepositoryRoot,
+  loadSourceExcludePatterns,
+} from '@auto-product-video-generator/source';
 import { resolveWebStorageState } from '../utils/web-auth.js';
 
 interface RecordOptions {
@@ -85,12 +97,16 @@ export async function runRecord(options: RecordOptions): Promise<void> {
     ? await loadSourceExcludePatterns(repositoryRoot, config.source.exclude)
     : [];
   const recorder = createPlatformRecorder(scenario.meta.platform, config, {
-    rootDir, repositoryRoot, workDir, setupSteps: scenario.setup, sourceExcludePatterns,
+    rootDir,
+    repositoryRoot,
+    workDir,
+    setupSteps: scenario.setup,
+    sourceExcludePatterns,
   });
   const storageStatePath = resolveWebStorageState(
     config,
     scenario.meta.platform,
-    options.dryRun || false,
+    options.dryRun || false
   );
 
   try {
@@ -100,19 +116,28 @@ export async function runRecord(options: RecordOptions): Promise<void> {
       const scriptScene = script.scenes[scriptIndex];
       const voicePath = join(voiceDir, basename(scriptScene.voiceFile));
       if (!options.dryRun && !existsSync(voicePath)) {
-        throw new Error(`Voice file not found: ${voicePath}. Run 'pnpm apvg video voice' before recording.`);
+        throw new Error(
+          `Voice file not found: ${voicePath}. Run 'pnpm apvg video voice' before recording.`
+        );
       }
       const nextScene = script.scenes[scriptIndex + 1];
-      const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
+      const targetDurationSeconds =
+        (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
       logger.info('');
-      await recorder.recordScene(scene, config.video, {
-        headed: options.headed || false,
-        slowMo: parseInt(options.slowMo || '0', 10),
-        outputDir: recordingsDir,
-        screenshotDir,
-        dryRun: options.dryRun || false,
-        storageStatePath,
-      }, targetDurationSeconds, scriptScene.endTime - scriptScene.startTime);
+      await recorder.recordScene(
+        scene,
+        config.video,
+        {
+          headed: options.headed || false,
+          slowMo: parseInt(options.slowMo || '0', 10),
+          outputDir: recordingsDir,
+          screenshotDir,
+          dryRun: options.dryRun || false,
+          storageStatePath,
+        },
+        targetDurationSeconds,
+        scriptScene.endTime - scriptScene.startTime
+      );
     }
   } finally {
     await recorder.dispose?.();

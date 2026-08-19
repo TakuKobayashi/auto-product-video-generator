@@ -23,16 +23,18 @@ export function buildSubtitleCues(
   startTime: number,
   endTime: number,
   maxCharacters = DEFAULT_SUBTITLE_MAX_CHARACTERS,
-  singleLine = true,
+  singleLine = true
 ): SubtitleCue[] {
   const text = narration.trim();
   if (!text) return [];
   if (!singleLine) {
-    return [{
-      text,
-      startTime: roundMilliseconds(startTime),
-      endTime: roundMilliseconds(endTime),
-    }];
+    return [
+      {
+        text,
+        startTime: roundMilliseconds(startTime),
+        endTime: roundMilliseconds(endTime),
+      },
+    ];
   }
 
   const chunks = splitSubtitleText(narration, maxCharacters);
@@ -43,13 +45,10 @@ export function buildSubtitleCues(
   let elapsedWeight = 0;
 
   return chunks.map((text, index) => {
-    const cueStart = index === 0
-      ? startTime
-      : startTime + duration * (elapsedWeight / totalWeight);
+    const cueStart = index === 0 ? startTime : startTime + duration * (elapsedWeight / totalWeight);
     elapsedWeight += weights[index];
-    const cueEnd = index === chunks.length - 1
-      ? endTime
-      : startTime + duration * (elapsedWeight / totalWeight);
+    const cueEnd =
+      index === chunks.length - 1 ? endTime : startTime + duration * (elapsedWeight / totalWeight);
     return {
       text,
       startTime: roundMilliseconds(cueStart),
@@ -60,7 +59,7 @@ export function buildSubtitleCues(
 
 export function splitSubtitleText(
   narration: string,
-  maxCharacters = DEFAULT_SUBTITLE_MAX_CHARACTERS,
+  maxCharacters = DEFAULT_SUBTITLE_MAX_CHARACTERS
 ): string[] {
   if (!Number.isInteger(maxCharacters) || maxCharacters < 1) {
     throw new Error('maxCharacters must be a positive integer');
@@ -122,7 +121,7 @@ export class SubtitleGenerator {
         scene.startTime,
         scene.endTime,
         options.maxCharacters ?? DEFAULT_SUBTITLE_MAX_CHARACTERS,
-        options.singleLine ?? true,
+        options.singleLine ?? true
       )) {
         const start = formatSrtTime(cue.startTime);
         const end = formatSrtTime(cue.endTime);

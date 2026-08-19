@@ -8,14 +8,14 @@ Playwrightで録画します。
 
 ## 対応プラットフォーム
 
-| 対象 | 録画方法 | 対応状況 |
-|---|---|---|
-| Webアプリ | Playwright Chromium | 対応 |
-| CLIアプリ | Docker内のブラウザターミナル | 対応 |
-| Android | adbによる端末・エミュレーター録画 | 対応 |
-| Flutter / React Native | Android APKをビルドしてadb録画 | 対応 |
-| Unity Android | 既存APKまたは独自ビルドコマンドからadb録画 | 対応 |
-| iOS / Unity Desktop |  | 未対応 |
+| 対象                   | 録画方法                                   | 対応状況 |
+| ---------------------- | ------------------------------------------ | -------- |
+| Webアプリ              | Playwright Chromium                        | 対応     |
+| CLIアプリ              | Docker内のブラウザターミナル               | 対応     |
+| Android                | adbによる端末・エミュレーター録画          | 対応     |
+| Flutter / React Native | Android APKをビルドしてadb録画             | 対応     |
+| Unity Android          | 既存APKまたは独自ビルドコマンドからadb録画 | 対応     |
+| iOS / Unity Desktop    |                                            | 未対応   |
 
 ---
 
@@ -23,12 +23,12 @@ Playwrightで録画します。
 
 ### 1. 必要なツールをインストール
 
-| ツール | 必要になる場面 | インストール |
-|---|---|---|
-| Node.js 20以上 | 常に必要 | [Node.js公式サイト](https://nodejs.org/) |
-| git | 対象リポジトリの取得と解析 | [Git公式ダウンロード](https://git-scm.com/downloads) |
-| Docker | `apvg serve`によるVOICEVOX起動、CLIアプリの録画 | [Docker Desktop](https://www.docker.com/products/docker-desktop/) |
-| Ollama | ローカルLLMを使う場合 | [Ollama公式ダウンロード](https://ollama.com/download) |
+| ツール         | 必要になる場面                                  | インストール                                                      |
+| -------------- | ----------------------------------------------- | ----------------------------------------------------------------- |
+| Node.js 20以上 | 常に必要                                        | [Node.js公式サイト](https://nodejs.org/)                          |
+| git            | 対象リポジトリの取得と解析                      | [Git公式ダウンロード](https://git-scm.com/downloads)              |
+| Docker         | `apvg serve`によるVOICEVOX起動、CLIアプリの録画 | [Docker Desktop](https://www.docker.com/products/docker-desktop/) |
+| Ollama         | ローカルLLMを使う場合                           | [Ollama公式ダウンロード](https://ollama.com/download)             |
 
 LLMはOllamaまたはGeminiを利用できます。Geminiを使う場合は
 [Google AI Studio](https://aistudio.google.com/apikey)でAPIキーを発行し、`GEMINI_API_KEY`へ
@@ -74,14 +74,14 @@ VOICEVOXコンテナだけを停止します。OllamaはOSのサービスや他�
 
 ### 環境構築・サービス管理コマンド
 
-| コマンド | 用途 |
-|---|---|
-| `apvg setup` | APVGが管理するPlaywright Chromiumをインストール |
-| `apvg doctor` | Node.js、git、Docker、動画ツール、Chromium、LLM、VOICEVOXの状態を確認 |
-| `apvg serve` | DockerでVOICEVOXを起動し、`GEMINI_API_KEY`未設定時はOllamaの起動とモデル取得も実行 |
-| `apvg serve --no-ollama` | Ollamaを使わずVOICEVOXだけを起動 |
-| `apvg services status` | VOICEVOXとOllamaへの接続状態を確認 |
-| `apvg services stop` | APVGが管理するVOICEVOXコンテナだけを停止 |
+| コマンド                 | 用途                                                                               |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| `apvg setup`             | APVGが管理するPlaywright Chromiumをインストール                                    |
+| `apvg doctor`            | Node.js、git、Docker、動画ツール、Chromium、LLM、VOICEVOXの状態を確認              |
+| `apvg serve`             | DockerでVOICEVOXを起動し、`GEMINI_API_KEY`未設定時はOllamaの起動とモデル取得も実行 |
+| `apvg serve --no-ollama` | Ollamaを使わずVOICEVOXだけを起動                                                   |
+| `apvg services status`   | VOICEVOXとOllamaへの接続状態を確認                                                 |
+| `apvg services stop`     | APVGが管理するVOICEVOXコンテナだけを停止                                           |
 
 `apvg serve`はVOICEVOXをDockerで起動します。Ollamaを利用する構成では、インストール済みの
 Ollamaを起動して、設定されたモデルも取得します。モデルやVOICEVOXイメージを変更する場合は
@@ -155,13 +155,13 @@ Ollamaの状態は`apvg services status`で確認できます。
 
 ```yaml
 target:
-  url: "https://example.com/dashboard"
+  url: 'https://example.com/dashboard'
   type: web
   auth:
     mode: manual
-    loginUrl: "https://example.com/login"
-    successUrl: "https://example.com/dashboard" # 省略可能
-    storageStatePath: "./.apvg/auth/storage-state.json"
+    loginUrl: 'https://example.com/login'
+    successUrl: 'https://example.com/dashboard' # 省略可能
+    storageStatePath: './.apvg/auth/storage-state.json'
 ```
 
 次のコマンドでブラウザを開き、一度だけ手動でログインします。
@@ -263,37 +263,37 @@ apvg video render
 各コマンドは直前の生成物を使います。途中で止まった場合、成功済みの工程を繰り返す必要は
 ありません。再開位置の目安は次のとおりです。
 
-| 最後に成功した工程／変更内容 | 再開コマンド |
-|---|---|
-| `analyze`まで成功 | `apvg video scenario generate` |
-| `scenario generate`まで成功 | `apvg video voice` |
-| `voice`まで成功 | `apvg video record` |
-| `record`まで成功 | `apvg video render` |
-| narration・テロップ文言を変更 | `apvg video voice`から |
-| 画面操作だけを変更 | `apvg video record`から |
-| 録画・音声は完成済みで合成設定だけ変更 | `apvg video render`のみ |
+| 最後に成功した工程／変更内容           | 再開コマンド                   |
+| -------------------------------------- | ------------------------------ |
+| `analyze`まで成功                      | `apvg video scenario generate` |
+| `scenario generate`まで成功            | `apvg video voice`             |
+| `voice`まで成功                        | `apvg video record`            |
+| `record`まで成功                       | `apvg video render`            |
+| narration・テロップ文言を変更          | `apvg video voice`から         |
+| 画面操作だけを変更                     | `apvg video record`から        |
+| 録画・音声は完成済みで合成設定だけ変更 | `apvg video render`のみ        |
 
-| コマンド | 生成物 | 補足 |
-|---|---|---|
-| `apvg project init --repo <URL>` | `apvg.config.yml` | 初回のみ。ローカルの場合は`--source <パス>` |
-| `apvg project analyze` | `.apvg/source-context.json`、`.apvg/project-summary.json` | 決定論的なソース走査 + AIによる分類 |
-| `apvg video scenario generate` | `.apvg/scenario.yml`、`.apvg/script.yml`、`.apvg/subtitles.srt` | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
-| `apvg video voice` | `.apvg/voice/*.wav` | 実音声の長さでscript/subtitlesの時刻も更新 |
-| `apvg video record` | `.apvg/recordings/*.mp4` | 音声の実時間に合わせて操作し、到達不能なら停止 |
-| `apvg video render` | `output/final.mp4`、`output/artifacts/` | 完成動画と途中生成物一式を出力 |
+| コマンド                         | 生成物                                                          | 補足                                                       |
+| -------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------- |
+| `apvg project init --repo <URL>` | `apvg.config.yml`                                               | 初回のみ。ローカルの場合は`--source <パス>`                |
+| `apvg project analyze`           | `.apvg/source-context.json`、`.apvg/project-summary.json`       | 決定論的なソース走査 + AIによる分類                        |
+| `apvg video scenario generate`   | `.apvg/scenario.yml`、`.apvg/script.yml`、`.apvg/subtitles.srt` | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
+| `apvg video voice`               | `.apvg/voice/*.wav`                                             | 実音声の長さでscript/subtitlesの時刻も更新                 |
+| `apvg video record`              | `.apvg/recordings/*.mp4`                                        | 音声の実時間に合わせて操作し、到達不能なら停止             |
+| `apvg video render`              | `output/final.mp4`、`output/artifacts/`                         | 完成動画と途中生成物一式を出力                             |
 
 ### 生成結果を確認・調整する
 
-| 操作 | コマンド |
-|---|---|
-| 低画質のプレビューを素早く生成 | `apvg video generate --preview` |
-| ブラウザを表示しながら録画 | `apvg video generate --headed` |
-| 字幕なしで生成 | `apvg video generate --no-subtitles` |
-| 音声なしで再レンダリング | `apvg video render --no-voice` |
-| 指定シーンだけ録画し直す | `apvg video record --scene <シーンID>` |
-| 指定シーンだけ音声を作り直す | `apvg video voice --scene <シーンID>` |
-| 編集したscenarioを検証 | `apvg video scenario validate .apvg/scenario.yml` |
-| ファイル生成や外部処理をせず計画を確認 | `apvg video generate --dry-run` |
+| 操作                                   | コマンド                                          |
+| -------------------------------------- | ------------------------------------------------- |
+| 低画質のプレビューを素早く生成         | `apvg video generate --preview`                   |
+| ブラウザを表示しながら録画             | `apvg video generate --headed`                    |
+| 字幕なしで生成                         | `apvg video generate --no-subtitles`              |
+| 音声なしで再レンダリング               | `apvg video render --no-voice`                    |
+| 指定シーンだけ録画し直す               | `apvg video record --scene <シーンID>`            |
+| 指定シーンだけ音声を作り直す           | `apvg video voice --scene <シーンID>`             |
+| 編集したscenarioを検証                 | `apvg video scenario validate .apvg/scenario.yml` |
+| ファイル生成や外部処理をせず計画を確認 | `apvg video generate --dry-run`                   |
 
 `apvg video generate [--skip-analyze] [--skip-scenario] [--skip-record] [--skip-voice]`
 は上記5つをまとめて実行し、指定したステップだけ既存の生成物を使って
@@ -313,7 +313,7 @@ Playwrightで録画します。コンテナは録画終了後に削除されま�
 ```yml
 actions:
   - type: run_command
-    command: "my-tool --help"
+    command: 'my-tool --help'
   - type: wait
     ms: 1000
 ```
@@ -336,93 +336,93 @@ actions:
 
 ### プロジェクトとソース
 
-| YAMLキー | 機能 | 必須 | デフォルト値 | 説明 |
-|---|---|---|---|---|
-| `project.name` | プロジェクト名 | 必須 |  | 動画化する製品名 |
-| `project.description` | 製品説明 | 任意 |  | 任意の補足説明 |
-| `source.repository` | リモートソース | どちらか必須 |  | gitリポジトリURL |
-| `source.localPath` | ローカルソース | どちらか必須 |  | ローカルgitリポジトリのパス。`repository`とどちらか一方を指定 |
-| `source.ref` | git参照 | 任意 |  | 使用するbranch、tag、commit |
-| `source.installDeps` | 依存関係の導入 | 任意 | `false` | アプリ起動前に依存パッケージをインストール |
-| `source.startCommand` | アプリ起動 | 任意 | 自動検出 | 開発サーバーの起動コマンド |
-| `source.projectPath` | モノレポ選択 | 任意 | 自動選択 | 動画化するアプリのディレクトリ |
-| `source.platformPriority` | 検出優先順 | 任意 | `web`<br>`cli`<br>`android`<br>`flutter`<br>`react-native`<br>`unity`<br>`ios`<br>`desktop`<br>`other` | 複数アプリがある場合のプラットフォーム優先順 |
-| `source.exclude` | 解析対象外 | 任意 | `[]` | ソース解析から除外するgitignore形式のパターン |
+| YAMLキー                  | 機能           | 必須         | デフォルト値                                                                                           | 説明                                                          |
+| ------------------------- | -------------- | ------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `project.name`            | プロジェクト名 | 必須         |                                                                                                        | 動画化する製品名                                              |
+| `project.description`     | 製品説明       | 任意         |                                                                                                        | 任意の補足説明                                                |
+| `source.repository`       | リモートソース | どちらか必須 |                                                                                                        | gitリポジトリURL                                              |
+| `source.localPath`        | ローカルソース | どちらか必須 |                                                                                                        | ローカルgitリポジトリのパス。`repository`とどちらか一方を指定 |
+| `source.ref`              | git参照        | 任意         |                                                                                                        | 使用するbranch、tag、commit                                   |
+| `source.installDeps`      | 依存関係の導入 | 任意         | `false`                                                                                                | アプリ起動前に依存パッケージをインストール                    |
+| `source.startCommand`     | アプリ起動     | 任意         | 自動検出                                                                                               | 開発サーバーの起動コマンド                                    |
+| `source.projectPath`      | モノレポ選択   | 任意         | 自動選択                                                                                               | 動画化するアプリのディレクトリ                                |
+| `source.platformPriority` | 検出優先順     | 任意         | `web`<br>`cli`<br>`android`<br>`flutter`<br>`react-native`<br>`unity`<br>`ios`<br>`desktop`<br>`other` | 複数アプリがある場合のプラットフォーム優先順                  |
+| `source.exclude`          | 解析対象外     | 任意         | `[]`                                                                                                   | ソース解析から除外するgitignore形式のパターン                 |
 
 ### 録画対象
 
-| YAMLキー | 機能 | 必須 | デフォルト値 | 説明 |
-|---|---|---|---|---|
-| `target.url` | 対象URL | 必須 |  | Webアプリまたは録画用画面のURL |
-| `target.autoDetectUrl` | URL自動検出 | 任意 | `false` | 解析結果からlocalhost URLを更新 |
-| `target.type` | 録画方式 | 任意 | `web` | `web`<br>`cli`<br>`android`<br>`ios`から選択 |
-| `target.auth.mode` | Web認証 | 任意 | `manual` | 現在は`manual`に対応 |
-| `target.auth.loginUrl` | ログインURL | 任意 | `target.url` | 手動ログイン時に最初に開くURL |
-| `target.auth.successUrl` | ログイン完了判定 | 任意 |  | このURLへの到達時に認証状態を保存 |
-| `target.auth.storageStatePath` | 認証状態 | 任意 | `./.apvg/auth/storage-state.json` | Cookieなどを保存するPlaywright stateファイル |
-| `target.credentials` | 旧認証設定 | 任意 |  | 互換性のために保持。新規設定では`target.auth`を使用 |
+| YAMLキー                       | 機能             | 必須 | デフォルト値                      | 説明                                                |
+| ------------------------------ | ---------------- | ---- | --------------------------------- | --------------------------------------------------- |
+| `target.url`                   | 対象URL          | 必須 |                                   | Webアプリまたは録画用画面のURL                      |
+| `target.autoDetectUrl`         | URL自動検出      | 任意 | `false`                           | 解析結果からlocalhost URLを更新                     |
+| `target.type`                  | 録画方式         | 任意 | `web`                             | `web`<br>`cli`<br>`android`<br>`ios`から選択        |
+| `target.auth.mode`             | Web認証          | 任意 | `manual`                          | 現在は`manual`に対応                                |
+| `target.auth.loginUrl`         | ログインURL      | 任意 | `target.url`                      | 手動ログイン時に最初に開くURL                       |
+| `target.auth.successUrl`       | ログイン完了判定 | 任意 |                                   | このURLへの到達時に認証状態を保存                   |
+| `target.auth.storageStatePath` | 認証状態         | 任意 | `./.apvg/auth/storage-state.json` | Cookieなどを保存するPlaywright stateファイル        |
+| `target.credentials`           | 旧認証設定       | 任意 |                                   | 互換性のために保持。新規設定では`target.auth`を使用 |
 
 ### Android録画
 
-| YAMLキー | 機能 | 必須 | デフォルト値 | 説明 |
-|---|---|---|---|---|
-| `target.android.package` | アプリID | 任意 | 自動検出 | Android package/application ID |
-| `target.android.activity` | 起動Activity | 任意 | 自動検出 | 省略時はランチャーActivityを使用 |
-| `target.android.serial` | 端末選択 | 任意 | 自動選択 | 使用するadb端末のserial |
-| `target.android.avd` | エミュレーター選択 | 任意 | インストール済みAVDの先頭 | 起動するAVD名 |
-| `target.android.apkPath` | APK指定 | 任意 | 自動ビルド | 既存APKのパス |
-| `target.android.buildCommand` | APKビルド | 任意 | プラットフォーム別に自動選択 | 独自のビルドコマンド |
-| `target.android.sdkPath` | Android SDK | 任意 | 環境変数または`PATH`から検出 | SDKの場所 |
-| `target.android.autoStartEmulator` | AVD自動起動 | 任意 | `true` | 必要な場合にエミュレーターを起動 |
-| `target.android.autoInstall` | APK自動導入 | 任意 | `true` | 録画前にAPKを端末へインストール |
+| YAMLキー                           | 機能               | 必須 | デフォルト値                 | 説明                             |
+| ---------------------------------- | ------------------ | ---- | ---------------------------- | -------------------------------- |
+| `target.android.package`           | アプリID           | 任意 | 自動検出                     | Android package/application ID   |
+| `target.android.activity`          | 起動Activity       | 任意 | 自動検出                     | 省略時はランチャーActivityを使用 |
+| `target.android.serial`            | 端末選択           | 任意 | 自動選択                     | 使用するadb端末のserial          |
+| `target.android.avd`               | エミュレーター選択 | 任意 | インストール済みAVDの先頭    | 起動するAVD名                    |
+| `target.android.apkPath`           | APK指定            | 任意 | 自動ビルド                   | 既存APKのパス                    |
+| `target.android.buildCommand`      | APKビルド          | 任意 | プラットフォーム別に自動選択 | 独自のビルドコマンド             |
+| `target.android.sdkPath`           | Android SDK        | 任意 | 環境変数または`PATH`から検出 | SDKの場所                        |
+| `target.android.autoStartEmulator` | AVD自動起動        | 任意 | `true`                       | 必要な場合にエミュレーターを起動 |
+| `target.android.autoInstall`       | APK自動導入        | 任意 | `true`                       | 録画前にAPKを端末へインストール  |
 
 ### CLI録画
 
-| YAMLキー | 機能 | 必須 | デフォルト値 | 説明 |
-|---|---|---|---|---|
-| `target.cli.image` | Docker image | 任意 | `apvg-cli-recorder:latest` | CLI録画に使うコンテナimage |
-| `target.cli.dockerfile` | Dockerfile | 任意 | 同梱Dockerfile | 独自imageをビルドするDockerfile |
-| `target.cli.shell` | shell | 任意 | `/bin/bash` | コンテナ内で使用するshell |
-| `target.cli.columns` / `rows` | 画面サイズ | 任意 | `100`<br>`30` | ターミナルの列数と行数 |
-| `target.cli.fontSize` | 文字サイズ | 任意 | `22` | ターミナル表示のfont size |
-| `target.cli.allowedCommands` | コマンド許可 | 任意 | `[]` | 自動生成を許可するコマンドの完全一致リスト |
-| `target.cli.deniedCommandPatterns` | コマンド拒否 | 任意 | `publish`<br>`login`<br>`logout`<br>`token`<br>`secret`<br>`clean`<br>`remove`<br>`delete`<br>`serve`<br>`start`<br>`watch`<br>`generate`<br>`voice`<br>`record`<br>`render` | 常に拒否する文字列パターン |
+| YAMLキー                           | 機能         | 必須 | デフォルト値                                                                                                                                                                 | 説明                                       |
+| ---------------------------------- | ------------ | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `target.cli.image`                 | Docker image | 任意 | `apvg-cli-recorder:latest`                                                                                                                                                   | CLI録画に使うコンテナimage                 |
+| `target.cli.dockerfile`            | Dockerfile   | 任意 | 同梱Dockerfile                                                                                                                                                               | 独自imageをビルドするDockerfile            |
+| `target.cli.shell`                 | shell        | 任意 | `/bin/bash`                                                                                                                                                                  | コンテナ内で使用するshell                  |
+| `target.cli.columns` / `rows`      | 画面サイズ   | 任意 | `100`<br>`30`                                                                                                                                                                | ターミナルの列数と行数                     |
+| `target.cli.fontSize`              | 文字サイズ   | 任意 | `22`                                                                                                                                                                         | ターミナル表示のfont size                  |
+| `target.cli.allowedCommands`       | コマンド許可 | 任意 | `[]`                                                                                                                                                                         | 自動生成を許可するコマンドの完全一致リスト |
+| `target.cli.deniedCommandPatterns` | コマンド拒否 | 任意 | `publish`<br>`login`<br>`logout`<br>`token`<br>`secret`<br>`clean`<br>`remove`<br>`delete`<br>`serve`<br>`start`<br>`watch`<br>`generate`<br>`voice`<br>`record`<br>`render` | 常に拒否する文字列パターン                 |
 
 ### 動画
 
-| YAMLキー | 機能 | 必須 | デフォルト値 | 説明 |
-|---|---|---|---|---|
-| `video.type` | 動画構成 | 任意 | `demo` | `teaser`<br>`shorts`<br>`demo`<br>`tutorial`から選択 |
-| `video.duration` | 目標時間 | 任意 | `60` | 動画の目標秒数 |
-| `video.resolution` | 解像度 | 任意 | `1920x1080` | `1920x1080`<br>`1280x720`<br>`1080x1920`から選択 |
-| `video.fps` | frame rate | 任意 | `30` | `30`または`60` |
-| `video.language` | 言語 | 任意 | `ja` | シナリオとナレーションの言語 |
-| `video.singleLineSubtitles` | 1行字幕 | 任意 | `true` | 約14文字ずつ表示。`false`ではシーン全文を表示 |
-| `video.pageReadyWaitSeconds` | Web準備待ち | 任意 | `2` | 最初のページ読み込み後に待機する秒数 |
-| `video.sceneGapSeconds` | シーン間隔 | 任意 | `1` | ナレーション間に入れる無音秒数 |
+| YAMLキー                     | 機能        | 必須 | デフォルト値 | 説明                                                 |
+| ---------------------------- | ----------- | ---- | ------------ | ---------------------------------------------------- |
+| `video.type`                 | 動画構成    | 任意 | `demo`       | `teaser`<br>`shorts`<br>`demo`<br>`tutorial`から選択 |
+| `video.duration`             | 目標時間    | 任意 | `60`         | 動画の目標秒数                                       |
+| `video.resolution`           | 解像度      | 任意 | `1920x1080`  | `1920x1080`<br>`1280x720`<br>`1080x1920`から選択     |
+| `video.fps`                  | frame rate  | 任意 | `30`         | `30`または`60`                                       |
+| `video.language`             | 言語        | 任意 | `ja`         | シナリオとナレーションの言語                         |
+| `video.singleLineSubtitles`  | 1行字幕     | 任意 | `true`       | 約14文字ずつ表示。`false`ではシーン全文を表示        |
+| `video.pageReadyWaitSeconds` | Web準備待ち | 任意 | `2`          | 最初のページ読み込み後に待機する秒数                 |
+| `video.sceneGapSeconds`      | シーン間隔  | 任意 | `1`          | ナレーション間に入れる無音秒数                       |
 
 ### LLM
 
-| YAMLキー | 機能 | 必須 | デフォルト値 | 説明 |
-|---|---|---|---|---|
-| `llm.provider` | 基本provider | 任意 | `gemini` | `gemini`<br>`openai`<br>`claude`<br>`groq`<br>`ollama`から選択 |
-| `llm.model` | 基本model | 任意 | `gemini-2.5-pro` | 通常使用するモデル名 |
-| `llm.apiKeyEnv` | APIキー | 任意 | provider別の標準環境変数 | APIキーを読む環境変数名 |
-| `llm.ollamaHost` | Ollama接続先 | 任意 | `http://localhost:11434` | Ollama APIのURL |
-| `llm.fallbackProvider` | fallback | 任意 |  | 基本providerが失敗した場合のprovider |
-| `llm.fallbackModel` | fallback model | 任意 | Ollamaは`qwen2.5:7b-instruct`<br>その他は基本model | fallbackで使用するモデル名 |
-| `llm.fallbackApiKeyEnv` | fallback APIキー | 任意 | provider別の標準環境変数 | fallback用環境変数名 |
-| `llm.tasks.analyze.*` | 解析用LLM | 任意 | 基本LLM設定 | `provider`、`model`、`apiKeyEnv`を解析工程だけ上書き |
-| `llm.tasks.scenario.*` | シナリオ用LLM | 任意 | 基本LLM設定 | `provider`、`model`、`apiKeyEnv`をシナリオ工程だけ上書き |
+| YAMLキー                | 機能             | 必須 | デフォルト値                                       | 説明                                                           |
+| ----------------------- | ---------------- | ---- | -------------------------------------------------- | -------------------------------------------------------------- |
+| `llm.provider`          | 基本provider     | 任意 | `gemini`                                           | `gemini`<br>`openai`<br>`claude`<br>`groq`<br>`ollama`から選択 |
+| `llm.model`             | 基本model        | 任意 | `gemini-2.5-pro`                                   | 通常使用するモデル名                                           |
+| `llm.apiKeyEnv`         | APIキー          | 任意 | provider別の標準環境変数                           | APIキーを読む環境変数名                                        |
+| `llm.ollamaHost`        | Ollama接続先     | 任意 | `http://localhost:11434`                           | Ollama APIのURL                                                |
+| `llm.fallbackProvider`  | fallback         | 任意 |                                                    | 基本providerが失敗した場合のprovider                           |
+| `llm.fallbackModel`     | fallback model   | 任意 | Ollamaは`qwen2.5:7b-instruct`<br>その他は基本model | fallbackで使用するモデル名                                     |
+| `llm.fallbackApiKeyEnv` | fallback APIキー | 任意 | provider別の標準環境変数                           | fallback用環境変数名                                           |
+| `llm.tasks.analyze.*`   | 解析用LLM        | 任意 | 基本LLM設定                                        | `provider`、`model`、`apiKeyEnv`を解析工程だけ上書き           |
+| `llm.tasks.scenario.*`  | シナリオ用LLM    | 任意 | 基本LLM設定                                        | `provider`、`model`、`apiKeyEnv`をシナリオ工程だけ上書き       |
 
 ### 音声と出力
 
-| YAMLキー | 機能 | 必須 | デフォルト値 | 説明 |
-|---|---|---|---|---|
-| `voicevox.host` | VOICEVOX接続先 | 任意 | `http://localhost:50021` | VOICEVOX Engine APIのURL |
-| `voicevox.speakerId` | 話者 | 任意 | `3` | ナレーションに使うVOICEVOX speaker ID |
-| `output.dir` | 完成動画 | 任意 | `./output` | 最終出力ディレクトリ |
-| `output.workDir` | 作業データ | 任意 | `./.apvg` | シナリオ、音声、録画などの保存ディレクトリ |
+| YAMLキー             | 機能           | 必須 | デフォルト値             | 説明                                       |
+| -------------------- | -------------- | ---- | ------------------------ | ------------------------------------------ |
+| `voicevox.host`      | VOICEVOX接続先 | 任意 | `http://localhost:50021` | VOICEVOX Engine APIのURL                   |
+| `voicevox.speakerId` | 話者           | 任意 | `3`                      | ナレーションに使うVOICEVOX speaker ID      |
+| `output.dir`         | 完成動画       | 任意 | `./output`               | 最終出力ディレクトリ                       |
+| `output.workDir`     | 作業データ     | 任意 | `./.apvg`                | シナリオ、音声、録画などの保存ディレクトリ |
 
 ## ライセンス
 

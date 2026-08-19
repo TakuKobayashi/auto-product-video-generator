@@ -20,7 +20,7 @@ steps:
       tag: ${{ github.ref_name }}
       model: qwen2.5-coder:7b-instruct
       language: jp
-      bilingual: "true"
+      bilingual: 'true'
 ```
 
 The action gives commit subjects, authors, a diff summary, and at most 60,000

@@ -31,7 +31,7 @@ export interface PreparedAndroidTarget {
 /** Prepares the same basic runtime Android Studio uses for Run: device, APK, install. */
 export async function prepareAndroidProject(
   options: AndroidProjectOptions,
-  context: AndroidProjectContext,
+  context: AndroidProjectContext
 ): Promise<PreparedAndroidTarget> {
   const adbPath = findSdkTool('adb', options.sdkPath);
   const serial = await ensureAndroidDevice(adbPath, options, context.workDir);
@@ -56,20 +56,21 @@ export async function prepareAndroidProject(
   if (!apkPath) {
     throw new Error(
       'No Android APK was found and no conventional Gradle/Flutter build could be detected. ' +
-      'For Unity or a custom project, set target.android.buildCommand and optionally target.android.apkPath.',
+        'For Unity or a custom project, set target.android.buildCommand and optionally target.android.apkPath.'
     );
   }
   logger.success(`Android APK: ${apkPath}`);
 
   // APK metadata is authoritative for debug applicationIdSuffix values;
   // source parsing is only a fallback when Android build-tools are absent.
-  const packageName = options.package
-    || await detectPackageFromApk(apkPath, options.sdkPath)
-    || await detectPackageFromSource(sourceRoot);
+  const packageName =
+    options.package ||
+    (await detectPackageFromApk(apkPath, options.sdkPath)) ||
+    (await detectPackageFromSource(sourceRoot));
   if (!packageName) {
     throw new Error(
       `Could not detect the Android application id from source or ${apkPath}. ` +
-      'Set target.android.package in apvg.config.yml.',
+        'Set target.android.package in apvg.config.yml.'
     );
   }
 
@@ -85,7 +86,11 @@ export async function prepareAndroidProject(
   return { package: packageName, activity: options.activity, serial, adbPath };
 }
 
-interface BuildPlan { label: string; command: string; cwd: string }
+interface BuildPlan {
+  label: string;
+  command: string;
+  cwd: string;
+}
 
 async function detectBuildPlan(rootDir: string, override?: string): Promise<BuildPlan | undefined> {
   if (override) return { label: 'Configured build', command: override, cwd: rootDir };
@@ -93,10 +98,15 @@ async function detectBuildPlan(rootDir: string, override?: string): Promise<Buil
     return { label: 'Flutter debug build', command: 'flutter build apk --debug', cwd: rootDir };
   }
   for (const candidate of [rootDir, join(rootDir, 'android')]) {
-    const wrapper = process.platform === 'win32' ? join(candidate, 'gradlew.bat') : join(candidate, 'gradlew');
+    const wrapper =
+      process.platform === 'win32' ? join(candidate, 'gradlew.bat') : join(candidate, 'gradlew');
     if (existsSync(wrapper)) {
       const executable = process.platform === 'win32' ? 'gradlew.bat' : './gradlew';
-      return { label: 'Gradle debug build', command: `${executable} assembleDebug`, cwd: candidate };
+      return {
+        label: 'Gradle debug build',
+        command: `${executable} assembleDebug`,
+        cwd: candidate,
+      };
     }
   }
   return undefined;
@@ -105,7 +115,7 @@ async function detectBuildPlan(rootDir: string, override?: string): Promise<Buil
 async function ensureAndroidDevice(
   adbPath: string,
   options: AndroidProjectOptions,
-  workDir: string,
+  workDir: string
 ): Promise<string> {
   await run(adbPath, ['start-server']);
   const connected = await listConnectedDevices(adbPath);
@@ -121,38 +131,47 @@ async function ensureAndroidDevice(
     return selected;
   }
   if (options.autoStartEmulator === false) {
-    throw new Error('No Android device is connected and target.android.autoStartEmulator is false.');
+    throw new Error(
+      'No Android device is connected and target.android.autoStartEmulator is false.'
+    );
   }
 
   const emulatorPath = findSdkTool('emulator', options.sdkPath);
   const avds = (await run(emulatorPath, ['-list-avds']))
-    .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
   const avd = options.avd || avds[0];
   if (!avd) {
     throw new Error(
       'No connected Android device and no AVD is installed. Create one in Android Studio Device Manager, ' +
-      'or with sdkmanager/avdmanager, then rerun this command.',
+        'or with sdkmanager/avdmanager, then rerun this command.'
     );
   }
   if (!avds.includes(avd)) {
-    throw new Error(`Configured AVD '${avd}' was not found. Available AVDs: ${avds.join(', ') || '(none)'}`);
+    throw new Error(
+      `Configured AVD '${avd}' was not found. Available AVDs: ${avds.join(', ') || '(none)'}`
+    );
   }
 
   await mkdir(workDir, { recursive: true });
   const logPath = join(workDir, 'android-emulator.log');
   logger.step('android:emulator', `Starting AVD '${avd}' (logs: ${logPath})...`);
   const logHandle = openSync(logPath, 'a');
-  const child = spawn(emulatorPath, [
-    '-avd', avd, '-no-boot-anim', '-no-snapshot-save', '-no-audio',
-  ], { detached: true, stdio: ['ignore', logHandle, logHandle] });
+  const child = spawn(
+    emulatorPath,
+    ['-avd', avd, '-no-boot-anim', '-no-snapshot-save', '-no-audio'],
+    { detached: true, stdio: ['ignore', logHandle, logHandle] }
+  );
   child.unref();
 
   const deadline = Date.now() + 240_000;
   while (Date.now() < deadline) {
     const devices = await listConnectedDevices(adbPath);
-    const selected = options.serial && devices.includes(options.serial)
-      ? options.serial
-      : devices.find((serial) => serial.startsWith('emulator-'));
+    const selected =
+      options.serial && devices.includes(options.serial)
+        ? options.serial
+        : devices.find((serial) => serial.startsWith('emulator-'));
     if (selected) {
       await waitForBoot(adbPath, selected, Math.max(1, deadline - Date.now()));
       logger.success(`Android emulator ready: ${selected}`);
@@ -160,12 +179,17 @@ async function ensureAndroidDevice(
     }
     await wait(1500);
   }
-  throw new Error(`Android emulator '${avd}' did not connect within 240 seconds. Check ${logPath}.`);
+  throw new Error(
+    `Android emulator '${avd}' did not connect within 240 seconds. Check ${logPath}.`
+  );
 }
 
 async function listConnectedDevices(adbPath: string): Promise<string[]> {
   const output = await run(adbPath, ['devices']);
-  return output.split(/\r?\n/).slice(1).map((line) => line.trim().split(/\s+/))
+  return output
+    .split(/\r?\n/)
+    .slice(1)
+    .map((line) => line.trim().split(/\s+/))
     .filter((parts) => parts.length >= 2 && (parts[1] === 'device' || parts[1] === 'offline'))
     .map((parts) => parts[0]);
 }
@@ -179,10 +203,14 @@ async function waitForBoot(adbPath: string, serial: string, timeoutMs = 180_000)
         await run(adbPath, ['-s', serial, 'shell', 'input', 'keyevent', '82']).catch(() => '');
         return;
       }
-    } catch { /* device is still transitioning */ }
+    } catch {
+      /* device is still transitioning */
+    }
     await wait(1200);
   }
-  throw new Error(`Android device '${serial}' did not finish booting within ${Math.round(timeoutMs / 1000)} seconds.`);
+  throw new Error(
+    `Android device '${serial}' did not finish booting within ${Math.round(timeoutMs / 1000)} seconds.`
+  );
 }
 
 async function findNewestApk(rootDir: string): Promise<string | undefined> {
@@ -191,7 +219,11 @@ async function findNewestApk(rootDir: string): Promise<string | undefined> {
   async function walk(dir: string, depth: number): Promise<void> {
     if (depth > 9) return;
     let entries;
-    try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const entry of entries) {
       if (entry.isDirectory()) {
         if (!excluded.has(entry.name)) await walk(join(dir, entry.name), depth + 1);
@@ -212,8 +244,10 @@ async function findNewestApk(rootDir: string): Promise<string | undefined> {
 
 async function detectPackageFromSource(rootDir: string): Promise<string | undefined> {
   const candidates = [
-    join(rootDir, 'app', 'build.gradle'), join(rootDir, 'app', 'build.gradle.kts'),
-    join(rootDir, 'android', 'app', 'build.gradle'), join(rootDir, 'android', 'app', 'build.gradle.kts'),
+    join(rootDir, 'app', 'build.gradle'),
+    join(rootDir, 'app', 'build.gradle.kts'),
+    join(rootDir, 'android', 'app', 'build.gradle'),
+    join(rootDir, 'android', 'app', 'build.gradle.kts'),
   ];
   for (const path of candidates) {
     if (!existsSync(path)) continue;
@@ -227,19 +261,26 @@ async function detectPackageFromSource(rootDir: string): Promise<string | undefi
   ];
   for (const path of manifests) {
     if (!existsSync(path)) continue;
-    const match = (await readFile(path, 'utf8')).match(/<manifest\b[^>]*\bpackage=["']([^"']+)["']/);
+    const match = (await readFile(path, 'utf8')).match(
+      /<manifest\b[^>]*\bpackage=["']([^"']+)["']/
+    );
     if (match) return match[1];
   }
   return undefined;
 }
 
-async function detectPackageFromApk(apkPath: string, sdkPath?: string): Promise<string | undefined> {
+async function detectPackageFromApk(
+  apkPath: string,
+  sdkPath?: string
+): Promise<string | undefined> {
   const aapt = findBuildTool('aapt', sdkPath) || findBuildTool('aapt2', sdkPath);
   if (!aapt) return undefined;
   try {
     const output = await run(aapt, ['dump', 'badging', apkPath]);
     return output.match(/^package: name='([^']+)'/m)?.[1];
-  } catch { return undefined; }
+  } catch {
+    return undefined;
+  }
 }
 
 function findBuildTool(name: string, sdkPath?: string): string | undefined {
@@ -252,13 +293,18 @@ function findBuildTool(name: string, sdkPath?: string): string | undefined {
         const path = join(dir, version, executableName(name));
         if (existsSync(path)) return path;
       }
-    } catch { /* continue */ }
+    } catch {
+      /* continue */
+    }
   }
   return undefined;
 }
 
 function findSdkTool(name: 'adb' | 'emulator', sdkPath?: string): string {
-  const relative = name === 'adb' ? join('platform-tools', executableName(name)) : join('emulator', executableName(name));
+  const relative =
+    name === 'adb'
+      ? join('platform-tools', executableName(name))
+      : join('emulator', executableName(name));
   for (const sdk of sdkRoots(sdkPath)) {
     const path = join(sdk, relative);
     if (existsSync(path)) return path;
@@ -267,31 +313,45 @@ function findSdkTool(name: 'adb' | 'emulator', sdkPath?: string): string {
 }
 
 function sdkRoots(configured?: string): string[] {
-  return [configured, process.env.ANDROID_SDK_ROOT, process.env.ANDROID_HOME]
-    .filter((value): value is string => Boolean(value));
+  return [configured, process.env.ANDROID_SDK_ROOT, process.env.ANDROID_HOME].filter(
+    (value): value is string => Boolean(value)
+  );
 }
-function executableName(name: string): string { return process.platform === 'win32' ? `${name}.exe` : name; }
+function executableName(name: string): string {
+  return process.platform === 'win32' ? `${name}.exe` : name;
+}
 
 function runShell(command: string, cwd: string): Promise<void> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, { cwd, shell: true, stdio: 'inherit' });
     child.on('error', reject);
-    child.on('close', (code) => code === 0
-      ? resolvePromise()
-      : reject(new Error(`Android build command exited with code ${code}: ${command}`)));
+    child.on('close', (code) =>
+      code === 0
+        ? resolvePromise()
+        : reject(new Error(`Android build command exited with code ${code}: ${command}`))
+    );
   });
 }
 
 function run(command: string, args: string[]): Promise<string> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = ''; let stderr = '';
-    child.stdout.on('data', (chunk) => { stdout += chunk; });
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+    });
     child.on('error', (error) => reject(new Error(`Could not start ${command}: ${error.message}`)));
-    child.on('close', (code) => code === 0
-      ? resolvePromise(stdout)
-      : reject(new Error(`${command} ${args.join(' ')} failed (${code}): ${stderr.trim()}`)));
+    child.on('close', (code) =>
+      code === 0
+        ? resolvePromise(stdout)
+        : reject(new Error(`${command} ${args.join(' ')} failed (${code}): ${stderr.trim()}`))
+    );
   });
 }
-function wait(ms: number): Promise<void> { return new Promise((resolvePromise) => setTimeout(resolvePromise, ms)); }
+function wait(ms: number): Promise<void> {
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
+}

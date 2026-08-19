@@ -1,4 +1,10 @@
-import { Timeline, Script, Scenario, VideoConfig, logger } from '@auto-product-video-generator/core';
+import {
+  Timeline,
+  Script,
+  Scenario,
+  VideoConfig,
+  logger,
+} from '@auto-product-video-generator/core';
 import { buildSubtitleCues } from './subtitle-generator.js';
 
 /**
@@ -49,7 +55,7 @@ export class TimelineBuilder {
         scene.startTime,
         scene.endTime,
         undefined,
-        config.singleLineSubtitles,
+        config.singleLineSubtitles
       );
       for (let cueIndex = 0; cueIndex < subtitleCues.length; cueIndex++) {
         const cue = subtitleCues[cueIndex];

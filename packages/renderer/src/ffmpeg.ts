@@ -2,7 +2,13 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { Timeline, VideoTrack, AudioTrack, SubtitleTrack, logger } from '@auto-product-video-generator/core';
+import {
+  Timeline,
+  VideoTrack,
+  AudioTrack,
+  SubtitleTrack,
+  logger,
+} from '@auto-product-video-generator/core';
 
 export interface RenderOptions {
   noSubtitles: boolean;
@@ -37,11 +43,7 @@ export class FfmpegRenderer {
     logger.success(`Video rendered: ${outputPath}`);
   }
 
-  private buildCommand(
-    timeline: Timeline,
-    outputPath: string,
-    options: RenderOptions,
-  ): string[] {
+  private buildCommand(timeline: Timeline, outputPath: string, options: RenderOptions): string[] {
     const videoTracks = timeline.tracks.filter((t): t is VideoTrack => t.type === 'video');
     const audioTracks = options.noVoice
       ? []
@@ -76,7 +78,7 @@ export class FfmpegRenderer {
         const targetDuration = t.trimEnd - t.trimStart;
         filters.push(
           `tpad=stop_mode=clone:stop_duration=${targetDuration},` +
-          `trim=start=${t.trimStart}:duration=${targetDuration},setpts=PTS-STARTPTS`,
+            `trim=start=${t.trimStart}:duration=${targetDuration},setpts=PTS-STARTPTS`
         );
       }
       if (t.speed && t.speed !== 1.0) {
@@ -93,9 +95,7 @@ export class FfmpegRenderer {
     });
 
     // Concat video
-    filterParts.push(
-      `${concatInputs.join('')}concat=n=${videoTracks.length}:v=1:a=0[vconcat]`,
-    );
+    filterParts.push(`${concatInputs.join('')}concat=n=${videoTracks.length}:v=1:a=0[vconcat]`);
 
     // Subtitles overlay
     const srtPath = options.subtitlesPath || resolve(options.workDir, 'subtitles.srt');
@@ -104,9 +104,9 @@ export class FfmpegRenderer {
       const escapedSrt = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
       filterParts.push(
         `[vconcat]subtitles='${escapedSrt}':force_style='` +
-        `FontSize=36,PrimaryColour=&H00FFFFFF,BackColour=&H80000000,` +
-        `BorderStyle=4,Outline=0,Shadow=0,MarginV=30` +
-        `'[vout]`,
+          `FontSize=36,PrimaryColour=&H00FFFFFF,BackColour=&H80000000,` +
+          `BorderStyle=4,Outline=0,Shadow=0,MarginV=30` +
+          `'[vout]`
       );
     } else {
       filterParts.push(`[vconcat]copy[vout]`);
@@ -126,9 +126,7 @@ export class FfmpegRenderer {
 
       const aMixInputs = audioTracks.map((_, i) => `[a${i}]`).join('');
       filterParts.push(audioInputs);
-      filterParts.push(
-        `${aMixInputs}amix=inputs=${audioTracks.length}:duration=longest[aout]`,
-      );
+      filterParts.push(`${aMixInputs}amix=inputs=${audioTracks.length}:duration=longest[aout]`);
     }
 
     args.push('-filter_complex', filterParts.join(';'));
@@ -141,12 +139,18 @@ export class FfmpegRenderer {
     // Encoding options
     const [w, h] = timeline.meta.resolution.split('x');
     args.push(
-      '-c:v', 'libx264',
-      '-preset', options.preview ? 'ultrafast' : 'medium',
-      '-crf', options.preview ? '28' : '18',
-      '-s', `${w}x${h}`,
-      '-r', String(timeline.meta.fps),
-      '-pix_fmt', 'yuv420p',
+      '-c:v',
+      'libx264',
+      '-preset',
+      options.preview ? 'ultrafast' : 'medium',
+      '-crf',
+      options.preview ? '28' : '18',
+      '-s',
+      `${w}x${h}`,
+      '-r',
+      String(timeline.meta.fps),
+      '-pix_fmt',
+      'yuv420p'
     );
 
     if (audioTracks.length > 0) {
@@ -178,12 +182,7 @@ export class FfmpegRenderer {
         if (code === 0) {
           resolve();
         } else {
-          reject(
-            new Error(
-              `ffmpeg exited with code ${code}\n` +
-              errLines.slice(-10).join(''),
-            ),
-          );
+          reject(new Error(`ffmpeg exited with code ${code}\n` + errLines.slice(-10).join('')));
         }
       });
 

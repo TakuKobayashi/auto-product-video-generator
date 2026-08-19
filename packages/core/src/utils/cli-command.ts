@@ -10,7 +10,7 @@ const SHELL_CONTROL = /[;&|`$><\n\r]/;
 export function isSafeCliCommand(
   command: string,
   allowedCommands: string[] = [],
-  deniedPatterns: string[] = DEFAULT_CLI_DENIED_COMMAND_PATTERNS,
+  deniedPatterns: string[] = DEFAULT_CLI_DENIED_COMMAND_PATTERNS
 ): boolean {
   const normalized = command.trim().replace(/\s+/g, ' ');
   if (!normalized || SHELL_CONTROL.test(normalized)) return false;

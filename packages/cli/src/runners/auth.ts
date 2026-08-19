@@ -18,20 +18,20 @@ export async function runAuthLogin(options: AuthLoginOptions): Promise<void> {
 
   const config = await loadConfig(options.config || 'apvg.config.yml');
   if (config.target.type !== 'web') {
-    throw new Error(`Manual browser login currently supports only target.type: web (received '${config.target.type}').`);
+    throw new Error(
+      `Manual browser login currently supports only target.type: web (received '${config.target.type}').`
+    );
   }
 
   const auth = config.target.auth;
   if (!auth) {
     throw new Error(
-      "target.auth is not configured. Add a manual auth block to apvg.config.yml before running 'apvg auth login'.",
+      "target.auth is not configured. Add a manual auth block to apvg.config.yml before running 'apvg auth login'."
     );
   }
   const loginUrl = options.loginUrl || auth?.loginUrl || config.target.url;
   const successUrl = options.successUrl || auth?.successUrl;
-  const storageStatePath = resolve(
-    options.storageState || auth.storageStatePath,
-  );
+  const storageStatePath = resolve(options.storageState || auth.storageStatePath);
   const timeoutSeconds = parseNonNegativeNumber(options.timeout || '600', '--timeout');
   const slowMo = parseNonNegativeNumber(options.slowMo || '0', '--slow-mo');
 
@@ -54,11 +54,15 @@ export async function runAuthLogin(options: AuthLoginOptions): Promise<void> {
 
 async function waitForEnter(): Promise<void> {
   if (!stdin.isTTY) {
-    throw new Error('Interactive input is unavailable. Configure target.auth.successUrl or pass --success-url.');
+    throw new Error(
+      'Interactive input is unavailable. Configure target.auth.successUrl or pass --success-url.'
+    );
   }
   const readline = createInterface({ input: stdin, output: stdout });
   try {
-    await readline.question('Complete login in the browser, then press Enter here to save the session...');
+    await readline.question(
+      'Complete login in the browser, then press Enter here to save the session...'
+    );
   } finally {
     readline.close();
   }

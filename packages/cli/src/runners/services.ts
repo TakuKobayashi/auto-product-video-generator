@@ -22,7 +22,11 @@ async function reachable(url: string, timeoutMs = 2000): Promise<boolean> {
   }
 }
 
-export function runExternal(command: string, args: string[], options: { detached?: boolean } = {}): Promise<void> {
+export function runExternal(
+  command: string,
+  args: string[],
+  options: { detached?: boolean } = {}
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       detached: options.detached,
@@ -61,12 +65,18 @@ export async function serveServices(options: ServeOptions): Promise<void> {
     logger.info('Starting VOICEVOX Engine with Docker...');
     try {
       await runExternal('docker', [
-        'run', '-d', '--rm', '--name', VOICEVOX_CONTAINER,
-        '-p', '50021:50021', options.voicevoxImage || DEFAULT_VOICEVOX_IMAGE,
+        'run',
+        '-d',
+        '--rm',
+        '--name',
+        VOICEVOX_CONTAINER,
+        '-p',
+        '50021:50021',
+        options.voicevoxImage || DEFAULT_VOICEVOX_IMAGE,
       ]);
     } catch (error) {
       throw new Error(
-        `Unable to start VOICEVOX Engine. Install and start Docker Desktop, then retry.\n${error instanceof Error ? error.message : String(error)}`,
+        `Unable to start VOICEVOX Engine. Install and start Docker Desktop, then retry.\n${error instanceof Error ? error.message : String(error)}`
       );
     }
     await waitFor(VOICEVOX_URL, 'VOICEVOX Engine');
@@ -75,9 +85,11 @@ export async function serveServices(options: ServeOptions): Promise<void> {
 
   const useOllama = options.ollama !== false && !process.env.GEMINI_API_KEY;
   if (!useOllama) {
-    logger.info(process.env.GEMINI_API_KEY
-      ? 'GEMINI_API_KEY is set; Ollama startup is not required.'
-      : 'Ollama startup was skipped.');
+    logger.info(
+      process.env.GEMINI_API_KEY
+        ? 'GEMINI_API_KEY is set; Ollama startup is not required.'
+        : 'Ollama startup was skipped.'
+    );
     return;
   }
 
@@ -88,7 +100,7 @@ export async function serveServices(options: ServeOptions): Promise<void> {
       await waitFor(OLLAMA_URL, 'Ollama', 30_000);
     } catch (error) {
       throw new Error(
-        `Unable to start Ollama. Install it from https://ollama.com/download or set GEMINI_API_KEY.\n${error instanceof Error ? error.message : String(error)}`,
+        `Unable to start Ollama. Install it from https://ollama.com/download or set GEMINI_API_KEY.\n${error instanceof Error ? error.message : String(error)}`
       );
     }
   } else {
@@ -105,7 +117,9 @@ export async function showServiceStatus(): Promise<void> {
   const voicevox = await reachable(VOICEVOX_URL);
   const ollama = await reachable(OLLAMA_URL);
   console.log(`${voicevox ? '✓' : '✗'} VOICEVOX Engine  http://localhost:50021`);
-  console.log(`${ollama ? '✓' : '-'} Ollama           http://localhost:11434${process.env.GEMINI_API_KEY ? ' (optional: GEMINI_API_KEY is set)' : ''}`);
+  console.log(
+    `${ollama ? '✓' : '-'} Ollama           http://localhost:11434${process.env.GEMINI_API_KEY ? ' (optional: GEMINI_API_KEY is set)' : ''}`
+  );
   if (!voicevox) process.exitCode = 1;
   if (!ollama && !process.env.GEMINI_API_KEY) process.exitCode = 1;
 }
@@ -117,5 +131,7 @@ export async function stopServices(): Promise<void> {
   } catch {
     logger.info('The APVG VOICEVOX container was not running.');
   }
-  logger.info('Ollama was left running because it may be managed by the operating system or used by other applications.');
+  logger.info(
+    'Ollama was left running because it may be managed by the operating system or used by other applications.'
+  );
 }

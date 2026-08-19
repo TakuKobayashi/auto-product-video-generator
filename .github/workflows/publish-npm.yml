@@ -3,7 +3,7 @@ name: Publish CLI to npm
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 permissions:
   contents: read
@@ -153,4 +153,4 @@ jobs:
           tag: ${{ github.ref_name }}
           model: qwen2.5-coder:7b-instruct
           language: jp
-          bilingual: "true"
+          bilingual: 'true'

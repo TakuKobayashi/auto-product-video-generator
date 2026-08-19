@@ -52,9 +52,12 @@ describe('buildSubtitleCues', () => {
   it('keeps the full scene narration in one cue when one-line mode is disabled', () => {
     const narration = 'Create polished promotional videos quickly';
     const cues = buildSubtitleCues(narration, 2, 12, 14, false);
-    const srt = new SubtitleGenerator().generateSrt({
-      scenes: [{ id: 'demo', narration, startTime: 2, endTime: 12, voiceFile: 'voice/demo.wav' }],
-    }, { singleLine: false });
+    const srt = new SubtitleGenerator().generateSrt(
+      {
+        scenes: [{ id: 'demo', narration, startTime: 2, endTime: 12, voiceFile: 'voice/demo.wav' }],
+      },
+      { singleLine: false }
+    );
 
     expect(cues).toEqual([{ text: narration, startTime: 2, endTime: 12 }]);
     expect(srt).toContain(narration);

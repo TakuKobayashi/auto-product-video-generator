@@ -50,7 +50,10 @@ export async function runRender(options: RenderOptions): Promise<void> {
   const outputPath = options.output || join(config.output.dir, 'final.mp4');
 
   // Validate prerequisites
-  for (const [label, p] of [['scenario.yml', scenarioPath], ['script.yml', scriptPath]] as const) {
+  for (const [label, p] of [
+    ['scenario.yml', scenarioPath],
+    ['script.yml', scriptPath],
+  ] as const) {
     if (!existsSync(p)) {
       logger.error(`${label} not found: ${p}`);
       logger.error(`Run 'pnpm apvg video scenario generate' first.`);

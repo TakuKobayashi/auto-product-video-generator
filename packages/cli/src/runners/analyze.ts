@@ -1,7 +1,17 @@
 import { join } from 'node:path';
-import { loadConfig, saveConfig, writeJson, logger, describeTaskLlm } from '@auto-product-video-generator/core';
+import {
+  loadConfig,
+  saveConfig,
+  writeJson,
+  logger,
+  describeTaskLlm,
+} from '@auto-product-video-generator/core';
 import { createLlmProviderForTask, ProjectAnalyzer } from '@auto-product-video-generator/ai';
-import { resolveProjectSource, inspectProject, detectStartCommand } from '@auto-product-video-generator/source';
+import {
+  resolveProjectSource,
+  inspectProject,
+  detectStartCommand,
+} from '@auto-product-video-generator/source';
 import { applyInferredTargetUrl } from '../utils/inferred-target.js';
 
 interface AnalyzeOptions {
@@ -52,7 +62,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   if (sourceContext.routes.length === 0) {
     logger.warn(
       `No routes could be auto-discovered for framework '${sourceContext.framework}'. ` +
-      `The AI will infer routes from the file listing instead — review scenario.yml carefully after generation.`,
+        `The AI will infer routes from the file listing instead — review scenario.yml carefully after generation.`
     );
   }
 
@@ -65,8 +75,12 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
     if (detected) {
       config.source.startCommand = detected;
       await saveConfig(configPath, config);
-      logger.info(`Detected dev server command '${detected}' — saved to ${configPath} (source.startCommand).`);
-      logger.dim(`  Edit apvg.config.yml if this isn't right, or clear it to start the app yourself.`);
+      logger.info(
+        `Detected dev server command '${detected}' — saved to ${configPath} (source.startCommand).`
+      );
+      logger.dim(
+        `  Edit apvg.config.yml if this isn't right, or clear it to start the app yourself.`
+      );
     }
   }
 

@@ -12,7 +12,7 @@ export interface LlmProvider {
 export class GeminiProvider implements LlmProvider {
   constructor(
     private model: string,
-    private apiKey: string,
+    private apiKey: string
   ) {}
 
   async generate(prompt: string, systemPrompt?: string): Promise<string> {
@@ -44,7 +44,7 @@ export class GeminiProvider implements LlmProvider {
 export class OllamaProvider implements LlmProvider {
   constructor(
     private model: string,
-    private host: string = 'http://localhost:11434',
+    private host: string = 'http://localhost:11434'
   ) {}
 
   async generate(prompt: string, systemPrompt?: string): Promise<string> {
@@ -66,7 +66,11 @@ export class OllamaProvider implements LlmProvider {
     }
   }
 
-  private async call(prompt: string, systemPrompt?: string, format?: 'json' | JsonSchema): Promise<string> {
+  private async call(
+    prompt: string,
+    systemPrompt?: string,
+    format?: 'json' | JsonSchema
+  ): Promise<string> {
     const body: Record<string, unknown> = {
       model: this.model,
       prompt,
@@ -94,7 +98,7 @@ export class OllamaProvider implements LlmProvider {
       const detail = describeFetchError(err);
       throw new Error(
         `Ollama request to ${this.host} failed (${detail}).\n` +
-        `Run 'task serve:ollama' (or 'ollama serve') first.`,
+          `Run 'task serve:ollama' (or 'ollama serve') first.`
       );
     }
 
@@ -102,7 +106,7 @@ export class OllamaProvider implements LlmProvider {
       const text = await res.text().catch(() => '');
       throw new Error(
         `Ollama request failed (${res.status}): ${text}\n` +
-        `Is the model '${this.model}' pulled? Run: ollama pull ${this.model}`,
+          `Is the model '${this.model}' pulled? Run: ollama pull ${this.model}`
       );
     }
 
@@ -146,7 +150,10 @@ function describeFetchError(err: unknown): string {
 // --- Stub providers for future implementation ---
 
 export class OpenAIProvider implements LlmProvider {
-  constructor(private model: string, private apiKey: string) {}
+  constructor(
+    private model: string,
+    private apiKey: string
+  ) {}
 
   async generate(_prompt: string, _systemPrompt?: string): Promise<string> {
     throw new Error('OpenAI provider not yet implemented. PRs welcome!');
@@ -158,7 +165,10 @@ export class OpenAIProvider implements LlmProvider {
 }
 
 export class ClaudeProvider implements LlmProvider {
-  constructor(private model: string, private apiKey: string) {}
+  constructor(
+    private model: string,
+    private apiKey: string
+  ) {}
 
   async generate(_prompt: string, _systemPrompt?: string): Promise<string> {
     throw new Error('Claude provider not yet implemented. PRs welcome!');
@@ -170,7 +180,10 @@ export class ClaudeProvider implements LlmProvider {
 }
 
 export class GroqProvider implements LlmProvider {
-  constructor(private model: string, private apiKey: string) {}
+  constructor(
+    private model: string,
+    private apiKey: string
+  ) {}
 
   async generate(_prompt: string, _systemPrompt?: string): Promise<string> {
     throw new Error('Groq provider not yet implemented. PRs welcome!');
@@ -197,7 +210,7 @@ export class FallbackLlmProvider implements LlmProvider {
     private primary: LlmProvider,
     private primaryLabel: string,
     private buildFallback: () => LlmProvider,
-    private fallbackLabel: string,
+    private fallbackLabel: string
   ) {}
 
   private getFallback(): LlmProvider {
@@ -234,7 +247,7 @@ function buildSingleProvider(
   provider: LlmProviderName,
   model: string,
   apiKeyEnv: string | undefined,
-  ollamaHost: string,
+  ollamaHost: string
 ): LlmProvider {
   const getKey = (envName: string) => {
     const key = process.env[envName];
@@ -263,7 +276,7 @@ export function createLlmProvider(config: LlmConfig): LlmProvider {
     config.provider,
     config.model,
     config.apiKeyEnv,
-    config.ollamaHost,
+    config.ollamaHost
   );
 
   if (!config.fallbackProvider) {
@@ -274,19 +287,17 @@ export function createLlmProvider(config: LlmConfig): LlmProvider {
   // particular, fresh Ollama-only configs used to include Gemini even when
   // GEMINI_API_KEY was absent, hiding the useful Ollama error behind a final
   // "GEMINI_API_KEY is not set" failure.
-  const fallbackApiKeyEnv = requiredApiKeyEnv(
-    config.fallbackProvider,
-    config.fallbackApiKeyEnv,
-  );
+  const fallbackApiKeyEnv = requiredApiKeyEnv(config.fallbackProvider, config.fallbackApiKeyEnv);
   if (fallbackApiKeyEnv && !process.env[fallbackApiKeyEnv]) {
     logger.warn(
-      `[llm] ${config.fallbackProvider} fallback disabled because ${fallbackApiKeyEnv} is not set.`,
+      `[llm] ${config.fallbackProvider} fallback disabled because ${fallbackApiKeyEnv} is not set.`
     );
     return primary;
   }
 
   const fallbackModel =
-    config.fallbackModel || (config.fallbackProvider === 'ollama' ? 'qwen2.5:7b-instruct' : config.model);
+    config.fallbackModel ||
+    (config.fallbackProvider === 'ollama' ? 'qwen2.5:7b-instruct' : config.model);
 
   // Built lazily: constructing e.g. a GeminiProvider requires its API key to
   // be present, but we shouldn't demand that key up front if the primary
@@ -296,29 +307,34 @@ export function createLlmProvider(config: LlmConfig): LlmProvider {
       config.fallbackProvider!,
       fallbackModel,
       config.fallbackApiKeyEnv,
-      config.ollamaHost,
+      config.ollamaHost
     );
 
   return new FallbackLlmProvider(
     primary,
     `${config.provider}/${config.model}`,
     buildFallback,
-    `${config.fallbackProvider}/${fallbackModel}`,
+    `${config.fallbackProvider}/${fallbackModel}`
   );
 }
 
 function requiredApiKeyEnv(
   provider: LlmProviderName,
-  configuredEnv: string | undefined,
+  configuredEnv: string | undefined
 ): string | null {
   if (provider === 'ollama') return null;
   if (configuredEnv) return configuredEnv;
   switch (provider) {
-    case 'gemini': return 'GEMINI_API_KEY';
-    case 'openai': return 'OPENAI_API_KEY';
-    case 'claude': return 'ANTHROPIC_API_KEY';
-    case 'groq': return 'GROQ_API_KEY';
-    default: return null;
+    case 'gemini':
+      return 'GEMINI_API_KEY';
+    case 'openai':
+      return 'OPENAI_API_KEY';
+    case 'claude':
+      return 'ANTHROPIC_API_KEY';
+    case 'groq':
+      return 'GROQ_API_KEY';
+    default:
+      return null;
   }
 }
 
@@ -334,7 +350,10 @@ function requiredApiKeyEnv(
  * overrides — it always comes from the top-level config, since a fallback
  * is meant to be a general safety net regardless of which task is running.
  */
-export function createLlmProviderForTask(config: LlmConfig, task: 'analyze' | 'scenario'): LlmProvider {
+export function createLlmProviderForTask(
+  config: LlmConfig,
+  task: 'analyze' | 'scenario'
+): LlmProvider {
   const override = config.tasks?.[task];
   if (!override) return createLlmProvider(config);
 

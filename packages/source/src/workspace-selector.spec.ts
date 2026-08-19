@@ -18,52 +18,78 @@ describe('selectProjectRoot', () => {
     await packageJson(root, 'apps/cli', { scripts: { dev: 'tsx src.ts' } });
     await packageJson(root, 'apps/web-ui', { dependencies: { react: '^19.0.0' } });
     await packageJson(root, 'apps/web', {
-      name: '@sample/web', scripts: { dev: 'next dev' }, dependencies: { next: '^15.0.0' },
+      name: '@sample/web',
+      scripts: { dev: 'next dev' },
+      dependencies: { next: '^15.0.0' },
     });
     await packageJson(root, 'packages/shared', { name: '@sample/shared' });
 
-    await expect(selectProjectRoot(root, {
-      localPath: root, installDeps: false, platformPriority: DEFAULT_PLATFORM_PRIORITY,
-    }))
-      .resolves.toBe(join(root, 'apps/web'));
+    await expect(
+      selectProjectRoot(root, {
+        localPath: root,
+        installDeps: false,
+        platformPriority: DEFAULT_PLATFORM_PRIORITY,
+      })
+    ).resolves.toBe(join(root, 'apps/web'));
   });
 
   it('honors an explicit projectPath override', async () => {
     const root = await mkdtemp(join(tmpdir(), 'apvg-monorepo-'));
-    await packageJson(root, 'apps/web', { scripts: { dev: 'vite' }, dependencies: { vite: '^7.0.0' } });
-    await packageJson(root, 'apps/admin', { scripts: { dev: 'vite' }, dependencies: { vite: '^7.0.0' } });
+    await packageJson(root, 'apps/web', {
+      scripts: { dev: 'vite' },
+      dependencies: { vite: '^7.0.0' },
+    });
+    await packageJson(root, 'apps/admin', {
+      scripts: { dev: 'vite' },
+      dependencies: { vite: '^7.0.0' },
+    });
 
-    await expect(selectProjectRoot(root, {
-      localPath: root, installDeps: false, projectPath: 'apps/admin',
-      platformPriority: DEFAULT_PLATFORM_PRIORITY,
-    })).resolves.toBe(join(root, 'apps/admin'));
+    await expect(
+      selectProjectRoot(root, {
+        localPath: root,
+        installDeps: false,
+        projectPath: 'apps/admin',
+        platformPriority: DEFAULT_PLATFORM_PRIORITY,
+      })
+    ).resolves.toBe(join(root, 'apps/admin'));
   });
 
   it('uses configured platform priority before candidate score', async () => {
     const root = await mkdtemp(join(tmpdir(), 'apvg-monorepo-'));
     await packageJson(root, 'apps/web', {
-      scripts: { dev: 'vite' }, dependencies: { vite: '^7.0.0' },
+      scripts: { dev: 'vite' },
+      dependencies: { vite: '^7.0.0' },
     });
     await packageJson(root, 'apps/mobile', {
-      scripts: { dev: 'react-native start' }, dependencies: { 'react-native': '^0.80.0' },
+      scripts: { dev: 'react-native start' },
+      dependencies: { 'react-native': '^0.80.0' },
     });
 
-    await expect(selectProjectRoot(root, {
-      localPath: root, installDeps: false,
-      // No iOS candidate exists, so selection proceeds to React Native.
-      platformPriority: ['ios', 'react-native', 'web', 'other'],
-    })).resolves.toBe(join(root, 'apps/mobile'));
+    await expect(
+      selectProjectRoot(root, {
+        localPath: root,
+        installDeps: false,
+        // No iOS candidate exists, so selection proceeds to React Native.
+        platformPriority: ['ios', 'react-native', 'web', 'other'],
+      })
+    ).resolves.toBe(join(root, 'apps/mobile'));
   });
 
   it('recognizes a package.json bin entry as a CLI application', async () => {
     const root = await mkdtemp(join(tmpdir(), 'apvg-monorepo-'));
     await packageJson(root, 'packages/shared', { name: '@sample/shared' });
     await packageJson(root, 'apps/tool', {
-      name: '@sample/tool', bin: { sample: './dist/index.js' }, dependencies: { commander: '^12.0.0' },
+      name: '@sample/tool',
+      bin: { sample: './dist/index.js' },
+      dependencies: { commander: '^12.0.0' },
     });
 
-    await expect(selectProjectRoot(root, {
-      localPath: root, installDeps: false, platformPriority: ['cli', 'other'],
-    })).resolves.toBe(join(root, 'apps/tool'));
+    await expect(
+      selectProjectRoot(root, {
+        localPath: root,
+        installDeps: false,
+        platformPriority: ['cli', 'other'],
+      })
+    ).resolves.toBe(join(root, 'apps/tool'));
   });
 });

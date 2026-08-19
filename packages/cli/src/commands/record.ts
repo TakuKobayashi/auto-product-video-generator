@@ -8,9 +8,15 @@ export function recordCommand(): Command {
     .option('--script <path>', 'timed script YML input (default: <workDir>/script.yml)')
     .option('--voice-dir <path>', 'WAV input directory (default: <workDir>/voice)')
     .option('--recordings-dir <path>', 'MP4 output directory (default: <workDir>/recordings)')
-    .option('--screenshots-dir <path>', 'screenshot output directory (default: <workDir>/screenshots)')
+    .option(
+      '--screenshots-dir <path>',
+      'screenshot output directory (default: <workDir>/screenshots)'
+    )
     .option('--source-dir <path>', 'source clone/cache directory (default: <workDir>/source-repo)')
-    .option('--server-log <path>', 'development server log output (default: <workDir>/dev-server.log)')
+    .option(
+      '--server-log <path>',
+      'development server log output (default: <workDir>/dev-server.log)'
+    )
     .option('-s, --scene <id>', 'record a specific scene only')
     .option('--headed', 'show the browser window during recording')
     .option('--slow-mo <ms>', 'slow down each action by N milliseconds', '0')

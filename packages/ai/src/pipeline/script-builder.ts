@@ -1,5 +1,11 @@
 import { join } from 'node:path';
-import { Scenario, Script, ScriptScene, getAudioDurationSeconds, logger } from '@auto-product-video-generator/core';
+import {
+  Scenario,
+  Script,
+  ScriptScene,
+  getAudioDurationSeconds,
+  logger,
+} from '@auto-product-video-generator/core';
 
 /**
  * Builds script.yml deterministically from an already-generated
@@ -31,7 +37,10 @@ export function buildScriptFromScenario(scenario: Scenario, sceneGapSeconds = 1)
     };
   });
 
-  logger.step('script', `Derived timing for ${scenes.length} scene(s) from narration length (no LLM call).`);
+  logger.step(
+    'script',
+    `Derived timing for ${scenes.length} scene(s) from narration length (no LLM call).`
+  );
   return { scenes };
 }
 
@@ -39,7 +48,7 @@ export function buildScriptFromScenario(scenario: Scenario, sceneGapSeconds = 1)
 export async function recomputeScriptTimingFromAudio(
   script: Script,
   audioDir: string,
-  sceneGapSeconds = 1,
+  sceneGapSeconds = 1
 ): Promise<Script> {
   let cursor = 0;
   const scenes: ScriptScene[] = [];

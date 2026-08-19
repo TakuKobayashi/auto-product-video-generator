@@ -6,7 +6,7 @@ import { logger } from '@auto-product-video-generator/core';
 export function resolveWebStorageState(
   config: ApvgConfig,
   platform: ProjectPlatform,
-  dryRun: boolean,
+  dryRun: boolean
 ): string | undefined {
   if (platform !== 'web' || !config.target.auth) return undefined;
 
@@ -14,7 +14,7 @@ export function resolveWebStorageState(
   if (!dryRun && !existsSync(storageStatePath)) {
     throw new Error(
       `Web authentication state not found: ${storageStatePath}\n` +
-      `Run 'pnpm apvg auth login' before recording, or remove target.auth when login is not required.`,
+        `Run 'pnpm apvg auth login' before recording, or remove target.auth when login is not required.`
     );
   }
   logger.info(`Web authentication: ${storageStatePath}${dryRun ? ' (not loaded in dry-run)' : ''}`);

@@ -11,7 +11,9 @@ describe('isSourcePathExcluded', () => {
   });
 
   it('supports gitignore-style negation', () => {
-    expect(isSourcePathExcluded('fixtures/keep.wav', ['**/*.wav', '!fixtures/keep.wav'])).toBe(false);
+    expect(isSourcePathExcluded('fixtures/keep.wav', ['**/*.wav', '!fixtures/keep.wav'])).toBe(
+      false
+    );
   });
 
   it('excludes non-source packages, binaries, datasets, and model weights by default', () => {

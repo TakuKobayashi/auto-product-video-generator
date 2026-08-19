@@ -18,15 +18,31 @@ export const PROJECT_SUMMARY_OUTPUT_SCHEMA: JsonSchema = {
   type: 'object',
   additionalProperties: false,
   required: [
-    'name', 'description', 'platform', 'setupSteps', 'features',
-    'targetAudience', 'keyValueProps', 'suggestedVideoTypes',
+    'name',
+    'description',
+    'platform',
+    'setupSteps',
+    'features',
+    'targetAudience',
+    'keyValueProps',
+    'suggestedVideoTypes',
   ],
   properties: {
     name: { type: 'string', minLength: 1 },
     description: { type: 'string', minLength: 1 },
     platform: {
       type: 'string',
-      enum: ['web', 'cli', 'ios', 'android', 'unity', 'flutter', 'react-native', 'desktop', 'other'],
+      enum: [
+        'web',
+        'cli',
+        'ios',
+        'android',
+        'unity',
+        'flutter',
+        'react-native',
+        'desktop',
+        'other',
+      ],
     },
     setupSteps: { type: 'array', items: setupStep },
     features: {
@@ -58,26 +74,37 @@ export const PROJECT_SUMMARY_OUTPUT_SCHEMA: JsonSchema = {
 const action = {
   oneOf: [
     {
-      type: 'object', additionalProperties: false, required: ['type', 'url'],
+      type: 'object',
+      additionalProperties: false,
+      required: ['type', 'url'],
       properties: { type: { const: 'goto' }, url: { type: 'string', format: 'uri' } },
     },
     {
-      type: 'object', additionalProperties: false, required: ['type', 'ms'],
+      type: 'object',
+      additionalProperties: false,
+      required: ['type', 'ms'],
       properties: { type: { const: 'wait' }, ms: { type: 'integer', minimum: 1 } },
     },
     {
-      type: 'object', additionalProperties: false, required: ['type', 'direction', 'amount'],
+      type: 'object',
+      additionalProperties: false,
+      required: ['type', 'direction', 'amount'],
       properties: {
-        type: { const: 'scroll' }, direction: { type: 'string', enum: ['up', 'down'] },
+        type: { const: 'scroll' },
+        direction: { type: 'string', enum: ['up', 'down'] },
         amount: { type: 'number', exclusiveMinimum: 0 },
       },
     },
     {
-      type: 'object', additionalProperties: false, required: ['type', 'name'],
+      type: 'object',
+      additionalProperties: false,
+      required: ['type', 'name'],
       properties: { type: { const: 'screenshot' }, name: { type: 'string', minLength: 1 } },
     },
     {
-      type: 'object', additionalProperties: false, required: ['type', 'command'],
+      type: 'object',
+      additionalProperties: false,
+      required: ['type', 'command'],
       properties: { type: { const: 'run_command' }, command: { type: 'string', minLength: 1 } },
     },
   ],
@@ -101,7 +128,9 @@ export const SCENARIO_OUTPUT_SCHEMA: JsonSchema = {
       },
     },
     scenes: {
-      type: 'array', minItems: 1, maxItems: 5,
+      type: 'array',
+      minItems: 1,
+      maxItems: 5,
       items: {
         type: 'object',
         additionalProperties: false,

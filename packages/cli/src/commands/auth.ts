@@ -1,8 +1,7 @@
 import { Command } from 'commander';
 
 export function authCommand(): Command {
-  const command = new Command('auth')
-    .description('Manage authentication for web recording');
+  const command = new Command('auth').description('Manage authentication for web recording');
 
   command.addCommand(
     new Command('login')
@@ -16,7 +15,7 @@ export function authCommand(): Command {
       .action(async (options: Record<string, string>) => {
         const { runAuthLogin } = await import('../runners/auth.js');
         await runAuthLogin(options);
-      }),
+      })
   );
 
   return command;

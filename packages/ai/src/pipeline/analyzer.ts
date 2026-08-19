@@ -1,4 +1,11 @@
-import { ProjectSummary, ProjectSummarySchema, isConcreteWebRoute, isSafeCliCommand, logger, withHeartbeat } from '@auto-product-video-generator/core';
+import {
+  ProjectSummary,
+  ProjectSummarySchema,
+  isConcreteWebRoute,
+  isSafeCliCommand,
+  logger,
+  withHeartbeat,
+} from '@auto-product-video-generator/core';
 import { ProjectSourceContext } from '@auto-product-video-generator/source';
 import { relative } from 'node:path';
 import { LlmProvider } from '../llm/provider.js';
@@ -62,7 +69,9 @@ export class ProjectAnalyzer {
 
   async analyze(context: ProjectSourceContext, targetUrl?: string): Promise<ProjectSummary> {
     logger.step('analyze', 'Calling LLM to analyze project source...');
-    logger.info('  This can take a while, especially on local models — progress prints every few seconds.');
+    logger.info(
+      '  This can take a while, especially on local models — progress prints every few seconds.'
+    );
 
     const prompt = buildPrompt(context, targetUrl);
 
@@ -71,13 +80,13 @@ export class ProjectAnalyzer {
       generateValidatedJson<ProjectSummary>(this.llm, ProjectSummarySchema, prompt, SYSTEM_PROMPT, {
         label: 'analyze',
         jsonSchema: PROJECT_SUMMARY_OUTPUT_SCHEMA,
-      }),
+      })
     );
 
     switch (summary.platform) {
       case 'cli':
-        summary.features = summary.features.filter((feature) =>
-          !feature.command || isSafeCliCommand(feature.command),
+        summary.features = summary.features.filter(
+          (feature) => !feature.command || isSafeCliCommand(feature.command)
         );
         break;
       case 'web':
@@ -85,7 +94,7 @@ export class ProjectAnalyzer {
         // with the actual configured target used by Playwright.
         if (targetUrl) {
           summary.setupSteps = summary.setupSteps.map((step) =>
-            step.background ? { ...step, readyUrl: targetUrl } : step,
+            step.background ? { ...step, readyUrl: targetUrl } : step
           );
         }
         break;
@@ -97,33 +106,43 @@ export class ProjectAnalyzer {
       const workspaceCwd = relative(context.rootDir, context.repositoryRoot) || '.';
       const installCommand = `${context.packageManager} install`;
       summary.setupSteps = summary.setupSteps.map((step) =>
-        /(?:^|\s)(?:install|ci)(?:\s|$)/i.test(step.command) || /install dependencies/i.test(step.name)
+        /(?:^|\s)(?:install|ci)(?:\s|$)/i.test(step.command) ||
+        /install dependencies/i.test(step.name)
           ? { ...step, command: installCommand, cwd: workspaceCwd }
-          : step,
+          : step
       );
-      if (!summary.setupSteps.some((step) => step.command === installCommand && step.cwd === workspaceCwd)) {
+      if (
+        !summary.setupSteps.some(
+          (step) => step.command === installCommand && step.cwd === workspaceCwd
+        )
+      ) {
         summary.setupSteps.unshift({
-          name: 'Install workspace dependencies', command: installCommand,
-          cwd: workspaceCwd, background: false, readyTimeoutMs: 60000,
+          name: 'Install workspace dependencies',
+          command: installCommand,
+          cwd: workspaceCwd,
+          background: false,
+          readyTimeoutMs: 60000,
         });
       }
     }
 
     logger.success(
       `Analysis complete: platform=${summary.platform}, ${summary.setupSteps.length} setup step(s), ` +
-      `${summary.features.length} feature(s) identified.`,
+        `${summary.features.length} feature(s) identified.`
     );
     switch (summary.platform) {
       case 'web':
         break;
       case 'cli':
-        logger.info(`Platform classified as 'cli'. Commands will be recorded in the Docker-based terminal recorder.`);
+        logger.info(
+          `Platform classified as 'cli'. Commands will be recorded in the Docker-based terminal recorder.`
+        );
         break;
       default:
         logger.info(
           `Platform classified as '${summary.platform}'. Android, Flutter, React Native, and Unity ` +
-          `Android builds can be recorded when target.android is configured; other targets report ` +
-          `their required recorder environment before recording.`,
+            `Android builds can be recorded when target.android is configured; other targets report ` +
+            `their required recorder environment before recording.`
         );
     }
     return summary;
@@ -149,7 +168,10 @@ function buildPrompt(context: ProjectSourceContext, targetUrl?: string): string 
         : `No routes could be auto-discovered for this framework (${context.framework}).\n` +
           `Here is a partial file listing instead. Use "/" unless a concrete path is explicitly present; ` +
           `never invent parameter values:\n` +
-          context.fileTree.slice(0, 150).map((f) => `- ${f}`).join('\n');
+          context.fileTree
+            .slice(0, 150)
+            .map((f) => `- ${f}`)
+            .join('\n');
 
   const platformHint =
     context.platformHints.length > 0

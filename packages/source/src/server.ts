@@ -7,7 +7,7 @@ import { PackageJsonSummary } from './inspector.js';
 /** Picks a sensible default dev-server command from package.json's scripts. */
 export function detectStartCommand(
   packageJson: PackageJsonSummary | null,
-  packageManager: 'pnpm' | 'yarn' | 'npm' | 'bun' = 'npm',
+  packageManager: 'pnpm' | 'yarn' | 'npm' | 'bun' = 'npm'
 ): string | null {
   const scripts = packageJson?.scripts || {};
   const preferredOrder = ['dev', 'start', 'serve', 'preview'];
@@ -50,7 +50,10 @@ export interface RunSetupStepsOptions {
  * below — and, if it has a `readyUrl`, polled until reachable before
  * moving on.
  */
-export async function runSetupSteps(steps: SetupStep[], options: RunSetupStepsOptions): Promise<void> {
+export async function runSetupSteps(
+  steps: SetupStep[],
+  options: RunSetupStepsOptions
+): Promise<void> {
   for (const step of steps) {
     const stepCwd = step.cwd ? join(options.cwd, step.cwd) : options.cwd;
     logger.step('setup', `${step.name}: ${step.command}`);
@@ -66,7 +69,7 @@ export async function runSetupSteps(steps: SetupStep[], options: RunSetupStepsOp
     if (!step.readyUrl) continue;
 
     logger.info(
-      `Waiting for ${step.readyUrl} to become reachable (up to ${Math.round(step.readyTimeoutMs / 1000)}s)...`,
+      `Waiting for ${step.readyUrl} to become reachable (up to ${Math.round(step.readyTimeoutMs / 1000)}s)...`
     );
     const start = Date.now();
     let up = false;
@@ -82,7 +85,7 @@ export async function runSetupSteps(steps: SetupStep[], options: RunSetupStepsOp
     } else {
       logger.warn(
         `${step.readyUrl} did not become reachable within ${Math.round(step.readyTimeoutMs / 1000)}s. ` +
-        `Check ${options.logPath} for errors — proceeding anyway in case it's still starting up.`,
+          `Check ${options.logPath} for errors — proceeding anyway in case it's still starting up.`
       );
     }
   }
@@ -118,7 +121,10 @@ export async function ensureAppRunning(options: EnsureAppRunningOptions): Promis
   }
 
   if (options.setupSteps.length > 0) {
-    logger.step('setup', `Running scenario.yml's setup plan (${options.setupSteps.length} step(s))...`);
+    logger.step(
+      'setup',
+      `Running scenario.yml's setup plan (${options.setupSteps.length} step(s))...`
+    );
     if (options.installDeps && !options.setupSteps.some((s) => /install/i.test(s.name))) {
       // The scenario's plan didn't include an explicit install step but
       // installDeps was requested — run it first as a courtesy.
@@ -127,7 +133,7 @@ export async function ensureAppRunning(options: EnsureAppRunningOptions): Promis
     await runSetupSteps(options.setupSteps, { cwd: options.cwd, logPath: options.logPath });
     if (!(await httpReachable(options.url))) {
       throw new Error(
-        `Setup finished, but ${options.url} is still unreachable. Check ${options.logPath}.`,
+        `Setup finished, but ${options.url} is still unreachable. Check ${options.logPath}.`
       );
     }
     return;
@@ -141,7 +147,9 @@ export async function ensureAppRunning(options: EnsureAppRunningOptions): Promis
     logPath: options.logPath,
   });
   if (!(await httpReachable(options.url))) {
-    throw new Error(`Cannot record because ${options.url} is unreachable. Check ${options.logPath}.`);
+    throw new Error(
+      `Cannot record because ${options.url} is unreachable. Check ${options.logPath}.`
+    );
   }
 }
 
@@ -188,7 +196,9 @@ export async function ensureServerRunning(options: EnsureServerRunningOptions): 
 
   const timeoutMs = options.timeoutMs ?? 60000;
   const start = Date.now();
-  logger.info(`Waiting for ${options.url} to become reachable (up to ${Math.round(timeoutMs / 1000)}s)...`);
+  logger.info(
+    `Waiting for ${options.url} to become reachable (up to ${Math.round(timeoutMs / 1000)}s)...`
+  );
 
   while (Date.now() - start < timeoutMs) {
     if (await httpReachable(options.url)) {
@@ -200,7 +210,7 @@ export async function ensureServerRunning(options: EnsureServerRunningOptions): 
 
   throw new Error(
     `${options.url} did not become reachable within ${Math.round(timeoutMs / 1000)}s. ` +
-    `Check ${options.logPath} for errors.`,
+      `Check ${options.logPath} for errors.`
   );
 }
 
@@ -234,7 +244,9 @@ function runToCompletion(command: string, cwd: string, logPath: string): Promise
     const proc = spawn(command, { cwd, stdio: ['ignore', logFd, logFd], shell: true });
     proc.on('error', reject);
     proc.on('close', (code) =>
-      code === 0 ? resolve() : reject(new Error(`${command} exited with code ${code} (see ${logPath})`)),
+      code === 0
+        ? resolve()
+        : reject(new Error(`${command} exited with code ${code} (see ${logPath})`))
     );
   });
 }

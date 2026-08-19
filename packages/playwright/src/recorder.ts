@@ -26,7 +26,7 @@ export class SceneRecorder {
   async recordAll(
     scenario: Scenario,
     config: VideoConfig,
-    options: RecordOptions,
+    options: RecordOptions
   ): Promise<string[]> {
     const outputPaths: string[] = [];
 
@@ -43,7 +43,7 @@ export class SceneRecorder {
     config: VideoConfig,
     options: RecordOptions,
     targetDurationSeconds?: number,
-    actionDurationSeconds = targetDurationSeconds,
+    actionDurationSeconds = targetDurationSeconds
   ): Promise<string> {
     const [width, height] = config.resolution.split('x').map(Number);
     const outputPath = join(options.outputDir, `scene-${scene.id}.mp4`);
@@ -92,7 +92,9 @@ export class SceneRecorder {
         await this.waitForPageReady(page, config.pageReadyWaitSeconds);
         warmupSeconds = (Date.now() - recordingStartedAt) / 1000;
         actions = actions.slice(1);
-        logger.dim(`  Page ready; trimming ${warmupSeconds.toFixed(1)}s warm-up from the recording`);
+        logger.dim(
+          `  Page ready; trimming ${warmupSeconds.toFixed(1)}s warm-up from the recording`
+        );
       }
 
       // Narration and subtitle timing starts here, after the page is ready.
@@ -102,7 +104,7 @@ export class SceneRecorder {
         actions,
         options.screenshotDir,
         actionDurationSeconds,
-        startedAt,
+        startedAt
       );
       const elapsedSeconds = (Date.now() - startedAt) / 1000;
       const holdSeconds = Math.max(0, (targetDurationSeconds ?? 0.5) - elapsedSeconds);
@@ -112,7 +114,7 @@ export class SceneRecorder {
       } else if (targetDurationSeconds && elapsedSeconds > targetDurationSeconds) {
         logger.warn(
           `Scene '${scene.id}' actions took ${elapsedSeconds.toFixed(1)}s, ` +
-          `longer than its ${targetDurationSeconds.toFixed(1)}s narration slot.`,
+            `longer than its ${targetDurationSeconds.toFixed(1)}s narration slot.`
         );
       }
     } catch (err) {
@@ -169,21 +171,36 @@ export class SceneRecorder {
     inputPath: string,
     outputPath: string,
     warmupSeconds: number,
-    targetDurationSeconds?: number,
+    targetDurationSeconds?: number
   ): Promise<void> {
     const args = [
-      '-y', '-ss', warmupSeconds.toFixed(3), '-i', inputPath,
+      '-y',
+      '-ss',
+      warmupSeconds.toFixed(3),
+      '-i',
+      inputPath,
       ...(targetDurationSeconds ? ['-t', targetDurationSeconds.toFixed(3)] : []),
-      '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', outputPath,
+      '-an',
+      '-c:v',
+      'libx264',
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      outputPath,
     ];
     return new Promise((resolvePromise, reject) => {
       const child = spawn(resolveFfmpegPath(), args, { stdio: ['ignore', 'ignore', 'pipe'] });
       let stderr = '';
-      child.stderr.on('data', (chunk) => { stderr += String(chunk); });
+      child.stderr.on('data', (chunk) => {
+        stderr += String(chunk);
+      });
       child.on('error', reject);
-      child.on('close', (code) => code === 0
-        ? resolvePromise()
-        : reject(new Error(`Could not trim browser warm-up (${code}): ${stderr.trim()}`)));
+      child.on('close', (code) =>
+        code === 0
+          ? resolvePromise()
+          : reject(new Error(`Could not trim browser warm-up (${code}): ${stderr.trim()}`))
+      );
     });
   }
 
@@ -192,7 +209,7 @@ export class SceneRecorder {
     actions: Action[],
     screenshotDir: string,
     targetDurationSeconds?: number,
-    startedAt = Date.now(),
+    startedAt = Date.now()
   ): Promise<void> {
     for (let index = 0; index < actions.length; index++) {
       const action = actions[index];
@@ -209,11 +226,7 @@ export class SceneRecorder {
     }
   }
 
-  private async executeAction(
-    page: Page,
-    action: Action,
-    screenshotDir: string,
-  ): Promise<void> {
+  private async executeAction(page: Page, action: Action, screenshotDir: string): Promise<void> {
     switch (action.type) {
       case 'goto':
         {
@@ -279,7 +292,7 @@ export class SceneRecorder {
 
   private resolveLocator(
     page: Page,
-    action: { text?: string; selector?: string; role?: string; label?: string },
+    action: { text?: string; selector?: string; role?: string; label?: string }
   ) {
     if (action.role && action.label) {
       return page.getByRole(action.role as Parameters<Page['getByRole']>[0], {
@@ -296,26 +309,40 @@ export class SceneRecorder {
       return page.locator(action.selector);
     }
     throw new Error(
-      `Action must specify at least one of: text, label, role+label, or selector.\nAction: ${JSON.stringify(action)}`,
+      `Action must specify at least one of: text, label, role+label, or selector.\nAction: ${JSON.stringify(action)}`
     );
   }
 
   private describeAction(action: Action): string {
     switch (action.type) {
-      case 'goto': return ` → ${action.url}`;
-      case 'click': return ` "${action.text || action.label || action.selector}"`;
-      case 'type': return ` "${action.value.slice(0, 20)}${action.value.length > 20 ? '...' : ''}"`;
-      case 'wait': return ` ${action.ms}ms`;
-      case 'wait_visible': return ` "${action.text || action.selector}"`;
-      case 'scroll': return ` ${action.direction} ${action.amount}px`;
-      case 'hover': return ` "${action.text || action.label || action.selector}"`;
-      case 'screenshot': return ` "${action.name}"`;
-      case 'launch_app': return '';
-      case 'tap': return ` "${action.text || action.contentDescription || `${action.x},${action.y}`}"`;
-      case 'input_text': return ` "${action.value.slice(0, 20)}"`;
-      case 'swipe': return ` ${action.fromX},${action.fromY} → ${action.toX},${action.toY}`;
-      case 'back': return '';
-      default: return '';
+      case 'goto':
+        return ` → ${action.url}`;
+      case 'click':
+        return ` "${action.text || action.label || action.selector}"`;
+      case 'type':
+        return ` "${action.value.slice(0, 20)}${action.value.length > 20 ? '...' : ''}"`;
+      case 'wait':
+        return ` ${action.ms}ms`;
+      case 'wait_visible':
+        return ` "${action.text || action.selector}"`;
+      case 'scroll':
+        return ` ${action.direction} ${action.amount}px`;
+      case 'hover':
+        return ` "${action.text || action.label || action.selector}"`;
+      case 'screenshot':
+        return ` "${action.name}"`;
+      case 'launch_app':
+        return '';
+      case 'tap':
+        return ` "${action.text || action.contentDescription || `${action.x},${action.y}`}"`;
+      case 'input_text':
+        return ` "${action.value.slice(0, 20)}"`;
+      case 'swipe':
+        return ` ${action.fromX},${action.fromY} → ${action.toX},${action.toY}`;
+      case 'back':
+        return '';
+      default:
+        return '';
     }
   }
 }

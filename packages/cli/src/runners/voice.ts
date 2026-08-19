@@ -1,8 +1,18 @@
 import { dirname, join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
-import { ensureDir, loadConfig, readYaml, writeYaml, logger, ScriptSchema } from '@auto-product-video-generator/core';
-import { recomputeScriptTimingFromAudio, SubtitleGenerator } from '@auto-product-video-generator/ai';
+import {
+  ensureDir,
+  loadConfig,
+  readYaml,
+  writeYaml,
+  logger,
+  ScriptSchema,
+} from '@auto-product-video-generator/core';
+import {
+  recomputeScriptTimingFromAudio,
+  SubtitleGenerator,
+} from '@auto-product-video-generator/ai';
 import { VoicevoxClient } from '@auto-product-video-generator/voicevox';
 
 interface VoiceOptions {
@@ -50,7 +60,9 @@ export async function runVoice(options: VoiceOptions): Promise<void> {
     const healthy = await client.checkHealth();
     if (!healthy) {
       logger.error(`VOICEVOX Engine is not reachable at ${voicevoxConfig.host}`);
-      logger.error('Start it with: docker run --rm -p 50021:50021 voicevox/voicevox_engine:cpu-latest');
+      logger.error(
+        'Start it with: docker run --rm -p 50021:50021 voicevox/voicevox_engine:cpu-latest'
+      );
       process.exit(1);
     }
   }
@@ -66,12 +78,16 @@ export async function runVoice(options: VoiceOptions): Promise<void> {
     const timedScript = await recomputeScriptTimingFromAudio(
       script,
       voiceDir,
-      config.video.sceneGapSeconds,
+      config.video.sceneGapSeconds
     );
     await writeYaml(scriptPath, timedScript);
-    await writeFile(srtPath, new SubtitleGenerator().generateSrt(timedScript, {
-      singleLine: config.video.singleLineSubtitles,
-    }), 'utf-8');
+    await writeFile(
+      srtPath,
+      new SubtitleGenerator().generateSrt(timedScript, {
+        singleLine: config.video.singleLineSubtitles,
+      }),
+      'utf-8'
+    );
     logger.success(`Updated actual audio timing: ${scriptPath}, ${srtPath}`);
   }
 

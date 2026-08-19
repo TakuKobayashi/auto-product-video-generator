@@ -27,7 +27,14 @@ import {
 import { createPlatformRecorder } from '@auto-product-video-generator/recorder';
 import { VoicevoxClient } from '@auto-product-video-generator/voicevox';
 import { FfmpegRenderer } from '@auto-product-video-generator/renderer';
-import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning, findRepositoryRoot, loadSourceExcludePatterns } from '@auto-product-video-generator/source';
+import {
+  resolveProjectSource,
+  inspectProject,
+  detectStartCommand,
+  ensureAppRunning,
+  findRepositoryRoot,
+  loadSourceExcludePatterns,
+} from '@auto-product-video-generator/source';
 import { exportArtifacts } from '../utils/export-artifacts.js';
 import { applyInferredTargetUrl } from '../utils/inferred-target.js';
 import { resolveWebStorageState } from '../utils/web-auth.js';
@@ -63,23 +70,25 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   await ensureDir(workDir);
 
   logger.info(`Source:  ${config.source.repository || config.source.localPath}`);
-  logger.info(`Target:  ${config.target.autoDetectUrl ? 'auto-detect from source' : config.target.url}`);
+  logger.info(
+    `Target:  ${config.target.autoDetectUrl ? 'auto-detect from source' : config.target.url}`
+  );
   logger.info(`Video:   ${config.video.type}, ~${config.video.duration}s`);
   logger.info(`LLM (analyze):  ${describeTaskLlm(config.llm, 'analyze')}`);
   logger.info(`LLM (scenario): ${describeTaskLlm(config.llm, 'scenario')}`);
   logger.info('');
 
-  const summaryPath    = join(workDir, 'project-summary.json');
-  const contextPath    = join(workDir, 'source-context.json');
-  const cloneDir       = join(workDir, 'source-repo');
-  const scenarioPath   = join(workDir, 'scenario.yml');
-  const scriptPath     = join(workDir, 'script.yml');
-  const srtPath        = join(workDir, 'subtitles.srt');
-  const timelinePath   = join(workDir, 'timeline.json');
-  const recordingsDir  = join(workDir, 'recordings');
-  const voiceDir       = join(workDir, 'voice');
-  const screenshotDir  = join(workDir, 'screenshots');
-  const outputPath     = join(config.output.dir, 'final.mp4');
+  const summaryPath = join(workDir, 'project-summary.json');
+  const contextPath = join(workDir, 'source-context.json');
+  const cloneDir = join(workDir, 'source-repo');
+  const scenarioPath = join(workDir, 'scenario.yml');
+  const scriptPath = join(workDir, 'script.yml');
+  const srtPath = join(workDir, 'subtitles.srt');
+  const timelinePath = join(workDir, 'timeline.json');
+  const recordingsDir = join(workDir, 'recordings');
+  const voiceDir = join(workDir, 'voice');
+  const screenshotDir = join(workDir, 'screenshots');
+  const outputPath = join(config.output.dir, 'final.mp4');
 
   const analyzeLlm = createLlmProviderForTask(config.llm, 'analyze');
   const scenarioLlm = createLlmProviderForTask(config.llm, 'scenario');
@@ -101,7 +110,10 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       await writeJson(contextPath, sourceContext);
 
       if (!config.source.startCommand) {
-        const detected = detectStartCommand(sourceContext.packageJson, sourceContext.packageManager);
+        const detected = detectStartCommand(
+          sourceContext.packageJson,
+          sourceContext.packageManager
+        );
         if (detected) {
           config.source.startCommand = detected;
           await saveConfig(configPath, config);
@@ -112,7 +124,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       const analyzer = new ProjectAnalyzer(analyzeLlm);
       summary = await analyzer.analyze(
         sourceContext,
-        config.target.autoDetectUrl ? undefined : config.target.url,
+        config.target.autoDetectUrl ? undefined : config.target.url
       );
       if (applyInferredTargetUrl(config, summary)) await saveConfig(configPath, config);
       switch (summary.platform) {
@@ -174,16 +186,23 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       await writeYaml(scenarioPath, scenario);
       await writeYaml(scriptPath, script);
       const subtitleGen = new SubtitleGenerator();
-      await writeFile(srtPath, subtitleGen.generateSrt(script, {
-        singleLine: config.video.singleLineSubtitles,
-      }), 'utf-8');
+      await writeFile(
+        srtPath,
+        subtitleGen.generateSrt(script, {
+          singleLine: config.video.singleLineSubtitles,
+        }),
+        'utf-8'
+      );
       logger.success(`Saved scenario, script, subtitles`);
     } else {
       logger.dryRun(`Would write: ${scenarioPath}, ${scriptPath}, ${srtPath}`);
     }
   } else {
     logger.step('2/5', 'Skipping scenario (--skip-scenario)');
-    for (const [label, p] of [['scenario.yml', scenarioPath], ['script.yml', scriptPath]] as const) {
+    for (const [label, p] of [
+      ['scenario.yml', scenarioPath],
+      ['script.yml', scriptPath],
+    ] as const) {
       if (!existsSync(p)) {
         logger.error(`${label} not found: ${p}`);
         process.exit(1);
@@ -202,19 +221,23 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       if (!healthy) {
         throw new Error(
           `VOICEVOX is not available at ${config.voicevox.host}. Start it with: ` +
-          'docker run --rm -p 50021:50021 voicevox/voicevox_engine:cpu-latest',
+            'docker run --rm -p 50021:50021 voicevox/voicevox_engine:cpu-latest'
         );
       } else {
         await voicevox.synthesizeAll(script, { outputDir: voiceDir, dryRun });
         script = await recomputeScriptTimingFromAudio(
           script,
           voiceDir,
-          config.video.sceneGapSeconds,
+          config.video.sceneGapSeconds
         );
         await writeYaml(scriptPath, script);
-        await writeFile(srtPath, new SubtitleGenerator().generateSrt(script, {
-          singleLine: config.video.singleLineSubtitles,
-        }), 'utf-8');
+        await writeFile(
+          srtPath,
+          new SubtitleGenerator().generateSrt(script, {
+            singleLine: config.video.singleLineSubtitles,
+          }),
+          'utf-8'
+        );
         logger.success('Updated script and subtitles from actual audio durations.');
       }
     } else {
@@ -229,15 +252,15 @@ export async function runBuild(options: BuildOptions): Promise<void> {
           throw new Error(`Voice file not found: ${voicePath}. Voice must run before recording.`);
         }
       }
-      script = await recomputeScriptTimingFromAudio(
-        script,
-        voiceDir,
-        config.video.sceneGapSeconds,
-      );
+      script = await recomputeScriptTimingFromAudio(script, voiceDir, config.video.sceneGapSeconds);
       await writeYaml(scriptPath, script);
-      await writeFile(srtPath, new SubtitleGenerator().generateSrt(script, {
-        singleLine: config.video.singleLineSubtitles,
-      }), 'utf-8');
+      await writeFile(
+        srtPath,
+        new SubtitleGenerator().generateSrt(script, {
+          singleLine: config.video.singleLineSubtitles,
+        }),
+        'utf-8'
+      );
     }
   }
 
@@ -267,7 +290,11 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       ? await loadSourceExcludePatterns(repositoryRoot, config.source.exclude)
       : [];
     const recorder = createPlatformRecorder(scenario.meta.platform, config, {
-      rootDir, repositoryRoot, workDir, setupSteps: scenario.setup, sourceExcludePatterns,
+      rootDir,
+      repositoryRoot,
+      workDir,
+      setupSteps: scenario.setup,
+      sourceExcludePatterns,
     });
     const storageStatePath = resolveWebStorageState(config, scenario.meta.platform, dryRun);
     try {
@@ -276,15 +303,22 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         if (scriptIndex < 0) throw new Error(`Scene '${scene.id}' is missing from script.yml.`);
         const scriptScene = script.scenes[scriptIndex];
         const nextScene = script.scenes[scriptIndex + 1];
-        const targetDurationSeconds = (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
-        await recorder.recordScene(scene, config.video, {
-          headed: options.headed || false,
-          slowMo: 0,
-          outputDir: recordingsDir,
-          screenshotDir,
-          dryRun,
-          storageStatePath,
-        }, targetDurationSeconds, scriptScene.endTime - scriptScene.startTime);
+        const targetDurationSeconds =
+          (nextScene?.startTime ?? scriptScene.endTime) - scriptScene.startTime;
+        await recorder.recordScene(
+          scene,
+          config.video,
+          {
+            headed: options.headed || false,
+            slowMo: 0,
+            outputDir: recordingsDir,
+            screenshotDir,
+            dryRun,
+            storageStatePath,
+          },
+          targetDurationSeconds,
+          scriptScene.endTime - scriptScene.startTime
+        );
       }
     } finally {
       await recorder.dispose?.();

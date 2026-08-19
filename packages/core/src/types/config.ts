@@ -28,11 +28,32 @@ export const ProjectPlatformSchema = z.enum([
 ]);
 export type ProjectPlatform = z.infer<typeof ProjectPlatformSchema>;
 export const DEFAULT_PLATFORM_PRIORITY: ProjectPlatform[] = [
-  'web', 'cli', 'android', 'flutter', 'react-native', 'unity', 'ios', 'desktop', 'other',
+  'web',
+  'cli',
+  'android',
+  'flutter',
+  'react-native',
+  'unity',
+  'ios',
+  'desktop',
+  'other',
 ];
 export const DEFAULT_CLI_DENIED_COMMAND_PATTERNS = [
-  'publish', 'login', 'logout', 'token', 'secret', 'clean', 'remove', 'delete',
-  'serve', 'start', 'watch', 'generate', 'voice', 'record', 'render',
+  'publish',
+  'login',
+  'logout',
+  'token',
+  'secret',
+  'clean',
+  'remove',
+  'delete',
+  'serve',
+  'start',
+  'watch',
+  'generate',
+  'voice',
+  'record',
+  'render',
 ];
 
 export const ProjectConfigSchema = z.object({
@@ -106,39 +127,45 @@ export const TargetConfigSchema = z.object({
   // Retained for compatibility. Authentication secrets are deliberately not
   // read from this generic field; manual login persists browser state instead.
   credentials: z.record(z.string()).optional(),
-  android: z.object({
-    // All fields are optional: the recorder detects conventional Android,
-    // Flutter, React Native, and exported Unity Android projects.
-    package: z.string().min(1).optional(),
-    // Optional fully-qualified launch activity. When omitted, adb resolves
-    // the package's launcher activity via `monkey`.
-    activity: z.string().min(1).optional(),
-    // adb serial. Omit when exactly one emulator/device is connected.
-    serial: z.string().min(1).optional(),
-    // Existing AVD name. The first installed AVD is used when omitted.
-    avd: z.string().min(1).optional(),
-    // Existing or externally-built APK, relative to the source root.
-    apkPath: z.string().min(1).optional(),
-    // Override for projects without a conventional Gradle/Flutter build.
-    buildCommand: z.string().min(1).optional(),
-    // Android SDK root containing platform-tools/, emulator/, build-tools/.
-    // Falls back to ANDROID_SDK_ROOT / ANDROID_HOME / PATH.
-    sdkPath: z.string().min(1).optional(),
-    autoStartEmulator: z.boolean().default(true),
-    autoInstall: z.boolean().default(true),
-  }).optional(),
-  cli: z.object({
-    image: z.string().min(1).default('apvg-cli-recorder:latest'),
-    dockerfile: z.string().min(1).optional(),
-    shell: z.string().min(1).default('/bin/bash'),
-    columns: z.number().int().positive().default(100),
-    rows: z.number().int().positive().default(30),
-    fontSize: z.number().int().positive().default(22),
-    // Commands outside the read-only --help/--version policy must be opted in
-    // explicitly. Denied fragments always win over this allowlist.
-    allowedCommands: z.array(z.string().min(1)).default([]),
-    deniedCommandPatterns: z.array(z.string().min(1)).default(DEFAULT_CLI_DENIED_COMMAND_PATTERNS),
-  }).default({}),
+  android: z
+    .object({
+      // All fields are optional: the recorder detects conventional Android,
+      // Flutter, React Native, and exported Unity Android projects.
+      package: z.string().min(1).optional(),
+      // Optional fully-qualified launch activity. When omitted, adb resolves
+      // the package's launcher activity via `monkey`.
+      activity: z.string().min(1).optional(),
+      // adb serial. Omit when exactly one emulator/device is connected.
+      serial: z.string().min(1).optional(),
+      // Existing AVD name. The first installed AVD is used when omitted.
+      avd: z.string().min(1).optional(),
+      // Existing or externally-built APK, relative to the source root.
+      apkPath: z.string().min(1).optional(),
+      // Override for projects without a conventional Gradle/Flutter build.
+      buildCommand: z.string().min(1).optional(),
+      // Android SDK root containing platform-tools/, emulator/, build-tools/.
+      // Falls back to ANDROID_SDK_ROOT / ANDROID_HOME / PATH.
+      sdkPath: z.string().min(1).optional(),
+      autoStartEmulator: z.boolean().default(true),
+      autoInstall: z.boolean().default(true),
+    })
+    .optional(),
+  cli: z
+    .object({
+      image: z.string().min(1).default('apvg-cli-recorder:latest'),
+      dockerfile: z.string().min(1).optional(),
+      shell: z.string().min(1).default('/bin/bash'),
+      columns: z.number().int().positive().default(100),
+      rows: z.number().int().positive().default(30),
+      fontSize: z.number().int().positive().default(22),
+      // Commands outside the read-only --help/--version policy must be opted in
+      // explicitly. Denied fragments always win over this allowlist.
+      allowedCommands: z.array(z.string().min(1)).default([]),
+      deniedCommandPatterns: z
+        .array(z.string().min(1))
+        .default(DEFAULT_CLI_DENIED_COMMAND_PATTERNS),
+    })
+    .default({}),
 });
 
 export const VideoConfigSchema = z.object({

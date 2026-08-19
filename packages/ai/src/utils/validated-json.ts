@@ -28,7 +28,7 @@ export async function generateValidatedJson<T>(
   schema: ParseableSchema<T>,
   prompt: string,
   systemPrompt: string,
-  options: { label: string; maxRetries?: number; jsonSchema?: JsonSchema } = { label: 'response' },
+  options: { label: string; maxRetries?: number; jsonSchema?: JsonSchema } = { label: 'response' }
 ): Promise<T> {
   const maxRetries = options.maxRetries ?? 2;
   let lastErrorText = '';
@@ -49,7 +49,7 @@ export async function generateValidatedJson<T>(
       lastErrorText = (err as Error).message;
       lastRawText = '(no valid JSON was returned)';
       logger.warn(
-        `[${options.label}] LLM call failed (attempt ${attempt + 1}/${maxRetries + 1}): ${lastErrorText}`,
+        `[${options.label}] LLM call failed (attempt ${attempt + 1}/${maxRetries + 1}): ${lastErrorText}`
       );
       if (attempt === maxRetries) throw err;
       continue;
@@ -64,7 +64,7 @@ export async function generateValidatedJson<T>(
     lastErrorText = formatZodError(result.error);
     lastRawText = JSON.stringify(raw, null, 2).slice(0, 4000);
     logger.warn(
-      `[${options.label}] LLM output failed schema validation (attempt ${attempt + 1}/${maxRetries + 1}):`,
+      `[${options.label}] LLM output failed schema validation (attempt ${attempt + 1}/${maxRetries + 1}):`
     );
     for (const line of lastErrorText.split('\n')) logger.warn(`  ${line}`);
 
@@ -74,7 +74,7 @@ export async function generateValidatedJson<T>(
   }
 
   throw new Error(
-    `${options.label}: LLM failed to produce valid JSON after ${maxRetries + 1} attempt(s).\n${lastErrorText}`,
+    `${options.label}: LLM failed to produce valid JSON after ${maxRetries + 1} attempt(s).\n${lastErrorText}`
   );
 }
 

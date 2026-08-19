@@ -1,6 +1,12 @@
 import { join, resolve, basename } from 'node:path';
 import { existsSync } from 'node:fs';
-import { createDefaultConfig, DEFAULT_PLATFORM_PRIORITY, saveConfig, logger, SourceConfig } from '@auto-product-video-generator/core';
+import {
+  createDefaultConfig,
+  DEFAULT_PLATFORM_PRIORITY,
+  saveConfig,
+  logger,
+  SourceConfig,
+} from '@auto-product-video-generator/core';
 
 interface InitOptions {
   repo?: string;
@@ -57,19 +63,33 @@ export async function runInit(directory: string, options: InitOptions): Promise<
 
   const source: SourceConfig = options.repo
     ? {
-        repository: options.repo, ref: options.ref, installDeps: options.installDeps || false,
-        startCommand: options.serveCommand, projectPath: options.projectPath,
-        platformPriority: parsePlatformPriority(options.platformPriority), exclude: [],
+        repository: options.repo,
+        ref: options.ref,
+        installDeps: options.installDeps || false,
+        startCommand: options.serveCommand,
+        projectPath: options.projectPath,
+        platformPriority: parsePlatformPriority(options.platformPriority),
+        exclude: [],
       }
     : {
-        localPath: options.source, installDeps: options.installDeps || false,
-        startCommand: options.serveCommand, projectPath: options.projectPath,
-        platformPriority: parsePlatformPriority(options.platformPriority), exclude: [],
+        localPath: options.source,
+        installDeps: options.installDeps || false,
+        startCommand: options.serveCommand,
+        projectPath: options.projectPath,
+        platformPriority: parsePlatformPriority(options.platformPriority),
+        exclude: [],
       };
 
   const config = createDefaultConfig(name, url, source, !options.url);
-  if (options.androidPackage || options.androidActivity || options.androidSerial ||
-      options.androidAvd || options.androidApk || options.androidBuildCommand || options.androidSdk) {
+  if (
+    options.androidPackage ||
+    options.androidActivity ||
+    options.androidSerial ||
+    options.androidAvd ||
+    options.androidApk ||
+    options.androidBuildCommand ||
+    options.androidSdk
+  ) {
     config.target.type = 'android';
     config.target.android = {
       package: options.androidPackage,
@@ -96,21 +116,22 @@ export async function runInit(directory: string, options: InitOptions): Promise<
   logger.success(`Created: ${configPath}`);
   logger.info('');
   logger.info(
-    `Source: ${options.repo ? `git repository ${options.repo}${options.ref ? ` (ref: ${options.ref})` : ' (default branch)'}` : `local path ${resolve(options.source!)}`}`,
+    `Source: ${options.repo ? `git repository ${options.repo}${options.ref ? ` (ref: ${options.ref})` : ' (default branch)'}` : `local path ${resolve(options.source!)}`}`
   );
   logger.info(`Target: ${options.url ? url : 'auto-detect from the project during analyze'}`);
-  if (config.target.android?.package) logger.info(`Android package: ${config.target.android.package}`);
+  if (config.target.android?.package)
+    logger.info(`Android package: ${config.target.android.package}`);
   logger.info(
     `Serve:  ${
       source.startCommand
         ? `'${source.startCommand}' will be run automatically when the target isn't already reachable`
         : `not set — 'analyze' will try to detect one from package.json, or start the app yourself before 'record'/'build'`
-    }`,
+    }`
   );
   logger.info(
     `LLM: provider=${config.llm.provider} (${
       config.llm.provider === 'gemini' ? 'GEMINI_API_KEY was set' : 'GEMINI_API_KEY was not set'
-    }), fallbackProvider=${config.llm.fallbackProvider}`,
+    }), fallbackProvider=${config.llm.fallbackProvider}`
   );
   logger.info('Video:  non-technical, product-usage-focused promotion (built-in default)');
   logger.info('');
@@ -125,5 +146,8 @@ export async function runInit(directory: string, options: InitOptions): Promise<
 
 function parsePlatformPriority(value?: string): SourceConfig['platformPriority'] {
   if (!value) return DEFAULT_PLATFORM_PRIORITY;
-  return value.split(',').map((item) => item.trim()).filter(Boolean) as SourceConfig['platformPriority'];
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean) as SourceConfig['platformPriority'];
 }

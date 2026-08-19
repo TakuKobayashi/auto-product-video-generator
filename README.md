@@ -8,14 +8,14 @@ application, and produces a narrated video.
 
 ## Supported platforms
 
-| Target | Recording method | Status |
-|---|---|---|
-| Web application | Playwright Chromium | Supported |
-| CLI application | Browser terminal running in Docker | Supported |
-| Android | Device or emulator recording through adb | Supported |
-| Flutter / React Native | Build an Android APK and record through adb | Supported |
-| Unity Android | Record an existing or custom-built APK through adb | Supported |
-| iOS / Unity Desktop |  | Not supported |
+| Target                 | Recording method                                   | Status        |
+| ---------------------- | -------------------------------------------------- | ------------- |
+| Web application        | Playwright Chromium                                | Supported     |
+| CLI application        | Browser terminal running in Docker                 | Supported     |
+| Android                | Device or emulator recording through adb           | Supported     |
+| Flutter / React Native | Build an Android APK and record through adb        | Supported     |
+| Unity Android          | Record an existing or custom-built APK through adb | Supported     |
+| iOS / Unity Desktop    |                                                    | Not supported |
 
 ---
 
@@ -23,12 +23,12 @@ application, and produces a narrated video.
 
 ### 1. Install the required tools
 
-| Tool | Required for | Installation |
-|---|---|---|
-| Node.js 20 or newer | All usage | [Node.js](https://nodejs.org/) |
-| git | Reading the target repository | [Git downloads](https://git-scm.com/downloads) |
-| Docker | Starting VOICEVOX and recording CLI applications | [Docker Desktop](https://www.docker.com/products/docker-desktop/) |
-| Ollama | Using a local LLM | [Ollama downloads](https://ollama.com/download) |
+| Tool                | Required for                                     | Installation                                                      |
+| ------------------- | ------------------------------------------------ | ----------------------------------------------------------------- |
+| Node.js 20 or newer | All usage                                        | [Node.js](https://nodejs.org/)                                    |
+| git                 | Reading the target repository                    | [Git downloads](https://git-scm.com/downloads)                    |
+| Docker              | Starting VOICEVOX and recording CLI applications | [Docker Desktop](https://www.docker.com/products/docker-desktop/) |
+| Ollama              | Using a local LLM                                | [Ollama downloads](https://ollama.com/download)                   |
 
 APVG can use Ollama or Gemini. To use Gemini, create an API key in
 [Google AI Studio](https://aistudio.google.com/apikey) and set
@@ -70,14 +70,14 @@ apvg video generate
 
 ### Environment and service commands
 
-| Command | Purpose |
-|---|---|
-| `apvg setup` | Install the Playwright Chromium browser managed by APVG |
-| `apvg doctor` | Check Node.js, git, Docker, media tools, Chromium, LLM, and VOICEVOX |
-| `apvg serve` | Start VOICEVOX and, when needed, Ollama and its configured model |
-| `apvg serve --no-ollama` | Start only VOICEVOX |
-| `apvg services status` | Check VOICEVOX and Ollama connectivity |
-| `apvg services stop` | Stop the APVG-managed VOICEVOX container |
+| Command                  | Purpose                                                              |
+| ------------------------ | -------------------------------------------------------------------- |
+| `apvg setup`             | Install the Playwright Chromium browser managed by APVG              |
+| `apvg doctor`            | Check Node.js, git, Docker, media tools, Chromium, LLM, and VOICEVOX |
+| `apvg serve`             | Start VOICEVOX and, when needed, Ollama and its configured model     |
+| `apvg serve --no-ollama` | Start only VOICEVOX                                                  |
+| `apvg services status`   | Check VOICEVOX and Ollama connectivity                               |
+| `apvg services stop`     | Stop the APVG-managed VOICEVOX container                             |
 
 APVG leaves Ollama running because it may be managed by the operating system or
 used by other applications. Use `apvg serve --help` to select an Ollama model or
@@ -145,13 +145,13 @@ Configure a manual authentication state:
 
 ```yaml
 target:
-  url: "https://example.com/dashboard"
+  url: 'https://example.com/dashboard'
   type: web
   auth:
     mode: manual
-    loginUrl: "https://example.com/login"
-    successUrl: "https://example.com/dashboard" # optional
-    storageStatePath: "./.apvg/auth/storage-state.json"
+    loginUrl: 'https://example.com/login'
+    successUrl: 'https://example.com/dashboard' # optional
+    storageStatePath: './.apvg/auth/storage-state.json'
 ```
 
 Then log in once:
@@ -229,37 +229,37 @@ apvg video record
 apvg video render
 ```
 
-| Last successful stage / change | Resume with |
-|---|---|
-| Analyze completed | `apvg video scenario generate` |
-| Scenario completed | `apvg video voice` |
-| Voice completed | `apvg video record` |
-| Recording completed | `apvg video render` |
-| Narration or subtitle text changed | Start from `apvg video voice` |
-| Recording actions changed | Start from `apvg video record` |
-| Only render settings changed | Run `apvg video render` |
+| Last successful stage / change     | Resume with                    |
+| ---------------------------------- | ------------------------------ |
+| Analyze completed                  | `apvg video scenario generate` |
+| Scenario completed                 | `apvg video voice`             |
+| Voice completed                    | `apvg video record`            |
+| Recording completed                | `apvg video render`            |
+| Narration or subtitle text changed | Start from `apvg video voice`  |
+| Recording actions changed          | Start from `apvg video record` |
+| Only render settings changed       | Run `apvg video render`        |
 
-| Command | Produces |
-|---|---|
-| `apvg project init --repo <url>` | `apvg.config.yml` |
-| `apvg project analyze` | `.apvg/source-context.json`, `.apvg/project-summary.json` |
-| `apvg video scenario generate` | `.apvg/scenario.yml`, `.apvg/script.yml`, `.apvg/subtitles.srt` |
-| `apvg video voice` | `.apvg/voice/*.wav` and updated timing |
-| `apvg video record` | `.apvg/recordings/*.mp4` |
-| `apvg video render` | `output/final.mp4`, `output/artifacts/` |
+| Command                          | Produces                                                        |
+| -------------------------------- | --------------------------------------------------------------- |
+| `apvg project init --repo <url>` | `apvg.config.yml`                                               |
+| `apvg project analyze`           | `.apvg/source-context.json`, `.apvg/project-summary.json`       |
+| `apvg video scenario generate`   | `.apvg/scenario.yml`, `.apvg/script.yml`, `.apvg/subtitles.srt` |
+| `apvg video voice`               | `.apvg/voice/*.wav` and updated timing                          |
+| `apvg video record`              | `.apvg/recordings/*.mp4`                                        |
+| `apvg video render`              | `output/final.mp4`, `output/artifacts/`                         |
 
 ### Inspecting and adjusting output
 
-| Operation | Command |
-|---|---|
-| Generate a quick low-quality preview | `apvg video generate --preview` |
-| Show the browser while recording | `apvg video generate --headed` |
-| Generate without subtitle overlay | `apvg video generate --no-subtitles` |
-| Render without narration | `apvg video render --no-voice` |
-| Re-record one scene | `apvg video record --scene <scene-id>` |
-| Regenerate narration for one scene | `apvg video voice --scene <scene-id>` |
-| Validate an edited scenario | `apvg video scenario validate .apvg/scenario.yml` |
-| Preview the plan without external processing | `apvg video generate --dry-run` |
+| Operation                                    | Command                                           |
+| -------------------------------------------- | ------------------------------------------------- |
+| Generate a quick low-quality preview         | `apvg video generate --preview`                   |
+| Show the browser while recording             | `apvg video generate --headed`                    |
+| Generate without subtitle overlay            | `apvg video generate --no-subtitles`              |
+| Render without narration                     | `apvg video render --no-voice`                    |
+| Re-record one scene                          | `apvg video record --scene <scene-id>`            |
+| Regenerate narration for one scene           | `apvg video voice --scene <scene-id>`             |
+| Validate an edited scenario                  | `apvg video scenario validate .apvg/scenario.yml` |
+| Preview the plan without external processing | `apvg video generate --dry-run`                   |
 
 `apvg video generate` supports `--skip-analyze`, `--skip-scenario`,
 `--skip-record`, and `--skip-voice` to reuse existing stage output. Existing
@@ -286,93 +286,93 @@ write values detected from the environment or source.
 
 ### Project and source
 
-| YAML key | Feature | Required | Default | Description |
-|---|---|---|---|---|
-| `project.name` | Project name | Yes |  | Product name |
-| `project.description` | Product description | No |  | Optional context |
-| `source.repository` | Remote source | One of the two |  | git repository URL |
-| `source.localPath` | Local source | One of the two |  | Local git repository path |
-| `source.ref` | git reference | No |  | Branch, tag, or commit |
-| `source.installDeps` | Install dependencies | No | `false` | Install before starting the app |
-| `source.startCommand` | Start application | No | Auto-detected | Development-server command |
-| `source.projectPath` | Monorepo selection | No | Auto-selected | Application directory |
-| `source.platformPriority` | Detection priority | No | `web`<br>`cli`<br>`android`<br>`flutter`<br>`react-native`<br>`unity`<br>`ios`<br>`desktop`<br>`other` | Platform priority order |
-| `source.exclude` | Analysis exclusions | No | `[]` | Additional gitignore-style patterns |
+| YAML key                  | Feature              | Required       | Default                                                                                                | Description                         |
+| ------------------------- | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------- |
+| `project.name`            | Project name         | Yes            |                                                                                                        | Product name                        |
+| `project.description`     | Product description  | No             |                                                                                                        | Optional context                    |
+| `source.repository`       | Remote source        | One of the two |                                                                                                        | git repository URL                  |
+| `source.localPath`        | Local source         | One of the two |                                                                                                        | Local git repository path           |
+| `source.ref`              | git reference        | No             |                                                                                                        | Branch, tag, or commit              |
+| `source.installDeps`      | Install dependencies | No             | `false`                                                                                                | Install before starting the app     |
+| `source.startCommand`     | Start application    | No             | Auto-detected                                                                                          | Development-server command          |
+| `source.projectPath`      | Monorepo selection   | No             | Auto-selected                                                                                          | Application directory               |
+| `source.platformPriority` | Detection priority   | No             | `web`<br>`cli`<br>`android`<br>`flutter`<br>`react-native`<br>`unity`<br>`ios`<br>`desktop`<br>`other` | Platform priority order             |
+| `source.exclude`          | Analysis exclusions  | No             | `[]`                                                                                                   | Additional gitignore-style patterns |
 
 ### Recording target
 
-| YAML key | Feature | Required | Default | Description |
-|---|---|---|---|---|
-| `target.url` | Target URL | Yes |  | Web application or recording-page URL |
-| `target.autoDetectUrl` | URL detection | No | `false` | Adopt the inferred localhost URL |
-| `target.type` | Recorder | No | `web` | `web`<br>`cli`<br>`android`<br>`ios` |
-| `target.auth.mode` | Web authentication | No | `manual` | Manual login mode |
-| `target.auth.loginUrl` | Login URL | No | `target.url` | Initial manual-login URL |
-| `target.auth.successUrl` | Login completion | No |  | Save state after reaching this URL |
-| `target.auth.storageStatePath` | Authentication state | No | `./.apvg/auth/storage-state.json` | Playwright state file |
-| `target.credentials` | Legacy authentication | No |  | Compatibility only; use `target.auth` |
+| YAML key                       | Feature               | Required | Default                           | Description                           |
+| ------------------------------ | --------------------- | -------- | --------------------------------- | ------------------------------------- |
+| `target.url`                   | Target URL            | Yes      |                                   | Web application or recording-page URL |
+| `target.autoDetectUrl`         | URL detection         | No       | `false`                           | Adopt the inferred localhost URL      |
+| `target.type`                  | Recorder              | No       | `web`                             | `web`<br>`cli`<br>`android`<br>`ios`  |
+| `target.auth.mode`             | Web authentication    | No       | `manual`                          | Manual login mode                     |
+| `target.auth.loginUrl`         | Login URL             | No       | `target.url`                      | Initial manual-login URL              |
+| `target.auth.successUrl`       | Login completion      | No       |                                   | Save state after reaching this URL    |
+| `target.auth.storageStatePath` | Authentication state  | No       | `./.apvg/auth/storage-state.json` | Playwright state file                 |
+| `target.credentials`           | Legacy authentication | No       |                                   | Compatibility only; use `target.auth` |
 
 ### Android recording
 
-| YAML key | Feature | Required | Default | Description |
-|---|---|---|---|---|
-| `target.android.package` | Application ID | No | Auto-detected | Android package/application ID |
-| `target.android.activity` | Launch activity | No | Auto-detected | Launcher activity |
-| `target.android.serial` | Device | No | Auto-selected | adb device serial |
-| `target.android.avd` | Emulator | No | First installed AVD | AVD to start |
-| `target.android.apkPath` | Existing APK | No | Automatic build | APK path |
-| `target.android.buildCommand` | APK build | No | Platform-specific | Custom build command |
-| `target.android.sdkPath` | Android SDK | No | Environment or `PATH` | SDK root |
-| `target.android.autoStartEmulator` | Start emulator | No | `true` | Start an AVD when needed |
-| `target.android.autoInstall` | Install APK | No | `true` | Install before recording |
+| YAML key                           | Feature         | Required | Default               | Description                    |
+| ---------------------------------- | --------------- | -------- | --------------------- | ------------------------------ |
+| `target.android.package`           | Application ID  | No       | Auto-detected         | Android package/application ID |
+| `target.android.activity`          | Launch activity | No       | Auto-detected         | Launcher activity              |
+| `target.android.serial`            | Device          | No       | Auto-selected         | adb device serial              |
+| `target.android.avd`               | Emulator        | No       | First installed AVD   | AVD to start                   |
+| `target.android.apkPath`           | Existing APK    | No       | Automatic build       | APK path                       |
+| `target.android.buildCommand`      | APK build       | No       | Platform-specific     | Custom build command           |
+| `target.android.sdkPath`           | Android SDK     | No       | Environment or `PATH` | SDK root                       |
+| `target.android.autoStartEmulator` | Start emulator  | No       | `true`                | Start an AVD when needed       |
+| `target.android.autoInstall`       | Install APK     | No       | `true`                | Install before recording       |
 
 ### CLI recording
 
-| YAML key | Feature | Required | Default | Description |
-|---|---|---|---|---|
-| `target.cli.image` | Docker image | No | `apvg-cli-recorder:latest` | Recording image |
-| `target.cli.dockerfile` | Dockerfile | No | Bundled Dockerfile | Custom image source |
-| `target.cli.shell` | Shell | No | `/bin/bash` | Container shell |
-| `target.cli.columns` / `rows` | Terminal size | No | `100`<br>`30` | Columns and rows |
-| `target.cli.fontSize` | Font size | No | `22` | Terminal font size |
-| `target.cli.allowedCommands` | Allowed commands | No | `[]` | Exact command allowlist |
-| `target.cli.deniedCommandPatterns` | Denied commands | No | `publish`<br>`login`<br>`logout`<br>`token`<br>`secret`<br>`clean`<br>`remove`<br>`delete`<br>`serve`<br>`start`<br>`watch`<br>`generate`<br>`voice`<br>`record`<br>`render` | Always-denied patterns |
+| YAML key                           | Feature          | Required | Default                                                                                                                                                                      | Description             |
+| ---------------------------------- | ---------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `target.cli.image`                 | Docker image     | No       | `apvg-cli-recorder:latest`                                                                                                                                                   | Recording image         |
+| `target.cli.dockerfile`            | Dockerfile       | No       | Bundled Dockerfile                                                                                                                                                           | Custom image source     |
+| `target.cli.shell`                 | Shell            | No       | `/bin/bash`                                                                                                                                                                  | Container shell         |
+| `target.cli.columns` / `rows`      | Terminal size    | No       | `100`<br>`30`                                                                                                                                                                | Columns and rows        |
+| `target.cli.fontSize`              | Font size        | No       | `22`                                                                                                                                                                         | Terminal font size      |
+| `target.cli.allowedCommands`       | Allowed commands | No       | `[]`                                                                                                                                                                         | Exact command allowlist |
+| `target.cli.deniedCommandPatterns` | Denied commands  | No       | `publish`<br>`login`<br>`logout`<br>`token`<br>`secret`<br>`clean`<br>`remove`<br>`delete`<br>`serve`<br>`start`<br>`watch`<br>`generate`<br>`voice`<br>`record`<br>`render` | Always-denied patterns  |
 
 ### Video
 
-| YAML key | Feature | Required | Default | Description |
-|---|---|---|---|---|
-| `video.type` | Video structure | No | `demo` | `teaser`<br>`shorts`<br>`demo`<br>`tutorial` |
-| `video.duration` | Target duration | No | `60` | Seconds |
-| `video.resolution` | Resolution | No | `1920x1080` | `1920x1080`<br>`1280x720`<br>`1080x1920` |
-| `video.fps` | Frame rate | No | `30` | `30` or `60` |
-| `video.language` | Language | No | `ja` | Scenario and narration language |
-| `video.singleLineSubtitles` | One-line subtitles | No | `true` | Show short timed cues; `false` shows the full scene text |
-| `video.pageReadyWaitSeconds` | Web settling | No | `2` | Wait after initial page load |
-| `video.sceneGapSeconds` | Scene gap | No | `1` | Silence between narration clips |
+| YAML key                     | Feature            | Required | Default     | Description                                              |
+| ---------------------------- | ------------------ | -------- | ----------- | -------------------------------------------------------- |
+| `video.type`                 | Video structure    | No       | `demo`      | `teaser`<br>`shorts`<br>`demo`<br>`tutorial`             |
+| `video.duration`             | Target duration    | No       | `60`        | Seconds                                                  |
+| `video.resolution`           | Resolution         | No       | `1920x1080` | `1920x1080`<br>`1280x720`<br>`1080x1920`                 |
+| `video.fps`                  | Frame rate         | No       | `30`        | `30` or `60`                                             |
+| `video.language`             | Language           | No       | `ja`        | Scenario and narration language                          |
+| `video.singleLineSubtitles`  | One-line subtitles | No       | `true`      | Show short timed cues; `false` shows the full scene text |
+| `video.pageReadyWaitSeconds` | Web settling       | No       | `2`         | Wait after initial page load                             |
+| `video.sceneGapSeconds`      | Scene gap          | No       | `1`         | Silence between narration clips                          |
 
 ### LLM
 
-| YAML key | Feature | Required | Default | Description |
-|---|---|---|---|---|
-| `llm.provider` | Primary provider | No | `gemini` | `gemini`<br>`openai`<br>`claude`<br>`groq`<br>`ollama` |
-| `llm.model` | Primary model | No | `gemini-2.5-pro` | Model name |
-| `llm.apiKeyEnv` | API key | No | Provider standard | Environment-variable name |
-| `llm.ollamaHost` | Ollama endpoint | No | `http://localhost:11434` | Ollama API URL |
-| `llm.fallbackProvider` | Fallback provider | No |  | Provider used after primary failure |
-| `llm.fallbackModel` | Fallback model | No | Ollama: `qwen2.5:7b-instruct`<br>Other: primary model | Model used by fallback |
-| `llm.fallbackApiKeyEnv` | Fallback API key | No | Provider standard | Environment-variable name |
-| `llm.tasks.analyze.*` | Analyze LLM | No | Primary LLM | Override `provider`, `model`, or `apiKeyEnv` |
-| `llm.tasks.scenario.*` | Scenario LLM | No | Primary LLM | Override `provider`, `model`, or `apiKeyEnv` |
+| YAML key                | Feature           | Required | Default                                               | Description                                            |
+| ----------------------- | ----------------- | -------- | ----------------------------------------------------- | ------------------------------------------------------ |
+| `llm.provider`          | Primary provider  | No       | `gemini`                                              | `gemini`<br>`openai`<br>`claude`<br>`groq`<br>`ollama` |
+| `llm.model`             | Primary model     | No       | `gemini-2.5-pro`                                      | Model name                                             |
+| `llm.apiKeyEnv`         | API key           | No       | Provider standard                                     | Environment-variable name                              |
+| `llm.ollamaHost`        | Ollama endpoint   | No       | `http://localhost:11434`                              | Ollama API URL                                         |
+| `llm.fallbackProvider`  | Fallback provider | No       |                                                       | Provider used after primary failure                    |
+| `llm.fallbackModel`     | Fallback model    | No       | Ollama: `qwen2.5:7b-instruct`<br>Other: primary model | Model used by fallback                                 |
+| `llm.fallbackApiKeyEnv` | Fallback API key  | No       | Provider standard                                     | Environment-variable name                              |
+| `llm.tasks.analyze.*`   | Analyze LLM       | No       | Primary LLM                                           | Override `provider`, `model`, or `apiKeyEnv`           |
+| `llm.tasks.scenario.*`  | Scenario LLM      | No       | Primary LLM                                           | Override `provider`, `model`, or `apiKeyEnv`           |
 
 ### Narration and output
 
-| YAML key | Feature | Required | Default | Description |
-|---|---|---|---|---|
-| `voicevox.host` | VOICEVOX endpoint | No | `http://localhost:50021` | Engine API URL |
-| `voicevox.speakerId` | Speaker | No | `3` | VOICEVOX speaker ID |
-| `output.dir` | Final output | No | `./output` | Final output directory |
-| `output.workDir` | Working data | No | `./.apvg` | Scenario, audio, and recordings |
+| YAML key             | Feature           | Required | Default                  | Description                     |
+| -------------------- | ----------------- | -------- | ------------------------ | ------------------------------- |
+| `voicevox.host`      | VOICEVOX endpoint | No       | `http://localhost:50021` | Engine API URL                  |
+| `voicevox.speakerId` | Speaker           | No       | `3`                      | VOICEVOX speaker ID             |
+| `output.dir`         | Final output      | No       | `./output`               | Final output directory          |
+| `output.workDir`     | Working data      | No       | `./.apvg`                | Scenario, audio, and recordings |
 
 ## License
 

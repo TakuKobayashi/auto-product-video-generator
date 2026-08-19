@@ -27,7 +27,7 @@ export function isAndroidRecordingPlatform(platform: ProjectPlatform): boolean {
 export function createPlatformRecorder(
   platform: ProjectPlatform,
   config: ApvgConfig,
-  options: RecorderFactoryOptions,
+  options: RecorderFactoryOptions
 ): PlatformRecorder {
   switch (platform) {
     case 'web':
@@ -47,7 +47,7 @@ export function createPlatformRecorder(
     default:
       throw new Error(
         `Recording platform '${platform}' is not implemented yet. ` +
-        "Currently supported: web, CLI, Android, and Flutter/React Native/Unity builds targeting Android.",
+          'Currently supported: web, CLI, Android, and Flutter/React Native/Unity builds targeting Android.'
       );
   }
 }

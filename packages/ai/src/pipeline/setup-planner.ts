@@ -5,7 +5,10 @@
  * guidance (e.g. once Android/iOS/Unity get their own deterministic
  * detection, add platform-specific examples here).
  */
-export function buildSetupPlanningPrompt(targetUrl: string | undefined, platformHint: string): string {
+export function buildSetupPlanningPrompt(
+  targetUrl: string | undefined,
+  platformHint: string
+): string {
   const readyUrl = targetUrl || 'http://localhost:3000';
   const urlRule = targetUrl
     ? `A background web-server step MUST use "readyUrl":"${targetUrl}".`

@@ -97,7 +97,7 @@ export class ScenarioGenerator {
   async generate(
     summary: ProjectSummary,
     config: VideoConfig,
-    targetUrl: string,
+    targetUrl: string
   ): Promise<{ scenario: Scenario; script: Script }> {
     logger.step('scenario', `Generating ${config.type} scenario via LLM...`);
 
@@ -105,9 +105,11 @@ export class ScenarioGenerator {
     const isCli = summary.platform === 'cli';
     const demoableFeatures = summary.features
       .filter((f) => f.demoable && (isCli ? Boolean(f.command) : isConcreteWebRoute(f.route)))
-      .map((f) => isCli
-        ? `- ${f.title}: ${f.description}\n  Command: ${f.command}`
-        : `- ${f.title}: ${f.description}\n  URL: ${resolveFeatureUrl(baseUrl, f.route)}`)
+      .map((f) =>
+        isCli
+          ? `- ${f.title}: ${f.description}\n  Command: ${f.command}`
+          : `- ${f.title}: ${f.description}\n  URL: ${resolveFeatureUrl(baseUrl, f.route)}`
+      )
       .join('\n');
     const prompt = `Create a ${config.type} promotional video scenario.
 
@@ -118,9 +120,12 @@ Key value props:
 ${summary.keyValueProps.map((v) => `- ${v}`).join('\n')}
 
 Features to demonstrate${isCli ? '' : ' (each with its verified URL — use only these URLs for goto actions)'}:
-${demoableFeatures || (isCli
+${
+  demoableFeatures ||
+  (isCli
     ? '- (no documented CLI commands were identified; use a safe --help command)'
-    : `- (no demoable features identified; use ${baseUrl} as a general intro)`)}
+    : `- (no demoable features identified; use ${baseUrl} as a general intro)`)
+}
 
 App base URL: ${baseUrl}
 Video type: ${config.type}
@@ -134,15 +139,19 @@ Editorial direction:
 - Assume the viewer has no software-development knowledge.
 - Never mention implementation technology, technical specifications, or source-code structure.
 
-${isCli
+${
+  isCli
     ? 'This is a CLI project. Use only the exact commands listed above. Commands must be finite and read-only, ending in --help or --version. Never publish, authenticate, expose secrets/environment variables, modify files, start a server/watcher, or generate/record/render media. Do not use goto, click, type, scroll, hover, or mobile actions.'
     : `The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
-demonstrate a specific feature should "goto" that feature's URL from the list above.`}
+demonstrate a specific feature should "goto" that feature's URL from the list above.`
+}
 Remember: at most 5 scenes total.
 
 Respond with JSON only — just the scenario object, no "script" field, no other wrapping.`;
 
-    logger.info(`  Calling ${describeProvider(this.llm)}... this can take a while, especially on local models.`);
+    logger.info(
+      `  Calling ${describeProvider(this.llm)}... this can take a while, especially on local models.`
+    );
 
     const scenario = await withHeartbeat(
       'scenario generation',
@@ -150,7 +159,7 @@ Respond with JSON only — just the scenario object, no "script" field, no other
         label: 'scenario',
         maxRetries: 3,
         jsonSchema: SCENARIO_OUTPUT_SCHEMA,
-      }),
+      })
     );
 
     // The platform and setup plan were already determined,
@@ -177,7 +186,7 @@ Respond with JSON only — just the scenario object, no "script" field, no other
 
     logger.success(
       `Scenario generated: platform=${scenario.meta.platform}, ${scenario.setup.length} setup step(s), ` +
-      `${scenario.scenes.length} scene(s).`,
+        `${scenario.scenes.length} scene(s).`
     );
     return { scenario, script };
   }
@@ -185,13 +194,14 @@ Respond with JSON only — just the scenario object, no "script" field, no other
 
 function groundCliScenarioActions(scenario: Scenario, summary: ProjectSummary): void {
   const commands = summary.features.flatMap((feature) =>
-    feature.command && isSafeCliCommand(feature.command) ? [feature.command] : [],
+    feature.command && isSafeCliCommand(feature.command) ? [feature.command] : []
   );
   const allowed = new Set(commands);
   const fallback = commands[0] || 'npm --help';
   for (const scene of scenario.scenes) {
     scene.actions = scene.actions.filter((action) => {
-      if (action.type !== 'run_command') return action.type === 'wait' || action.type === 'screenshot';
+      if (action.type !== 'run_command')
+        return action.type === 'wait' || action.type === 'screenshot';
       return allowed.size === 0 || allowed.has(action.command);
     });
     if (!scene.actions.some((action) => action.type === 'run_command')) {
@@ -213,18 +223,23 @@ function groundDeviceScenarioActions(scenario: Scenario): void {
     for (const action of scene.actions) {
       if (action.type === 'wait' || action.type === 'screenshot') actions.push(action);
       if (action.type === 'scroll') {
-        actions.push(action.direction === 'down'
-          ? { type: 'swipe', fromX: 540, fromY: 1500, toX: 540, toY: 500, durationMs: 450 }
-          : { type: 'swipe', fromX: 540, fromY: 500, toX: 540, toY: 1500, durationMs: 450 });
+        actions.push(
+          action.direction === 'down'
+            ? { type: 'swipe', fromX: 540, fromY: 1500, toX: 540, toY: 500, durationMs: 450 }
+            : { type: 'swipe', fromX: 540, fromY: 500, toX: 540, toY: 1500, durationMs: 450 }
+        );
       }
     }
     if (!actions.some((action) => action.type === 'wait')) actions.push({ type: 'wait', ms: 800 });
     scene.actions = actions;
   });
-  logger.info('[scenario] Generated a conservative device scenario; edit verified tap/input actions in scenario.yml if needed.');
+  logger.info(
+    '[scenario] Generated a conservative device scenario; edit verified tap/input actions in scenario.yml if needed.'
+  );
 }
 
-const TECHNICAL_TERMS = /\b(?:Next\.js|App Router|TypeScript|JavaScript|React|Cloudflare|Workers?|Hono|API(?:s| routes?)?|serverless|front-?end|back-?end|runtime|framework|deployment|database|architecture|static generation)\b|技術仕様|実装|フレームワーク|プログラミング言語|サーバーレス|アーキテクチャ|静的生成/iu;
+const TECHNICAL_TERMS =
+  /\b(?:Next\.js|App Router|TypeScript|JavaScript|React|Cloudflare|Workers?|Hono|API(?:s| routes?)?|serverless|front-?end|back-?end|runtime|framework|deployment|database|architecture|static generation)\b|技術仕様|実装|フレームワーク|プログラミング言語|サーバーレス|アーキテクチャ|静的生成/iu;
 
 const PromotionalScenarioSchema = ScenarioSchema.superRefine((scenario, ctx) => {
   scenario.scenes.forEach((scene, index) => {
@@ -244,11 +259,7 @@ const PromotionalScenarioSchema = ScenarioSchema.superRefine((scenario, ctx) => 
  * grounds routes but does not contain DOM text/selectors, so text-dependent
  * actions are unsafe even when they happen to pass schema validation.
  */
-function groundScenarioActions(
-  scenario: Scenario,
-  summary: ProjectSummary,
-  baseUrl: string,
-): void {
+function groundScenarioActions(scenario: Scenario, summary: ProjectSummary, baseUrl: string): void {
   const featureUrls = summary.features
     .filter((feature) => feature.demoable && isConcreteWebRoute(feature.route))
     .map((feature) => resolveFeatureUrl(baseUrl, feature.route));
@@ -262,27 +273,26 @@ function groundScenarioActions(
         if (!allowed) removed++;
         return allowed;
       }
-      const safe = action.type === 'wait' || action.type === 'scroll' || action.type === 'screenshot';
+      const safe =
+        action.type === 'wait' || action.type === 'scroll' || action.type === 'screenshot';
       if (!safe) removed++;
       return safe;
     });
 
     const firstGotoIndex = safeActions.findIndex((action) => action.type === 'goto');
     const existingGoto = firstGotoIndex >= 0 ? safeActions.splice(firstGotoIndex, 1)[0] : undefined;
-    const targetUrl = index === 0
-      ? `${baseUrl}/`
-      : existingGoto?.type === 'goto'
-        ? existingGoto.url
-        : featureUrls[index % Math.max(featureUrls.length, 1)] || `${baseUrl}/`;
-    scene.actions = [
-      { type: 'goto', url: targetUrl },
-      ...safeActions,
-    ];
+    const targetUrl =
+      index === 0
+        ? `${baseUrl}/`
+        : existingGoto?.type === 'goto'
+          ? existingGoto.url
+          : featureUrls[index % Math.max(featureUrls.length, 1)] || `${baseUrl}/`;
+    scene.actions = [{ type: 'goto', url: targetUrl }, ...safeActions];
   });
 
   if (removed > 0) {
     logger.warn(
-      `[scenario] Removed ${removed} ungrounded action(s) that depended on guessed UI text/selectors.`,
+      `[scenario] Removed ${removed} ungrounded action(s) that depended on guessed UI text/selectors.`
     );
   }
 }

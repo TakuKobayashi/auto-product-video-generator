@@ -18,12 +18,18 @@ export const PLATFORM_DESCRIPTIONS: Record<ProjectPlatform, string> = {
   web: 'A website or web application (Next.js, React, Vue, Nuxt, SvelteKit, plain HTML/JS, etc.) — navigable via a browser URL and recordable with Playwright.',
   cli: 'A command-line application whose primary user interface is terminal commands and text output (for example package.json bin entries, Commander, yargs, oclif, Click, Typer, or Cobra).',
   ios: 'A native iOS (or macOS) app — Swift/SwiftUI/UIKit, an Xcode project/workspace, CocoaPods (Podfile), or Swift Package Manager.',
-  android: 'A native Android app — Kotlin or Java, a Gradle build (build.gradle/build.gradle.kts), AndroidManifest.xml.',
-  unity: 'A Unity game or interactive app — has Assets/ and ProjectSettings/ directories, .unity scene files.',
-  flutter: 'A Flutter app (Dart) — has pubspec.yaml and a lib/ directory; typically targets iOS/Android/web from one codebase.',
-  'react-native': 'A React Native app — package.json depends on "react-native", usually alongside ios/ and android/ native project folders.',
-  desktop: 'A desktop application — e.g. Electron (depends on "electron") or Tauri (src-tauri/ or "@tauri-apps/cli").',
-  other: "Doesn't clearly fit any of the categories above (a library with no UI, an unfamiliar framework, etc.).",
+  android:
+    'A native Android app — Kotlin or Java, a Gradle build (build.gradle/build.gradle.kts), AndroidManifest.xml.',
+  unity:
+    'A Unity game or interactive app — has Assets/ and ProjectSettings/ directories, .unity scene files.',
+  flutter:
+    'A Flutter app (Dart) — has pubspec.yaml and a lib/ directory; typically targets iOS/Android/web from one codebase.',
+  'react-native':
+    'A React Native app — package.json depends on "react-native", usually alongside ios/ and android/ native project folders.',
+  desktop:
+    'A desktop application — e.g. Electron (depends on "electron") or Tauri (src-tauri/ or "@tauri-apps/cli").',
+  other:
+    "Doesn't clearly fit any of the categories above (a library with no UI, an unfamiliar framework, etc.).",
 };
 
 /**

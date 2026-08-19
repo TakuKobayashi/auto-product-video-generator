@@ -11,7 +11,11 @@ import {
   ProjectSummary,
   ScenarioSchema,
 } from '@auto-product-video-generator/core';
-import { createLlmProviderForTask, ScenarioGenerator, SubtitleGenerator } from '@auto-product-video-generator/ai';
+import {
+  createLlmProviderForTask,
+  ScenarioGenerator,
+  SubtitleGenerator,
+} from '@auto-product-video-generator/ai';
 
 interface ScenarioGenerateOptions {
   config?: string;
@@ -62,7 +66,9 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
     return;
   }
 
-  await Promise.all([workDir, dirname(scenarioPath), dirname(scriptPath), dirname(srtPath)].map(ensureDir));
+  await Promise.all(
+    [workDir, dirname(scenarioPath), dirname(scriptPath), dirname(srtPath)].map(ensureDir)
+  );
 
   logger.info(`LLM: ${describeTaskLlm(config.llm, 'scenario')}`);
 

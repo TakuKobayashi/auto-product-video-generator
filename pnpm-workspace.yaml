@@ -1,5 +1,5 @@
 packages:
-  - "packages/*"
+  - 'packages/*'
 
 # pnpm blocks postinstall/build scripts for dependencies by default as a
 # security measure (this is *not* something a project's own .npmrc/config

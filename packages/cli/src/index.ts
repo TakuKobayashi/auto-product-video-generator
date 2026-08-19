@@ -22,7 +22,8 @@ process.on('unhandledRejection', (err) => {
 });
 
 const program = new Command();
-const packageVersion = (createRequire(import.meta.url)('../package.json') as { version: string }).version;
+const packageVersion = (createRequire(import.meta.url)('../package.json') as { version: string })
+  .version;
 
 program
   .name('apvg')

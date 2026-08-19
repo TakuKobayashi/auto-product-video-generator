@@ -84,32 +84,38 @@ export const SwipeActionSchema = z.object({
   durationMs: z.number().int().positive().default(400),
 });
 export const BackActionSchema = z.object({ type: z.literal('back') });
-export const ActionSchema = z.discriminatedUnion('type', [
-  GotoActionSchema,
-  ClickActionSchema,
-  TypeActionSchema,
-  WaitVisibleActionSchema,
-  WaitActionSchema,
-  ScrollActionSchema,
-  HoverActionSchema,
-  ScreenshotActionSchema,
-  RunCommandActionSchema,
-  LaunchAppActionSchema,
-  TapActionSchema,
-  InputTextActionSchema,
-  SwipeActionSchema,
-  BackActionSchema,
-]).superRefine((action, ctx) => {
-  if (action.type === 'tap' && !(
-    (action.x !== undefined && action.y !== undefined) ||
-    action.text || action.contentDescription
-  )) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'tap requires x+y, text, or contentDescription',
-    });
-  }
-});
+export const ActionSchema = z
+  .discriminatedUnion('type', [
+    GotoActionSchema,
+    ClickActionSchema,
+    TypeActionSchema,
+    WaitVisibleActionSchema,
+    WaitActionSchema,
+    ScrollActionSchema,
+    HoverActionSchema,
+    ScreenshotActionSchema,
+    RunCommandActionSchema,
+    LaunchAppActionSchema,
+    TapActionSchema,
+    InputTextActionSchema,
+    SwipeActionSchema,
+    BackActionSchema,
+  ])
+  .superRefine((action, ctx) => {
+    if (
+      action.type === 'tap' &&
+      !(
+        (action.x !== undefined && action.y !== undefined) ||
+        action.text ||
+        action.contentDescription
+      )
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'tap requires x+y, text, or contentDescription',
+      });
+    }
+  });
 
 // --- Effects ---
 

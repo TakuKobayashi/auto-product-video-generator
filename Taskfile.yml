@@ -48,7 +48,7 @@ vars:
 
 tasks:
   default:
-    desc: "利用可能なタスクの一覧を表示します"
+    desc: '利用可能なタスクの一覧を表示します'
     cmds:
       - task --list
 
@@ -66,12 +66,12 @@ tasks:
       - task: install:ollama
 
   install:node:
-    desc: "Node依存関係をインストールします (ffmpeg-static/ffprobe-staticも自動ダウンロード)"
+    desc: 'Node依存関係をインストールします (ffmpeg-static/ffprobe-staticも自動ダウンロード)'
     cmds:
       - pnpm install
 
   install:playwright:
-    desc: "Playwright の Chromium ブラウザをインストールします"
+    desc: 'Playwright の Chromium ブラウザをインストールします'
     cmds:
       - npx playwright install chromium
       - task: install:playwright:linux-deps
@@ -142,12 +142,12 @@ tasks:
       - task: serve:ollama
 
   serve:voicevox:
-    desc: "VOICEVOX Engine を Docker で起動します (起動済みならスキップ)"
+    desc: 'VOICEVOX Engine を Docker で起動します (起動済みならスキップ)'
     status:
       - curl -fsS http://localhost:50021/version
     preconditions:
       - sh: command -v docker
-        msg: "Docker が見つかりません。Docker Desktop をインストールしてください: https://www.docker.com/products/docker-desktop/"
+        msg: 'Docker が見つかりません。Docker Desktop をインストールしてください: https://www.docker.com/products/docker-desktop/'
     cmds:
       - cmd: docker rm -f {{.VOICEVOX_CONTAINER}}
         ignore_error: true
@@ -155,12 +155,12 @@ tasks:
       - 'echo "VOICEVOX starting: http://localhost:50021 (first launch can take up to a minute -- run task doctor to check)"'
 
   serve:ollama:
-    desc: "Ollama デーモンを起動します (WITH_OLLAMA=false または起動済みならスキップ)"
+    desc: 'Ollama デーモンを起動します (WITH_OLLAMA=false または起動済みならスキップ)'
     status:
       - '[ "{{.WITH_OLLAMA}}" != "true" ] || curl -fsS http://localhost:11434/api/tags'
     preconditions:
       - sh: command -v ollama
-        msg: "Ollama が見つかりません。先に実行してください: task install:ollama"
+        msg: 'Ollama が見つかりません。先に実行してください: task install:ollama'
     cmds:
       - ollama serve > {{.OLLAMA_LOG}} 2>&1 &
       - 'echo "Ollama starting: http://localhost:11434 (log: {{.OLLAMA_LOG}}, run task doctor to check)"'
@@ -169,7 +169,7 @@ tasks:
         ignore_error: true
 
   stop:
-    desc: "task serve で起動したサービスを停止します (VOICEVOXコンテナ)"
+    desc: 'task serve で起動したサービスを停止します (VOICEVOXコンテナ)'
     cmds:
       - cmd: docker rm -f {{.VOICEVOX_CONTAINER}}
         ignore_error: true
@@ -178,14 +178,14 @@ tasks:
   # ── Diagnostics ────────────────────────────────────────────────────────
 
   doctor:
-    desc: "動作に必要な環境が揃っているか診断します"
+    desc: '動作に必要な環境が揃っているか診断します'
     cmds:
       - npx tsx scripts/doctor.ts
 
   # ── Build ──────────────────────────────────────────────────────────────
 
   dev:cli:
-    desc: "ソースコードから APVG CLI を実行します"
+    desc: 'ソースコードから APVG CLI を実行します'
     dir: '{{.ROOT_DIR}}'
     cmds:
       - >-
@@ -196,7 +196,7 @@ tasks:
         {{.CLI_ARGS}}
 
   build:
-    desc: "全パッケージを TypeScript でビルドします"
+    desc: '全パッケージを TypeScript でビルドします'
     dir: '{{.ROOT_DIR}}'
     cmds:
       - >-
@@ -212,20 +212,20 @@ tasks:
       - node packages/cli/build.mjs
 
   build:cli:
-    desc: "公開用 CLI パッケージをビルドします"
+    desc: '公開用 CLI パッケージをビルドします'
     dir: '{{.ROOT_DIR}}'
     cmds:
       - pnpm exec tsc -b packages/cli/tsconfig.json
       - node packages/cli/build.mjs
 
   build:watch:
-    desc: "全パッケージを監視して TypeScript を再ビルドします"
+    desc: '全パッケージを監視して TypeScript を再ビルドします'
     dir: '{{.ROOT_DIR}}'
     cmds:
       - pnpm exec tsc -b --watch packages/*/tsconfig.json
 
   clean:
-    desc: "全パッケージの dist/ と TypeScript ビルド情報を削除します"
+    desc: '全パッケージの dist/ と TypeScript ビルド情報を削除します'
     cmds:
       - task: 'clean:{{OS}}'
 
@@ -257,7 +257,7 @@ tasks:
   # ── Release ────────────────────────────────────────────────────────────
 
   release:check:
-    desc: "テスト、ビルド、npm package の内容を検証します"
+    desc: 'テスト、ビルド、npm package の内容を検証します'
     dir: '{{.ROOT_DIR}}'
     cmds:
       - pnpm test
@@ -265,7 +265,7 @@ tasks:
       - pnpm --filter auto-product-video-generator pack --dry-run
 
   publish:npm:
-    desc: "テストとビルドの成功後に CLI package を npm へ公開します"
+    desc: 'テストとビルドの成功後に CLI package を npm へ公開します'
     dir: '{{.ROOT_DIR}}'
     cmds:
       - pnpm test
@@ -277,7 +277,7 @@ tasks:
   # ── Quickstart ─────────────────────────────────────────────────────────
 
   quickstart:
-    desc: "install → serve をまとめて実行し、次にやることを表示します"
+    desc: 'install → serve をまとめて実行し、次にやることを表示します'
     cmds:
       - task: install
       - task: serve

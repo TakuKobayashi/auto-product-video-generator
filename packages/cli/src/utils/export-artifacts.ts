@@ -28,7 +28,7 @@ export async function exportArtifacts(
     files?: Record<string, string>;
     dirs?: Record<string, string>;
     artifactsDir?: string;
-  } = {},
+  } = {}
 ): Promise<string> {
   const artifactsDir = overrides.artifactsDir || join(outputDir, 'artifacts');
   await mkdir(artifactsDir, { recursive: true });

@@ -20,11 +20,13 @@ describe('web authentication config', () => {
   });
 
   it('accepts login and success URLs without storing credentials', () => {
-    const config = ApvgConfigSchema.parse(configWithAuth({
-      loginUrl: 'https://example.com/login',
-      successUrl: 'https://example.com/dashboard',
-      storageStatePath: './.apvg/auth/example.json',
-    }));
+    const config = ApvgConfigSchema.parse(
+      configWithAuth({
+        loginUrl: 'https://example.com/login',
+        successUrl: 'https://example.com/dashboard',
+        storageStatePath: './.apvg/auth/example.json',
+      })
+    );
 
     expect(config.target.auth?.loginUrl).toBe('https://example.com/login');
     expect(config.target.auth?.successUrl).toBe('https://example.com/dashboard');

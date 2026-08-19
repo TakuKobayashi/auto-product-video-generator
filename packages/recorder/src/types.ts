@@ -16,7 +16,7 @@ export interface PlatformRecorder {
     config: VideoConfig,
     options: PlatformRecordOptions,
     targetDurationSeconds?: number,
-    actionDurationSeconds?: number,
+    actionDurationSeconds?: number
   ): Promise<string>;
   dispose?(): Promise<void>;
 }

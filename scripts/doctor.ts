@@ -50,7 +50,11 @@ async function main(): Promise<void> {
 
   // Node
   const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
-  check(`Node.js (${process.version})`, nodeMajor >= 20, 'Install Node.js >= 20: https://nodejs.org');
+  check(
+    `Node.js (${process.version})`,
+    nodeMajor >= 20,
+    'Install Node.js >= 20: https://nodejs.org'
+  );
 
   // git (required for source.repository / source.localPath analysis)
   const gitOk = spawnSync('git', ['--version'], { stdio: 'ignore' }).status === 0;
@@ -66,7 +70,7 @@ async function main(): Promise<void> {
   check(
     'ffmpeg (bundled via ffmpeg-static)',
     !!ffmpegPath && existsSync(ffmpegPath),
-    'Run: task install:node   (or install a system ffmpeg — it will be used as a fallback)',
+    'Run: task install:node   (or install a system ffmpeg — it will be used as a fallback)'
   );
 
   // ffprobe (bundled via ffprobe-static — ships pre-built, no download step)
@@ -79,7 +83,7 @@ async function main(): Promise<void> {
   check(
     'ffprobe (bundled via ffprobe-static)',
     !!ffprobePath && existsSync(ffprobePath),
-    'Run: task install:node',
+    'Run: task install:node'
   );
 
   // Playwright Chromium
@@ -102,10 +106,30 @@ async function main(): Promise<void> {
   const adbOk = spawnSync(adbPath, ['version'], { stdio: 'ignore' }).status === 0;
   const emulatorResult = spawnSync(emulatorPath, ['-list-avds'], { encoding: 'utf8' });
   const emulatorOk = emulatorResult.status === 0;
-  const avds = emulatorOk ? emulatorResult.stdout.split(/\r?\n/).map((v) => v.trim()).filter(Boolean) : [];
-  check('Android adb', adbOk, 'Install Android SDK Platform-Tools in Android Studio', !androidTarget);
-  check('Android Emulator', emulatorOk, 'Install Android Emulator in Android Studio SDK Manager', !androidTarget);
-  check('Android AVD available', avds.length > 0, 'Create an AVD in Android Studio Device Manager', !androidTarget);
+  const avds = emulatorOk
+    ? emulatorResult.stdout
+        .split(/\r?\n/)
+        .map((v) => v.trim())
+        .filter(Boolean)
+    : [];
+  check(
+    'Android adb',
+    adbOk,
+    'Install Android SDK Platform-Tools in Android Studio',
+    !androidTarget
+  );
+  check(
+    'Android Emulator',
+    emulatorOk,
+    'Install Android Emulator in Android Studio SDK Manager',
+    !androidTarget
+  );
+  check(
+    'Android AVD available',
+    avds.length > 0,
+    'Create an AVD in Android Studio Device Manager',
+    !androidTarget
+  );
 
   // VOICEVOX reachable
   const voicevoxUp = await httpOk('http://localhost:50021/version');
@@ -119,7 +143,9 @@ async function main(): Promise<void> {
 
   if (ollamaUp) {
     try {
-      const res = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(2000) });
+      const res = await fetch('http://localhost:11434/api/tags', {
+        signal: AbortSignal.timeout(2000),
+      });
       const data = (await res.json()) as { models?: Array<{ name: string }> };
       ollamaModels = (data.models || []).map((m) => m.name);
     } catch {
@@ -129,7 +155,7 @@ async function main(): Promise<void> {
 
   const configuredModels = readConfiguredOllamaModels();
   const allConfiguredModelsPulled = configuredModels.every((model) =>
-    ollamaModels.some((name) => normalizeModelName(name) === normalizeModelName(model)),
+    ollamaModels.some((name) => normalizeModelName(name) === normalizeModelName(model))
   );
 
   check(
@@ -137,7 +163,7 @@ async function main(): Promise<void> {
     hasGeminiKey || (ollamaUp && allConfiguredModelsPulled),
     configuredModels.length > 0 && ollamaUp
       ? `Pull the configured model: ollama pull ${configuredModels[0]}`
-      : 'Set GEMINI_API_KEY, or start Ollama: task serve:ollama',
+      : 'Set GEMINI_API_KEY, or start Ollama: task serve:ollama'
   );
 
   if (hasGeminiKey) check('Gemini API key', true, '');
@@ -146,12 +172,14 @@ async function main(): Promise<void> {
   if (ollamaUp) {
     check('Ollama daemon reachable (localhost:11434)', true, '');
     for (const model of configuredModels) {
-      const pulled = ollamaModels.some((name) => normalizeModelName(name) === normalizeModelName(model));
+      const pulled = ollamaModels.some(
+        (name) => normalizeModelName(name) === normalizeModelName(model)
+      );
       check(
         `Ollama model downloaded (${model})`,
         pulled,
         `Run: ollama pull ${model}`,
-        hasGeminiKey,
+        hasGeminiKey
       );
     }
     const names = ollamaModels.join(', ') || '(none)';
@@ -166,17 +194,13 @@ async function main(): Promise<void> {
   check(
     'apvg.config.yml present in current directory',
     existsSync('apvg.config.yml'),
-    'Run: pnpm apvg project init --repo <git-url> --url http://localhost:3000',
+    'Run: pnpm apvg project init --repo <git-url> --url http://localhost:3000'
   );
 
   console.log();
   let allCriticalOk = true;
   for (const r of results) {
-    const mark = r.ok
-      ? '\x1b[32m✓\x1b[0m'
-      : r.skipped
-        ? '\x1b[90m-\x1b[0m'
-        : '\x1b[31m✗\x1b[0m';
+    const mark = r.ok ? '\x1b[32m✓\x1b[0m' : r.skipped ? '\x1b[90m-\x1b[0m' : '\x1b[31m✗\x1b[0m';
     const suffix = r.optional ? ' (optional)' : '';
     console.log(`${mark} ${r.label}${suffix}`);
     if (!r.ok) {
@@ -189,7 +213,9 @@ async function main(): Promise<void> {
   if (allCriticalOk) {
     console.log('\x1b[32m✓\x1b[0m Everything required looks good.');
   } else {
-    console.log("\x1b[33m⚠\x1b[0m Some required items are missing — see hints above, or just run: task install");
+    console.log(
+      '\x1b[33m⚠\x1b[0m Some required items are missing — see hints above, or just run: task install'
+    );
   }
 }
 
@@ -232,13 +258,17 @@ function configuredTargetType(): string | undefined {
   if (!existsSync('apvg.config.yml')) return undefined;
   try {
     const yaml = require('js-yaml') as { load(input: string): unknown };
-    return (yaml.load(readFileSync('apvg.config.yml', 'utf8')) as { target?: { type?: string } })?.target?.type;
-  } catch { return undefined; }
+    return (yaml.load(readFileSync('apvg.config.yml', 'utf8')) as { target?: { type?: string } })
+      ?.target?.type;
+  } catch {
+    return undefined;
+  }
 }
 
 function androidSdkTool(name: 'adb' | 'emulator'): string {
   const executable = process.platform === 'win32' ? `${name}.exe` : name;
-  const relative = name === 'adb' ? join('platform-tools', executable) : join('emulator', executable);
+  const relative =
+    name === 'adb' ? join('platform-tools', executable) : join('emulator', executable);
   for (const root of [process.env.ANDROID_SDK_ROOT, process.env.ANDROID_HOME]) {
     if (root && existsSync(join(root, relative))) return join(root, relative);
   }

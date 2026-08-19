@@ -25,23 +25,23 @@ inputs:
   bilingual:
     description: Also include an English version when the selected language is not English
     required: false
-    default: "false"
+    default: 'false'
   max-diff-chars:
     description: Maximum number of diff characters sent to the model
     required: false
-    default: "60000"
+    default: '60000'
   fail-on-llm-error:
     description: Fail instead of publishing deterministic fallback notes when Ollama inference fails
     required: false
-    default: "false"
+    default: 'false'
   dry-run:
     description: Generate and print notes without creating or updating a GitHub Release
     required: false
-    default: "false"
+    default: 'false'
   output-file:
     description: Optional path where generated Markdown is written (especially useful with dry-run)
     required: false
-    default: ""
+    default: ''
 
 outputs:
   release-url:

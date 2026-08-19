@@ -41,7 +41,7 @@ export const logger = {
 export async function withHeartbeat<T>(
   label: string,
   work: Promise<T>,
-  intervalMs = 8000,
+  intervalMs = 8000
 ): Promise<T> {
   const start = Date.now();
   const timer = setInterval(() => {

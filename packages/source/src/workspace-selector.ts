@@ -15,7 +15,10 @@ interface Candidate {
 }
 
 /** Selects one runnable application from a repository/monorepo. */
-export async function selectProjectRoot(repositoryRoot: string, source: SourceConfig): Promise<string> {
+export async function selectProjectRoot(
+  repositoryRoot: string,
+  source: SourceConfig
+): Promise<string> {
   if (source.projectPath) {
     const selected = resolveInside(repositoryRoot, source.projectPath);
     if (!existsSync(selected)) throw new Error(`source.projectPath does not exist: ${selected}`);
@@ -31,9 +34,11 @@ export async function selectProjectRoot(repositoryRoot: string, source: SourceCo
     const index = priority.indexOf(platform);
     return index < 0 ? priority.length : index;
   };
-  const ranked = applications.sort((a, b) =>
-    platformRank(a.platform) - platformRank(b.platform) ||
-    b.score - a.score || a.relativePath.localeCompare(b.relativePath),
+  const ranked = applications.sort(
+    (a, b) =>
+      platformRank(a.platform) - platformRank(b.platform) ||
+      b.score - a.score ||
+      a.relativePath.localeCompare(b.relativePath)
   );
   const selected = ranked[0];
   if (!selected || selected.relativePath === '.') return repositoryRoot;
@@ -43,7 +48,7 @@ export async function selectProjectRoot(repositoryRoot: string, source: SourceCo
   if (selected.score < 40) return repositoryRoot;
   logger.success(
     `Monorepo project selected: ${selected.relativePath} ` +
-    `(${selected.packageName || selected.platform}, platform=${selected.platform})`,
+      `(${selected.packageName || selected.platform}, platform=${selected.platform})`
   );
   return selected.path;
 }
@@ -67,15 +72,20 @@ async function discoverCandidates(root: string, excludePatterns: string[]): Prom
     if (existsSync(packagePath)) {
       try {
         const pkg = JSON.parse(await readFile(packagePath, 'utf8')) as {
-          name?: string; scripts?: Record<string, string>;
+          name?: string;
+          scripts?: Record<string, string>;
           bin?: string | Record<string, string>;
-          dependencies?: Record<string, string>; devDependencies?: Record<string, string>;
+          dependencies?: Record<string, string>;
+          devDependencies?: Record<string, string>;
         };
         const dependencies = new Set([
-          ...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.devDependencies || {}),
+          ...Object.keys(pkg.dependencies || {}),
+          ...Object.keys(pkg.devDependencies || {}),
         ]);
         const platform = detectCandidatePlatform(dir, dependencies, Boolean(pkg.bin));
-        const runnable = Boolean(pkg.scripts?.dev || pkg.scripts?.start || pkg.scripts?.serve || pkg.bin);
+        const runnable = Boolean(
+          pkg.scripts?.dev || pkg.scripts?.start || pkg.scripts?.serve || pkg.bin
+        );
         const relativePath = relative(root, dir) || '.';
         let score = runnable ? 40 : 0;
         if (platform === 'web') score += 35;
@@ -83,10 +93,16 @@ async function discoverCandidates(root: string, excludePatterns: string[]): Prom
         if (/web|frontend|site/i.test(relativePath)) score += 15;
         if (relativePath === '.') score += 10;
         results.push({ path: dir, relativePath, platform, score, runnable, packageName: pkg.name });
-      } catch { /* invalid package.json is not a candidate */ }
+      } catch {
+        /* invalid package.json is not a candidate */
+      }
     }
     let entries;
-    try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const entry of entries) {
       if (entry.isDirectory() && !excluded.has(entry.name) && !entry.name.startsWith('.')) {
         const relativePath = relative(root, resolve(dir, entry.name)).split(sep).join('/');
@@ -99,15 +115,28 @@ async function discoverCandidates(root: string, excludePatterns: string[]): Prom
   return results;
 }
 
-function detectCandidatePlatform(dir: string, dependencies: Set<string>, hasBin: boolean): ProjectPlatform {
+function detectCandidatePlatform(
+  dir: string,
+  dependencies: Set<string>,
+  hasBin: boolean
+): ProjectPlatform {
   if (existsSync(resolve(dir, 'ProjectSettings', 'ProjectVersion.txt'))) return 'unity';
   if (existsSync(resolve(dir, 'pubspec.yaml'))) return 'flutter';
   if (dependencies.has('react-native')) return 'react-native';
   if (existsSync(resolve(dir, 'app', 'src', 'main', 'AndroidManifest.xml'))) return 'android';
-  if ([
-    'next', 'react', 'react-dom', 'vue', 'nuxt', '@sveltejs/kit', 'vite', 'astro',
-  ].some((name) => dependencies.has(name))) return 'web';
-  if (hasBin || dependencies.has('commander') || dependencies.has('yargs') || dependencies.has('oclif')) return 'cli';
+  if (
+    ['next', 'react', 'react-dom', 'vue', 'nuxt', '@sveltejs/kit', 'vite', 'astro'].some((name) =>
+      dependencies.has(name)
+    )
+  )
+    return 'web';
+  if (
+    hasBin ||
+    dependencies.has('commander') ||
+    dependencies.has('yargs') ||
+    dependencies.has('oclif')
+  )
+    return 'cli';
   return 'other';
 }
 

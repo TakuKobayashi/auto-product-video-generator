@@ -12,6 +12,8 @@ export async function runSetup(): Promise<void> {
   logger.success('Playwright Chromium is installed.');
 
   logger.success('APVG-managed tooling is installed.');
-  logger.info('Next, run `apvg doctor` to check Docker, Ollama/Gemini, git, and other system dependencies.');
+  logger.info(
+    'Next, run `apvg doctor` to check Docker, Ollama/Gemini, git, and other system dependencies.'
+  );
   logger.info('After the environment is ready, run `apvg serve` to start the required services.');
 }

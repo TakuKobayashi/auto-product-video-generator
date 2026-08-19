@@ -19,7 +19,9 @@ export async function loadConfig(configPath: string): Promise<ApvgConfig> {
 }
 
 function formatConfigError(configPath: string, error: ZodError): string {
-  const lines = error.issues.map((issue) => `  - ${issue.path.join('.') || '(root)'}: ${issue.message}`);
+  const lines = error.issues.map(
+    (issue) => `  - ${issue.path.join('.') || '(root)'}: ${issue.message}`
+  );
   const missingSource = error.issues.some((i) => i.path[0] === 'source');
   const hint = missingSource
     ? `\nThis usually means ${configPath} predates the 'source' field (added so 'analyze' can read real ` +
@@ -35,7 +37,12 @@ export async function saveConfig(configPath: string, config: ApvgConfig): Promis
   await writeFile(configPath, content, 'utf-8');
 }
 
-export function createDefaultConfig(name: string, url: string, source: SourceConfig, autoDetectUrl = false): ApvgConfig {
+export function createDefaultConfig(
+  name: string,
+  url: string,
+  source: SourceConfig,
+  autoDetectUrl = false
+): ApvgConfig {
   // Pick a default that only references providers usable right now. Do not
   // add a cloud fallback without its API key: Ollama-only usage must remain
   // fully local and must never fail with an unrelated cloud-key error.
