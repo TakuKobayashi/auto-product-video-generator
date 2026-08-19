@@ -38,10 +38,12 @@ export async function captureWebAuthState(options: CaptureWebAuthOptions): Promi
       await options.waitForManualConfirmation();
     }
 
+    // Cookies and local storage are always included. IndexedDB is opt-in.
+    // Do not request Playwright's version-dependent `credentials` option here:
+    // it exports virtual WebAuthn passkeys, not ordinary login credentials.
     await context.storageState({
       path: options.storageStatePath,
       indexedDB: true,
-      credentials: true,
     });
     // Best effort on POSIX; Windows ACLs are managed by the current account.
     await chmod(options.storageStatePath, 0o600).catch(() => undefined);
