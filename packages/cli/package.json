@@ -18,7 +18,7 @@
   "bugs": { "url": "https://github.com/TakuKobayashi/auto-product-video-generator/issues" },
   "publishConfig": { "access": "public" },
   "scripts": {
-    "build": "tsc -b && node build.mjs",
+    "build": "task -t ../../Taskfile.yml build:cli",
     "prepack": "node build.mjs",
     "clean": "rm -rf dist"
   },

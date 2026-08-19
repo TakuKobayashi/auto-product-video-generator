@@ -184,15 +184,95 @@ tasks:
 
   # ── Build ──────────────────────────────────────────────────────────────
 
+  dev:cli:
+    desc: "ソースコードから APVG CLI を実行します"
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - >-
+        pnpm exec tsx
+        --tsconfig tsconfig.base.json
+        --conditions=development
+        packages/cli/src/index.ts
+        {{.CLI_ARGS}}
+
   build:
     desc: "全パッケージを TypeScript でビルドします"
+    dir: '{{.ROOT_DIR}}'
     cmds:
-      - pnpm build
+      - >-
+        pnpm exec tsc -b
+        packages/core/tsconfig.json
+        packages/source/tsconfig.json
+        packages/ai/tsconfig.json
+        packages/playwright/tsconfig.json
+        packages/recorder/tsconfig.json
+        packages/voicevox/tsconfig.json
+        packages/renderer/tsconfig.json
+        packages/cli/tsconfig.json
+      - node packages/cli/build.mjs
+
+  build:cli:
+    desc: "公開用 CLI パッケージをビルドします"
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - pnpm exec tsc -b packages/cli/tsconfig.json
+      - node packages/cli/build.mjs
+
+  build:watch:
+    desc: "全パッケージを監視して TypeScript を再ビルドします"
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - pnpm exec tsc -b --watch packages/*/tsconfig.json
 
   clean:
-    desc: "全パッケージの dist/ を削除します"
+    desc: "全パッケージの dist/ と TypeScript ビルド情報を削除します"
     cmds:
-      - pnpm clean
+      - task: 'clean:{{OS}}'
+
+  clean:linux:
+    internal: true
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - find packages -name dist -type d -exec rm -rf {} +
+      - find packages -name '*.tsbuildinfo' -type f -delete
+
+  clean:darwin:
+    internal: true
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - find packages -name dist -type d -exec rm -rf {} +
+      - find packages -name '*.tsbuildinfo' -type f -delete
+
+  clean:windows:
+    internal: true
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - >-
+        powershell -NoProfile -Command
+        "Get-ChildItem packages -Recurse -Directory -Filter dist |
+        Remove-Item -Recurse -Force;
+        Get-ChildItem packages -Recurse -File -Filter *.tsbuildinfo |
+        Remove-Item -Force"
+
+  # ── Release ────────────────────────────────────────────────────────────
+
+  release:check:
+    desc: "テスト、ビルド、npm package の内容を検証します"
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - pnpm test
+      - task: build
+      - pnpm --filter auto-product-video-generator pack --dry-run
+
+  publish:npm:
+    desc: "テストとビルドの成功後に CLI package を npm へ公開します"
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - pnpm test
+      - task: build
+      - >-
+        pnpm --filter auto-product-video-generator publish
+        --access public
 
   # ── Quickstart ─────────────────────────────────────────────────────────
 
