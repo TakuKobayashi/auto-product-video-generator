@@ -147,6 +147,9 @@ export const VideoConfigSchema = z.object({
   resolution: z.enum(['1920x1080', '1280x720', '1080x1920']).default('1920x1080'),
   fps: z.union([z.literal(30), z.literal(60)]).default(30),
   language: z.string().default('ja'),
+  // Split each narration into short, sequential one-line subtitle cues.
+  // Disable this to show the full scene narration for the scene's duration.
+  singleLineSubtitles: z.boolean().default(true),
   // Extra settling time after the first web page has loaded. This warm-up
   // section is removed before narration and subtitles are rendered.
   pageReadyWaitSeconds: z.number().nonnegative().default(2),

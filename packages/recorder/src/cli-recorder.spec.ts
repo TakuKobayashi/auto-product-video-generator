@@ -13,7 +13,7 @@ describe('CliRecorder', () => {
       actions: [{ type: 'run_command', command: 'example --help' }],
     }, {
       type: 'demo', duration: 10, resolution: '1280x720', fps: 30,
-      language: 'ja', pageReadyWaitSeconds: 2, sceneGapSeconds: 1,
+      language: 'ja', singleLineSubtitles: true, pageReadyWaitSeconds: 2, sceneGapSeconds: 1,
     }, {
       headed: false, slowMo: 0, outputDir: '/tmp/apvg-cli-test',
       screenshotDir: '/tmp/apvg-cli-test/screenshots', dryRun: true,

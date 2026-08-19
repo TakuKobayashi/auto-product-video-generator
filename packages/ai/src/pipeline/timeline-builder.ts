@@ -44,7 +44,13 @@ export class TimelineBuilder {
 
       // Subtitle tracks are display-only slices of the original narration.
       // Audio continues to use the full sentence above.
-      const subtitleCues = buildSubtitleCues(scene.narration, scene.startTime, scene.endTime);
+      const subtitleCues = buildSubtitleCues(
+        scene.narration,
+        scene.startTime,
+        scene.endTime,
+        undefined,
+        config.singleLineSubtitles,
+      );
       for (let cueIndex = 0; cueIndex < subtitleCues.length; cueIndex++) {
         const cue = subtitleCues[cueIndex];
         tracks.push({

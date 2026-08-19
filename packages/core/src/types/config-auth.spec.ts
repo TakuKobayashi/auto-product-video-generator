@@ -30,3 +30,20 @@ describe('web authentication config', () => {
     expect(config.target.auth?.successUrl).toBe('https://example.com/dashboard');
   });
 });
+
+describe('video subtitle config', () => {
+  it('enables sequential one-line subtitles by default', () => {
+    const config = ApvgConfigSchema.parse(configWithAuth({}));
+
+    expect(config.video.singleLineSubtitles).toBe(true);
+  });
+
+  it('allows one-line subtitle splitting to be disabled', () => {
+    const config = ApvgConfigSchema.parse({
+      ...configWithAuth({}),
+      video: { singleLineSubtitles: false },
+    });
+
+    expect(config.video.singleLineSubtitles).toBe(false);
+  });
+});

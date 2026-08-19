@@ -69,7 +69,9 @@ export async function runVoice(options: VoiceOptions): Promise<void> {
       config.video.sceneGapSeconds,
     );
     await writeYaml(scriptPath, timedScript);
-    await writeFile(srtPath, new SubtitleGenerator().generateSrt(timedScript), 'utf-8');
+    await writeFile(srtPath, new SubtitleGenerator().generateSrt(timedScript, {
+      singleLine: config.video.singleLineSubtitles,
+    }), 'utf-8');
     logger.success(`Updated actual audio timing: ${scriptPath}, ${srtPath}`);
   }
 

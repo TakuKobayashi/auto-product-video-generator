@@ -77,7 +77,9 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
   logger.success(`Saved: ${scriptPath}`);
 
   const subtitleGen = new SubtitleGenerator();
-  const srt = subtitleGen.generateSrt(script);
+  const srt = subtitleGen.generateSrt(script, {
+    singleLine: videoConfig.singleLineSubtitles,
+  });
   await writeFile(srtPath, srt, 'utf-8');
   logger.success(`Saved: ${srtPath}`);
 

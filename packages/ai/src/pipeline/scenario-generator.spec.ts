@@ -28,7 +28,7 @@ describe('ScenarioGenerator route grounding', () => {
     };
     const video: VideoConfig = {
       type: 'demo', duration: 30, resolution: '1280x720', fps: 30,
-      language: 'ja', pageReadyWaitSeconds: 2, sceneGapSeconds: 1,
+      language: 'ja', singleLineSubtitles: true, pageReadyWaitSeconds: 2, sceneGapSeconds: 1,
     };
 
     const { scenario } = await new ScenarioGenerator(llm).generate(
@@ -65,7 +65,7 @@ describe('ScenarioGenerator CLI grounding', () => {
     };
     const video: VideoConfig = {
       type: 'demo', duration: 20, resolution: '1280x720', fps: 30,
-      language: 'ja', pageReadyWaitSeconds: 2, sceneGapSeconds: 1,
+      language: 'ja', singleLineSubtitles: true, pageReadyWaitSeconds: 2, sceneGapSeconds: 1,
     };
 
     const { scenario } = await new ScenarioGenerator(llm).generate(summary, video, 'http://localhost:3000');

@@ -8,6 +8,11 @@ export interface SubtitleCue {
   endTime: number;
 }
 
+export interface SubtitleGenerationOptions {
+  singleLine?: boolean;
+  maxCharacters?: number;
+}
+
 /**
  * Split narration on word boundaries, then distribute the scene's real audio
  * duration proportionally across the resulting one-line subtitle cues.
@@ -18,9 +23,19 @@ export function buildSubtitleCues(
   startTime: number,
   endTime: number,
   maxCharacters = DEFAULT_SUBTITLE_MAX_CHARACTERS,
+  singleLine = true,
 ): SubtitleCue[] {
+  const text = narration.trim();
+  if (!text) return [];
+  if (!singleLine) {
+    return [{
+      text,
+      startTime: roundMilliseconds(startTime),
+      endTime: roundMilliseconds(endTime),
+    }];
+  }
+
   const chunks = splitSubtitleText(narration, maxCharacters);
-  if (chunks.length === 0) return [];
 
   const weights = chunks.map(spokenCharacterCount);
   const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
@@ -95,7 +110,7 @@ export function splitSubtitleText(
 }
 
 export class SubtitleGenerator {
-  generateSrt(script: Script): string {
+  generateSrt(script: Script, options: SubtitleGenerationOptions = {}): string {
     logger.step('subtitle', 'Generating SRT subtitles...');
 
     let srt = '';
@@ -106,6 +121,8 @@ export class SubtitleGenerator {
         scene.narration,
         scene.startTime,
         scene.endTime,
+        options.maxCharacters ?? DEFAULT_SUBTITLE_MAX_CHARACTERS,
+        options.singleLine ?? true,
       )) {
         const start = formatSrtTime(cue.startTime);
         const end = formatSrtTime(cue.endTime);

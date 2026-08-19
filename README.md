@@ -332,6 +332,9 @@ Three things worth knowing up front:
 - **Scene gaps**: `video.sceneGapSeconds` (default: `1`) controls the silent
   interval between narration clips/scenes. Voice synthesis applies it to
   script, subtitle, and recording timing.
+- **One-line subtitles**: `video.singleLineSubtitles` (default: `true`) splits
+  narration into short cues and switches them in sync with the synthesized
+  audio. Set it to `false` to display each scene's full narration as one cue.
 - **Web page settling**: `video.pageReadyWaitSeconds` (default: `2`) adds a
   delay after the initial page finishes loading. The loading/settling section
   is trimmed, so narration and subtitles begin on a ready page.
