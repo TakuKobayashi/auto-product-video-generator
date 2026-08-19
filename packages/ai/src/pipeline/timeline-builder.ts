@@ -1,4 +1,5 @@
 import { Timeline, Script, Scenario, VideoConfig, logger } from '@auto-product-video-generator/core';
+import { buildSubtitleCues } from './subtitle-generator.js';
 
 /**
  * Deterministically builds timeline.json from scenario + script.
@@ -41,21 +42,26 @@ export class TimelineBuilder {
         volume: 0.9,
       });
 
-      // Subtitle track
-      tracks.push({
-        type: 'subtitle',
-        id: `s-${scene.id}`,
-        sceneId: scene.id,
-        text: scene.narration,
-        startTime: scene.startTime,
-        endTime: scene.endTime,
-        style: {
-          fontSize: 36,
-          color: '#FFFFFF',
-          bgColor: '#00000088',
-          position: 'bottom',
-        },
-      });
+      // Subtitle tracks are display-only slices of the original narration.
+      // Audio continues to use the full sentence above.
+      const subtitleCues = buildSubtitleCues(scene.narration, scene.startTime, scene.endTime);
+      for (let cueIndex = 0; cueIndex < subtitleCues.length; cueIndex++) {
+        const cue = subtitleCues[cueIndex];
+        tracks.push({
+          type: 'subtitle',
+          id: `s-${scene.id}-${cueIndex}`,
+          sceneId: scene.id,
+          text: cue.text,
+          startTime: cue.startTime,
+          endTime: cue.endTime,
+          style: {
+            fontSize: 36,
+            color: '#FFFFFF',
+            bgColor: '#00000088',
+            position: 'bottom',
+          },
+        });
+      }
 
       // Effects from scenario
       const scenarioDef = scenario.scenes.find((s) => s.id === scene.id);
