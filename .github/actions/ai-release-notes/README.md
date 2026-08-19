@@ -23,13 +23,19 @@ steps:
       bilingual: 'true'
 ```
 
-The action gives commit subjects, authors, a diff summary, and at most 60,000
-characters of the patch to Ollama. The default `qwen2.5-coder:7b-instruct`
+The action gives commit subjects, authors, a diff summary, and up to 30,000
+characters of eligible text patches to Ollama in one request. The patch budget
+is shared across changed text files so later files are not silently omitted.
+The default `qwen2.5-coder:7b-instruct`
 model is code-focused, fits comfortably on a standard GitHub-hosted runner,
-and has a 32K context window. If inference is unavailable, the action publishes
+and uses a 16K context window by default. The smaller input defaults avoid
+excessively long prompt evaluation while retaining the commit and file summary.
+If Ollama produces no network activity for 600 seconds, the request stops and
+the action publishes
 deterministic notes containing the commit list and diff summary. Set
 `fail-on-llm-error: "true"` to disable that fallback. Use `ollama-host` to point
-at an existing Ollama server.
+at an existing Ollama server. `max-diff-chars`, `num-ctx`, and
+`inference-timeout-seconds` can be adjusted for the runner hardware.
 
 Non-source and binary contents are excluded from the patch sent to Ollama. This
 includes image, video, audio and 3D files; archives and packages such as
@@ -39,7 +45,11 @@ credential containers. Their paths, change statuses, and diff statistics remain
 available as supporting context. When a release changes only excluded files,
 the action tells the model to derive the summary primarily from commit messages
 rather than pretending to inspect their contents. Lockfiles and ordinary text
-configuration such as JSON and YAML remain part of the analyzed diff.
+configuration such as JSON and YAML remain visible in the file summary, but
+lockfile contents, Unity `.meta` files, editor layouts, and `UserSettings` are
+not sent as patch content. While Ollama is evaluating the prompt, the action logs
+elapsed time every 15 seconds. Once generation starts, it logs elapsed time and
+the number of response characters received.
 
 `language` defaults to `en` and produces notes only in the selected language.
 Set `bilingual: "true"` to include English first and the selected language

@@ -27,9 +27,17 @@ inputs:
     required: false
     default: 'false'
   max-diff-chars:
-    description: Maximum number of diff characters sent to the model
+    description: Maximum number of text-diff characters included in the Ollama request
     required: false
-    default: '60000'
+    default: '30000'
+  num-ctx:
+    description: Ollama context-window size
+    required: false
+    default: '16384'
+  inference-timeout-seconds:
+    description: Stop after this many seconds without an Ollama response
+    required: false
+    default: '600'
   fail-on-llm-error:
     description: Fail instead of publishing deterministic fallback notes when Ollama inference fails
     required: false
@@ -105,6 +113,8 @@ runs:
         INPUT_LANGUAGE: ${{ inputs.language }}
         INPUT_BILINGUAL: ${{ inputs.bilingual }}
         INPUT_MAX_DIFF_CHARS: ${{ inputs.max-diff-chars }}
+        INPUT_NUM_CTX: ${{ inputs.num-ctx }}
+        INPUT_INFERENCE_TIMEOUT_SECONDS: ${{ inputs.inference-timeout-seconds }}
         INPUT_FAIL_ON_LLM_ERROR: ${{ inputs.fail-on-llm-error }}
         INPUT_DRY_RUN: ${{ inputs.dry-run }}
         INPUT_OUTPUT_FILE: ${{ inputs.output-file }}

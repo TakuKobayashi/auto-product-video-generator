@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, writeFileSync } from 'node:fs';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { extname } from 'node:path';
 
 function parseArgs(argv) {
@@ -12,6 +14,8 @@ function parseArgs(argv) {
     'ollama-host',
     'output-file',
     'max-diff-chars',
+    'num-ctx',
+    'inference-timeout-seconds',
     'github-token',
   ]);
   for (let index = 0; index < argv.length; index += 1) {
@@ -27,7 +31,10 @@ Options:
   --model <model>           Ollama model name
   --ollama-host <url>       Ollama API base URL
   --output-file <path>      Write generated Markdown to this path
-  --max-diff-chars <count>  Maximum number of diff characters sent to Ollama
+  --max-diff-chars <count>  Maximum diff characters analyzed per Ollama request
+  --num-ctx <count>         Ollama context-window size
+  --inference-timeout-seconds <seconds>
+                            Stop after this many seconds without an Ollama response
   --fail-on-llm-error       Disable deterministic fallback notes
   --github-token <token>    GitHub token (prefer INPUT_GITHUB_TOKEN for secrecy)
   -h, --help                Show this help`);
@@ -84,7 +91,12 @@ const targetLanguage = languageAliases[normalizedLanguage] || normalizedLanguage
 const isEnglishOnly = normalizedLanguage === 'en' || normalizedLanguage.startsWith('en-');
 const shouldPublishBilingual = bilingual && !isEnglishOnly;
 const maxDiffChars = Number.parseInt(
-  args['max-diff-chars'] || env.INPUT_MAX_DIFF_CHARS || '60000',
+  args['max-diff-chars'] || env.INPUT_MAX_DIFF_CHARS || '30000',
+  10
+);
+const numCtx = Number.parseInt(args['num-ctx'] || env.INPUT_NUM_CTX || '16384', 10);
+const inferenceTimeoutSeconds = Number.parseInt(
+  args['inference-timeout-seconds'] || env.INPUT_INFERENCE_TIMEOUT_SECONDS || '600',
   10
 );
 
@@ -244,8 +256,26 @@ const excludedContentExtensions = new Set([
   '.jks',
   '.keystore',
   '.map',
+  '.meta',
   '.p12',
   '.pfx',
+  '.dwlt',
+]);
+
+const excludedContentFileNames = new Set([
+  'package-lock.json',
+  'packages-lock.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+]);
+
+const excludedContentDirectories = new Set([
+  '.idea',
+  '.vscode',
+  'library',
+  'logs',
+  'temp',
+  'usersettings',
 ]);
 
 if (!tag || (!dryRun && (!token || !repository))) {
@@ -255,6 +285,12 @@ if (!tag || (!dryRun && (!token || !repository))) {
 }
 if (!Number.isFinite(maxDiffChars) || maxDiffChars < 1000) {
   throw new Error('max-diff-chars must be an integer of at least 1000');
+}
+if (!Number.isFinite(numCtx) || numCtx < 2048) {
+  throw new Error('num-ctx must be an integer of at least 2048');
+}
+if (!Number.isFinite(inferenceTimeoutSeconds) || inferenceTimeoutSeconds < 30) {
+  throw new Error('inference-timeout-seconds must be an integer of at least 30');
 }
 
 function git(...args) {
@@ -300,9 +336,102 @@ function logOllamaDiagnostics({ commits, changedFiles, excludedFiles, diff, sour
       `excluded-files=${excludedFileCount}`,
       `diff-chars=${diff.length}`,
       `prompt-source-chars=${sourceMaterial.length}`,
-      'num-ctx=32768',
+      `num-ctx=${numCtx}`,
+      `inference-timeout-seconds=${inferenceTimeoutSeconds}`,
+      'stream=true',
     ].join(' ')
   );
+}
+
+async function readOllamaStream(response) {
+  const decoder = new TextDecoder();
+  let buffered = '';
+  let content = '';
+  const startedAt = Date.now();
+  const progressTimer = setInterval(() => {
+    console.log(
+      `Ollama generation in progress: elapsed=${Math.floor((Date.now() - startedAt) / 1000)}s received-chars=${content.length}`
+    );
+  }, 15000);
+
+  const consumeLine = (line) => {
+    if (!line.trim()) return;
+    let chunk;
+    try {
+      chunk = JSON.parse(line);
+    } catch (error) {
+      throw new Error(`Ollama returned an invalid streaming response: ${line.slice(0, 200)}`, {
+        cause: error,
+      });
+    }
+    if (chunk.error) throw new Error(`Ollama inference failed: ${chunk.error}`);
+    if (typeof chunk.message?.content === 'string') content += chunk.message.content;
+  };
+
+  try {
+    for await (const value of response) {
+      buffered += decoder.decode(value, { stream: true });
+      const lines = buffered.split('\n');
+      buffered = lines.pop() || '';
+      for (const line of lines) consumeLine(line);
+    }
+  } finally {
+    clearInterval(progressTimer);
+  }
+
+  buffered += decoder.decode();
+  if (buffered.trim()) consumeLine(buffered);
+  return content.trim();
+}
+
+function requestOllamaChat(requestBody) {
+  const url = new URL(`${ollamaHost}/api/chat`);
+  const requestImpl = url.protocol === 'https:' ? httpsRequest : httpRequest;
+  const body = JSON.stringify(requestBody);
+
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    const waitingTimer = setInterval(() => {
+      console.log(
+        `Waiting for Ollama to start responding: elapsed=${Math.floor((Date.now() - startedAt) / 1000)}s request-chars=${body.length}`
+      );
+    }, 15000);
+    const finish = (callback, value) => {
+      clearInterval(waitingTimer);
+      callback(value);
+    };
+    const request = requestImpl(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+        },
+      },
+      (response) => {
+        console.log(
+          `Ollama started responding after ${Math.floor((Date.now() - startedAt) / 1000)}s`
+        );
+        finish(resolve, response);
+      }
+    );
+    request.on('error', (error) => finish(reject, error));
+    request.setTimeout(inferenceTimeoutSeconds * 1000, () => {
+      const error = new Error(
+        `Ollama produced no network activity for ${inferenceTimeoutSeconds} seconds`
+      );
+      error.code = 'OLLAMA_INFERENCE_TIMEOUT';
+      request.destroy(error);
+    });
+    request.end(body);
+  });
+}
+
+async function readResponseText(response) {
+  const chunks = [];
+  for await (const chunk of response) chunks.push(chunk);
+  return Buffer.concat(chunks).toString('utf8');
 }
 
 function isReleaseTag(value) {
@@ -310,27 +439,54 @@ function isReleaseTag(value) {
 }
 
 function isExcludedContent(filePath) {
-  return excludedContentExtensions.has(extname(filePath).toLowerCase());
+  const normalizedPath = filePath.replaceAll('\\', '/');
+  const segments = normalizedPath.split('/');
+  const fileName = segments.at(-1)?.toLowerCase() || '';
+  return (
+    excludedContentExtensions.has(extname(fileName).toLowerCase()) ||
+    excludedContentFileNames.has(fileName) ||
+    segments.some((segment) => excludedContentDirectories.has(segment.toLowerCase()))
+  );
 }
 
 function collectTextDiff(base, target, paths) {
   if (paths.length === 0) return '';
-  const chunks = [];
-  // Keep command lines below platform limits while preserving paths containing spaces.
-  for (let index = 0; index < paths.length; index += 100) {
-    const chunk = git(
-      'diff',
-      '--no-ext-diff',
-      '--unified=2',
-      base,
-      target,
-      '--',
-      ...paths.slice(index, index + 100)
-    );
-    if (chunk) chunks.push(chunk);
-    if (chunks.join('\n').length >= maxDiffChars) break;
+  const patches = paths
+    .map((filePath) => ({
+      filePath,
+      content: git('diff', '--no-ext-diff', '--unified=2', base, target, '--', filePath),
+      quota: 0,
+    }))
+    .filter(({ content }) => content);
+  let remaining = maxDiffChars;
+  let pending = [...patches];
+
+  // Preserve evidence from every changed text file instead of filling the
+  // prompt only with files that sort first.
+  while (pending.length > 0 && remaining > 0) {
+    const share = Math.max(1, Math.floor(remaining / pending.length));
+    const completed = pending.filter(({ content }) => content.length <= share);
+    if (completed.length === 0) {
+      for (const patch of pending) {
+        patch.quota = Math.min(patch.content.length, share);
+        remaining -= patch.quota;
+      }
+      break;
+    }
+    for (const patch of completed) {
+      patch.quota = patch.content.length;
+      remaining -= patch.quota;
+    }
+    pending = pending.filter((patch) => !completed.includes(patch));
   }
-  return chunks.join('\n');
+
+  return patches
+    .map(({ filePath, content, quota }) =>
+      quota >= content.length
+        ? content
+        : `${content.slice(0, quota)}\n[diff for ${filePath} truncated]`
+    )
+    .join('\n');
 }
 
 function githubHeaders() {
@@ -453,13 +609,15 @@ async function generateWithModel(
     : excludedFiles
       ? 'Non-source asset and binary-artifact contents were intentionally excluded from the patch. Use their filenames and statuses only as supporting evidence, and derive code behavior only from the included text diff.'
       : 'Use the commit history, changed-file summary, and text diff as evidence.';
-  const sourceMaterial = `EVIDENCE POLICY:\n${evidenceGuidance}\n\nCOMMITS:\n${commits}\n\nCHANGED FILES:\n${changedFiles}\n\nNON-SOURCE ASSETS / BINARY ARTIFACTS (content excluded):\n${excludedFiles || 'None'}\n\nTEXT DIFF (may be truncated):\n${diff || 'No text diff was included.'}`;
+  const sourceMaterial = `EVIDENCE POLICY:\n${evidenceGuidance}\n\nCOMMITS:\n${commits}\n\nCHANGED FILES:\n${changedFiles}\n\nNON-SOURCE ASSETS / BINARY ARTIFACTS (content excluded):\n${excludedFiles || 'None'}\n\nTEXT DIFF (large files may be truncated):\n${diff || 'No text diff was included.'}`;
   const requestBody = {
     model,
-    stream: false,
+    // Start receiving response headers and content while the model is generating.
+    // With stream=false, long generations can exceed Node.js/Undici's headers timeout.
+    stream: true,
     options: {
       temperature: 0.2,
-      num_ctx: 32768,
+      num_ctx: numCtx,
     },
     messages: [
       {
@@ -479,37 +637,36 @@ async function generateWithModel(
       },
     ],
   };
-  logOllamaDiagnostics({ commits, changedFiles, excludedFiles, diff, sourceMaterial });
+  logOllamaDiagnostics({
+    commits,
+    changedFiles,
+    excludedFiles,
+    diff,
+    sourceMaterial,
+  });
   const startedAt = Date.now();
   let response;
   try {
-    response = await fetch(`${ollamaHost}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
+    response = await requestOllamaChat(requestBody);
   } catch (error) {
     throw new Error(`Ollama request could not complete after ${Date.now() - startedAt}ms`, {
       cause: error,
     });
   }
-  if (!response.ok) {
-    const responseText = await response.text();
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    const responseText = await readResponseText(response);
     throw new Error(
-      `Ollama inference failed after ${Date.now() - startedAt}ms (${response.status} ${response.statusText}): ${responseText || '<empty response>'}`
+      `Ollama inference failed after ${Date.now() - startedAt}ms (${response.statusCode} ${response.statusMessage || ''}): ${responseText || '<empty response>'}`
     );
   }
-  let result;
+  let notes;
   try {
-    result = await response.json();
+    notes = await readOllamaStream(response);
   } catch (error) {
-    throw new Error(`Ollama returned invalid JSON after ${Date.now() - startedAt}ms`, {
+    throw new Error(`Ollama response stream failed after ${Date.now() - startedAt}ms`, {
       cause: error,
     });
   }
-  const notes = result.message?.content?.trim();
   if (!notes) throw new Error('Ollama returned an empty response');
   console.log(`Ollama generated ${notes.length} release-note characters in ${Date.now() - startedAt}ms`);
   return notes;
@@ -540,10 +697,6 @@ const excludedFiles = nameStatus
   .join('\n');
 const excludedOnly = changedFileNames.length > 0 && textFiles.length === 0;
 const rawDiff = collectTextDiff(diffBase, tag, textFiles);
-const diff =
-  rawDiff.length > maxDiffChars
-    ? `${rawDiff.slice(0, maxDiffChars)}\n\n[diff truncated at ${maxDiffChars} characters]`
-    : rawDiff;
 
 let notes;
 let usedLlm = true;
@@ -553,7 +706,7 @@ try {
     commits,
     changedFiles,
     excludedFiles,
-    diff,
+    rawDiff,
     excludedOnly
   );
 } catch (error) {
