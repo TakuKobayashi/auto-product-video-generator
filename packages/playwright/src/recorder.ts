@@ -18,6 +18,8 @@ export interface RecordOptions {
   outputDir: string;
   screenshotDir: string;
   dryRun: boolean;
+  /** Playwright authentication state captured by `apvg auth login`. */
+  storageStatePath?: string;
 }
 
 export class SceneRecorder {
@@ -70,6 +72,7 @@ export class SceneRecorder {
 
     const context = await browser.newContext({
       viewport: { width, height },
+      storageState: options.storageStatePath,
       recordVideo: {
         dir: options.outputDir,
         size: { width, height },

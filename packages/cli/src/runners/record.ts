@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { ensureDir, loadConfig, readYaml, logger, ScenarioSchema, ScriptSchema } from '@auto-product-video-generator/core';
 import { createPlatformRecorder } from '@auto-product-video-generator/recorder';
 import { resolveProjectSource, ensureAppRunning, findRepositoryRoot, loadSourceExcludePatterns } from '@auto-product-video-generator/source';
+import { resolveWebStorageState } from '../utils/web-auth.js';
 
 interface RecordOptions {
   config?: string;
@@ -86,6 +87,11 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   const recorder = createPlatformRecorder(scenario.meta.platform, config, {
     rootDir, repositoryRoot, workDir, setupSteps: scenario.setup, sourceExcludePatterns,
   });
+  const storageStatePath = resolveWebStorageState(
+    config,
+    scenario.meta.platform,
+    options.dryRun || false,
+  );
 
   try {
     for (const scene of scenesToRecord) {
@@ -105,6 +111,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
         outputDir: recordingsDir,
         screenshotDir,
         dryRun: options.dryRun || false,
+        storageStatePath,
       }, targetDurationSeconds, scriptScene.endTime - scriptScene.startTime);
     }
   } finally {

@@ -46,6 +46,16 @@ target:
   # when --url is omitted.
   autoDetectUrl: false
   type: "web"
+  # Optional authentication for web recording. Run `pnpm apvg auth login`
+  # once, complete login in the opened browser, and the saved Playwright state
+  # is reused by subsequent `video record` / `video generate` commands.
+  # auth:
+  #   mode: "manual"
+  #   loginUrl: "https://example.com/login" # defaults to target.url
+  #   # Optional: save automatically after this URL is reached. When omitted,
+  #   # press Enter in the terminal after completing login.
+  #   successUrl: "https://example.com/dashboard"
+  #   storageStatePath: "./.apvg/auth/storage-state.json"
   # CLI projects are detected from package.json bin entries and CLI framework
   # dependencies. They run in a temporary Docker container and are displayed
   # in a browser-rendered terminal recorded by Playwright.

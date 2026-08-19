@@ -75,6 +75,7 @@ it may be managed by the operating system or used by other applications.
 |---|---|
 | `apvg setup` | Install the Playwright Chromium browser managed by APVG |
 | `apvg doctor` | Check Node.js, git, Docker, media tools, Chromium, services, and the current configuration; missing system tools are reported with setup hints only |
+| `apvg auth login` | Open a browser for manual web login and save reusable Playwright authentication state |
 | `apvg serve` | Start VOICEVOX with Docker and start/pull the configured Ollama model when `GEMINI_API_KEY` is not set |
 | `apvg serve --no-ollama` | Start VOICEVOX without Ollama |
 | `apvg services status` | Check whether VOICEVOX and Ollama are reachable |
@@ -111,6 +112,34 @@ Output: `output/final.mp4`, with intermediate files under `output/artifacts/`
 timeline, analysis results, logs, and the effective config). First run without
 `GEMINI_API_KEY` set uses Ollama automatically — see `examples/apvg.config.yml` for every config
 option (each one is commented inline, not duplicated here).
+
+## Authenticated web recording
+
+For a web product that requires login, configure a manual authentication state:
+
+```yaml
+target:
+  url: "https://example.com/dashboard"
+  type: web
+  auth:
+    mode: manual
+    loginUrl: "https://example.com/login"
+    successUrl: "https://example.com/dashboard" # optional
+    storageStatePath: "./.apvg/auth/storage-state.json"
+```
+
+Then open a headed browser and log in once:
+
+```bash
+pnpm apvg auth login
+```
+
+If `successUrl` is configured, APVG saves the session when that URL is reached.
+Otherwise, complete login in the browser and press Enter in the terminal. Future
+web recordings load the saved Playwright state automatically. The state can
+contain cookies, local storage, IndexedDB data, and authentication credentials;
+it is stored under the gitignored `.apvg/` directory and must never be committed,
+uploaded as an artifact, or shared. This initial implementation is web-only.
 
 ## GitHub Actions generation
 

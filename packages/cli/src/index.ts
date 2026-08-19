@@ -6,6 +6,7 @@ import { projectCommand } from './commands/project.js';
 import { videoCommand } from './commands/video.js';
 import { serveCommand, servicesCommand } from './commands/services.js';
 import { setupCommand, doctorCommand } from './commands/environment.js';
+import { authCommand } from './commands/auth.js';
 
 // Every command's action handler is async; an unhandled rejection there
 // (network errors, missing files, etc.) would otherwise print a raw Node.js
@@ -34,5 +35,6 @@ program.addCommand(serveCommand());
 program.addCommand(servicesCommand());
 program.addCommand(setupCommand());
 program.addCommand(doctorCommand());
+program.addCommand(authCommand());
 
 program.parse();

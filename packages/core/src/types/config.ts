@@ -82,12 +82,29 @@ export type SourceConfig = z.infer<typeof SourceConfigSchema>;
 // Where the app can actually be reached once it's running, so Playwright can
 // record it. This is NOT the source location — you still need to start the
 // dev server yourself (e.g. `npm run dev`) before `record`/`build` run.
+export const WebAuthConfigSchema = z.object({
+  // Manual browser login is the first supported flow. Future password/passkey
+  // setup can produce the same Playwright storage-state file.
+  mode: z.literal('manual').default('manual'),
+  // Defaults to target.url when omitted.
+  loginUrl: z.string().url().optional(),
+  // Save automatically after the browser reaches this URL. Without it, the
+  // user confirms login completion by pressing Enter in the terminal.
+  successUrl: z.string().url().optional(),
+  // Contains cookies/local storage/IndexedDB and must never be committed.
+  storageStatePath: z.string().min(1).default('./.apvg/auth/storage-state.json'),
+});
+export type WebAuthConfig = z.infer<typeof WebAuthConfigSchema>;
+
 export const TargetConfigSchema = z.object({
   url: z.string().url(),
   // Set by `project init` when --url is omitted. Analyze then adopts the
   // local readyUrl inferred by the LLM from the project's own start script.
   autoDetectUrl: z.boolean().default(false),
   type: z.enum(['web', 'cli', 'android', 'ios']).default('web'),
+  auth: WebAuthConfigSchema.optional(),
+  // Retained for compatibility. Authentication secrets are deliberately not
+  // read from this generic field; manual login persists browser state instead.
   credentials: z.record(z.string()).optional(),
   android: z.object({
     // All fields are optional: the recorder detects conventional Android,

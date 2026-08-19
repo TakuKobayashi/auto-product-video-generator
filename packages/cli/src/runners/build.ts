@@ -30,6 +30,7 @@ import { FfmpegRenderer } from '@auto-product-video-generator/renderer';
 import { resolveProjectSource, inspectProject, detectStartCommand, ensureAppRunning, findRepositoryRoot, loadSourceExcludePatterns } from '@auto-product-video-generator/source';
 import { exportArtifacts } from '../utils/export-artifacts.js';
 import { applyInferredTargetUrl } from '../utils/inferred-target.js';
+import { resolveWebStorageState } from '../utils/web-auth.js';
 
 interface BuildOptions {
   config?: string;
@@ -262,6 +263,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
     const recorder = createPlatformRecorder(scenario.meta.platform, config, {
       rootDir, repositoryRoot, workDir, setupSteps: scenario.setup, sourceExcludePatterns,
     });
+    const storageStatePath = resolveWebStorageState(config, scenario.meta.platform, dryRun);
     try {
       for (const scene of scenario.scenes) {
         const scriptIndex = script.scenes.findIndex((item) => item.id === scene.id);
@@ -275,6 +277,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
           outputDir: recordingsDir,
           screenshotDir,
           dryRun,
+          storageStatePath,
         }, targetDurationSeconds, scriptScene.endTime - scriptScene.startTime);
       }
     } finally {

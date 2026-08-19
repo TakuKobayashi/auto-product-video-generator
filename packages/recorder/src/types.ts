@@ -6,6 +6,8 @@ export interface PlatformRecordOptions {
   outputDir: string;
   screenshotDir: string;
   dryRun: boolean;
+  /** Used only by the Playwright web recorder. */
+  storageStatePath?: string;
 }
 
 export interface PlatformRecorder {
