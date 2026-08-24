@@ -86,18 +86,12 @@ export class ProjectAnalyzer {
     switch (summary.platform) {
       case 'cli':
         // CLI applications do not need a background development server.
-        // Keep finite preparation steps only, and ground demonstration
-        // commands in package.json's declared bin entry rather than accepting
-        // an invented executable name from the LLM.
+        // Keep the preparation steps selected from the actual README/scripts by
+        // the LLM. Do not blindly add install/build commands: some CLIs are
+        // already executable, and their toolchain is not necessarily Node.js.
+        // Ground demonstration commands in package.json's declared bin entry
+        // rather than accepting an invented executable name from the LLM.
         summary.setupSteps = summary.setupSteps.filter((step) => !step.background);
-        if (context.packageJson?.scripts?.build) {
-          summary.setupSteps.push({
-            name: 'Build CLI',
-            command: `${context.packageManager} run build`,
-            background: false,
-            readyTimeoutMs: 60000,
-          });
-        }
         const cliCommand = declaredCliHelpCommand(context);
         if (cliCommand) {
           summary.features = summary.features.map((feature) => ({
@@ -132,30 +126,18 @@ export class ProjectAnalyzer {
         break;
     }
 
-    // Installation belongs at the workspace root so workspace:* dependencies
-    // can be resolved. Application start commands still run in the selected app.
+    // When the LLM selected a dependency-install step for a workspace package,
+    // ground that particular step at the repository root so workspace:*
+    // dependencies can be resolved. Do not invent an install step when the
+    // analyzed CLI does not need one.
     if (context.projectPath !== '.') {
       const workspaceCwd = relative(context.rootDir, context.repositoryRoot) || '.';
       const installCommand = `${context.packageManager} install`;
       summary.setupSteps = summary.setupSteps.map((step) =>
-        /(?:^|\s)(?:install|ci)(?:\s|$)/i.test(step.command) ||
-        /install dependencies/i.test(step.name)
+        isNodePackageManagerInstall(step.command)
           ? { ...step, command: installCommand, cwd: workspaceCwd }
           : step
       );
-      if (
-        !summary.setupSteps.some(
-          (step) => step.command === installCommand && step.cwd === workspaceCwd
-        )
-      ) {
-        summary.setupSteps.unshift({
-          name: 'Install workspace dependencies',
-          command: installCommand,
-          cwd: workspaceCwd,
-          background: false,
-          readyTimeoutMs: 60000,
-        });
-      }
     }
 
     logger.success(
@@ -179,6 +161,12 @@ export class ProjectAnalyzer {
     }
     return summary;
   }
+}
+
+function isNodePackageManagerInstall(command: string): boolean {
+  return /^(?:corepack\s+)?(?:npm|pnpm|yarn|bun)\s+(?:install|i|ci)(?:\s|$)/i.test(
+    command.trim()
+  );
 }
 
 function declaredCliHelpCommand(context: ProjectSourceContext): string | undefined {
@@ -248,9 +236,17 @@ ${buildSetupPlanningPrompt(targetUrl, platformHint)}
 
 Workspace rule: the source resolver has already selected the application shown above.
 Do not search for or start a different workspace package. If the selected path is not
-".", dependency installation must run at the repository root using
-"${context.packageManager} install"; the application start command runs in the selected
-application directory.
+".", any dependency installation you determine is necessary must run at the repository
+root using "${context.packageManager} install"; other commands run in the selected
+application directory unless the project's own documentation requires otherwise.
+
+CLI setup rule: decide setupSteps from this repository's README, package scripts, bin
+entry, lockfile/package manager, and file layout. Include only the preparation actually
+needed to make the declared CLI entry executable from a fresh checkout. For example,
+install dependencies only when the CLI depends on installed packages, and run a build
+script only when the declared bin needs generated output. Do not assume pnpm, npm, yarn,
+or bun merely because the project is a CLI; this repository's detected package manager
+is "${context.packageManager}". Never add a dev server for a CLI.
 
 Based on all of the above: first classify the platform (see "Platform classification"),
 then produce the setup plan (see "Setup plan"), then identify the features that are

@@ -65,6 +65,7 @@ describe('ProjectAnalyzer setup grounding', () => {
           platform: 'cli',
           setupSteps: [
             { name: 'Install dependencies', command: 'npm install', background: false },
+            { name: 'Build CLI', command: 'npm run build', background: false },
             {
               name: 'Start application',
               command: 'npm run dev',
@@ -109,9 +110,81 @@ describe('ProjectAnalyzer setup grounding', () => {
 
     expect(summary.setupSteps).toEqual([
       expect.objectContaining({ command: 'pnpm install', cwd: '..\\..', background: false }),
-      expect.objectContaining({ command: 'pnpm run build', background: false }),
+      expect.objectContaining({ command: 'npm run build', background: false }),
     ]);
     expect(summary.setupSteps.every((step) => !step.background)).toBe(true);
     expect(summary.features[0].command).toBe('node packages/cli/bin/example.js --help');
+  });
+
+  it('does not invent install or build steps for an already executable CLI', async () => {
+    const llm: LlmProvider = {
+      generate: async () => '',
+      generateJson: async <T>() =>
+        ({
+          name: 'Standalone CLI',
+          description: 'Example',
+          platform: 'cli',
+          setupSteps: [],
+          features: [],
+          targetAudience: 'Everyone',
+          keyValueProps: [],
+          suggestedVideoTypes: ['demo'],
+        }) as T,
+    };
+    const context = {
+      rootDir: 'C:\\repo\\tools\\standalone',
+      repositoryRoot: 'C:\\repo',
+      projectPath: 'tools\\standalone',
+      packageManager: 'npm',
+      packageJson: { name: 'standalone', bin: { standalone: 'bin/standalone.js' } },
+      readme: 'Run node bin/standalone.js --help.',
+      framework: 'unknown',
+      routes: [],
+      fileTree: [],
+      platformHints: ['package.json declares bin command(s)'],
+      assetFiles: [],
+    } as ProjectSourceContext;
+
+    const summary = await new ProjectAnalyzer(llm).analyze(context);
+
+    expect(summary.setupSteps).toEqual([]);
+  });
+
+  it('preserves non-Node setup commands for a CLI in a subdirectory', async () => {
+    const llm: LlmProvider = {
+      generate: async () => '',
+      generateJson: async <T>() =>
+        ({
+          name: 'Python CLI',
+          description: 'Example',
+          platform: 'cli',
+          setupSteps: [
+            { name: 'Install Python package', command: 'pip install -e .', background: false },
+          ],
+          features: [],
+          targetAudience: 'Everyone',
+          keyValueProps: [],
+          suggestedVideoTypes: ['demo'],
+        }) as T,
+    };
+    const context = {
+      rootDir: 'C:\\repo\\tools\\python-cli',
+      repositoryRoot: 'C:\\repo',
+      projectPath: 'tools\\python-cli',
+      packageManager: 'npm',
+      packageJson: null,
+      readme: 'Install with pip install -e .',
+      framework: 'unknown',
+      routes: [],
+      fileTree: ['pyproject.toml'],
+      platformHints: [],
+      assetFiles: [],
+    } as ProjectSourceContext;
+
+    const summary = await new ProjectAnalyzer(llm).analyze(context);
+
+    expect(summary.setupSteps).toEqual([
+      expect.objectContaining({ command: 'pip install -e .', background: false }),
+    ]);
   });
 });
