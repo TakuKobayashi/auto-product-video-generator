@@ -95,7 +95,11 @@ export class CliRecorder implements PlatformRecorder {
             await appendTerminal(page, `${output}\n`, outputDelay(output, targetDurationSeconds));
           if (result.code !== 0) {
             await appendTerminal(page, `[exit ${result.code}]\n`, 8);
-            failure = new Error(`CLI command failed (${result.code}): ${action.command}`);
+            const details = stripAnsi(result.stderr || result.stdout).trim();
+            failure = new Error(
+              `CLI command failed (${result.code}): ${action.command}` +
+                (details ? `\n\n${details}` : '')
+            );
             break;
           }
         } else if (action.type === 'wait') {

@@ -7,7 +7,9 @@ import {
   withHeartbeat,
 } from '@auto-product-video-generator/core';
 import { detectStartCommand, ProjectSourceContext } from '@auto-product-video-generator/source';
-import { relative } from 'node:path';
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { dirname, relative, resolve } from 'node:path';
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
 import { buildPlatformClassificationPrompt } from './platform-classifier.js';
@@ -92,6 +94,17 @@ export class ProjectAnalyzer {
         // Ground demonstration commands in package.json's declared bin entry
         // rather than accepting an invented executable name from the LLM.
         summary.setupSteps = summary.setupSteps.filter((step) => !step.background);
+        if (
+          (await cliBuildRequired(context)) &&
+          !summary.setupSteps.some((step) => isBuildStep(step.command))
+        ) {
+          summary.setupSteps.push({
+            name: 'Build CLI',
+            command: `${context.packageManager} run build`,
+            background: false,
+            readyTimeoutMs: 60000,
+          });
+        }
         const cliCommand = declaredCliHelpCommand(context);
         if (cliCommand) {
           summary.features = summary.features.map((feature) => ({
@@ -167,6 +180,41 @@ function isNodePackageManagerInstall(command: string): boolean {
   return /^(?:corepack\s+)?(?:npm|pnpm|yarn|bun)\s+(?:install|i|ci)(?:\s|$)/i.test(
     command.trim()
   );
+}
+
+function isBuildStep(command: string): boolean {
+  return /^(?:corepack\s+)?(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:build|compile)(?:\s|$)/i.test(
+    command.trim()
+  );
+}
+
+async function cliBuildRequired(context: ProjectSourceContext): Promise<boolean> {
+  if (!context.packageJson?.scripts?.build || !context.packageJson.bin) return false;
+  const entries =
+    typeof context.packageJson.bin === 'string'
+      ? [context.packageJson.bin]
+      : Object.values(context.packageJson.bin);
+
+  for (const entry of entries) {
+    const binPath = resolve(context.rootDir, entry);
+    if (!existsSync(binPath)) return true;
+    try {
+      const source = await readFile(binPath, 'utf8');
+      const relativeImports = [...source.matchAll(/(?:from\s*|import\s*\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g)];
+      if (
+        relativeImports.some(
+          (match) =>
+            /(?:^|\/)(?:dist|build|out)\//.test(match[1].replaceAll('\\', '/')) ||
+            !existsSync(resolve(dirname(binPath), match[1]))
+        )
+      ) {
+        return true;
+      }
+    } catch {
+      return true;
+    }
+  }
+  return false;
 }
 
 function declaredCliHelpCommand(context: ProjectSourceContext): string | undefined {

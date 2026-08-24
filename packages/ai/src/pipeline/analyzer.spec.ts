@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProjectSourceContext } from '@auto-product-video-generator/source';
 import type { LlmProvider } from '../llm/provider.js';
 import { ProjectAnalyzer } from './analyzer.js';
+import { join } from 'node:path';
 
 describe('ProjectAnalyzer setup grounding', () => {
   it('runs the selected workspace application command from its own directory', async () => {
@@ -185,6 +186,50 @@ describe('ProjectAnalyzer setup grounding', () => {
 
     expect(summary.setupSteps).toEqual([
       expect.objectContaining({ command: 'pip install -e .', background: false }),
+    ]);
+  });
+
+  it('adds the real build script when the declared bin references a missing artifact', async () => {
+    const llm: LlmProvider = {
+      generate: async () => '',
+      generateJson: async <T>() =>
+        ({
+          name: 'APVG',
+          description: 'Example',
+          platform: 'cli',
+          setupSteps: [
+            { name: 'Install dependencies', command: 'pnpm install', background: false },
+          ],
+          features: [],
+          targetAudience: 'Everyone',
+          keyValueProps: [],
+          suggestedVideoTypes: ['demo'],
+        }) as T,
+    };
+    const repositoryRoot = process.cwd();
+    const context = {
+      rootDir: join(repositoryRoot, 'packages', 'cli'),
+      repositoryRoot,
+      projectPath: join('packages', 'cli'),
+      packageManager: 'pnpm',
+      packageJson: {
+        name: 'auto-product-video-generator',
+        scripts: { build: 'node build.mjs' },
+        bin: { apvg: 'bin/apvg.js' },
+      },
+      readme: '',
+      framework: 'unknown',
+      routes: [],
+      fileTree: [],
+      platformHints: ['package.json declares bin command(s)'],
+      assetFiles: [],
+    } as ProjectSourceContext;
+
+    const summary = await new ProjectAnalyzer(llm).analyze(context);
+
+    expect(summary.setupSteps).toEqual([
+      expect.objectContaining({ command: 'pnpm install', cwd: join('..', '..') }),
+      expect.objectContaining({ command: 'pnpm run build', background: false }),
     ]);
   });
 });
