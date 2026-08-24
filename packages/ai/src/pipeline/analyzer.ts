@@ -9,7 +9,7 @@ import {
 import { detectStartCommand, ProjectSourceContext } from '@auto-product-video-generator/source';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { dirname, relative, resolve } from 'node:path';
+import { dirname, relative, resolve, win32 } from 'node:path';
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
 import { buildPlatformClassificationPrompt } from './platform-classifier.js';
@@ -142,7 +142,7 @@ export class ProjectAnalyzer {
     // dependencies can be resolved. Do not invent an install step when the
     // analyzed CLI does not need one.
     if (context.projectPath !== '.') {
-      const workspaceCwd = relative(context.rootDir, context.repositoryRoot) || '.';
+      const workspaceCwd = crossPlatformRelative(context.rootDir, context.repositoryRoot) || '.';
       const installCommand = `${context.packageManager} install`;
       summary.setupSteps = summary.setupSteps.map((step) =>
         isNodePackageManagerInstall(step.command)
@@ -174,10 +174,13 @@ export class ProjectAnalyzer {
   }
 }
 
+function crossPlatformRelative(from: string, to: string): string {
+  const windowsPaths = /^[A-Za-z]:[\\/]/.test(from) && /^[A-Za-z]:[\\/]/.test(to);
+  return windowsPaths ? win32.relative(from, to) : relative(from, to);
+}
+
 function isNodePackageManagerInstall(command: string): boolean {
-  return /^(?:corepack\s+)?(?:npm|pnpm|yarn|bun)\s+(?:install|i|ci)(?:\s|$)/i.test(
-    command.trim()
-  );
+  return /^(?:corepack\s+)?(?:npm|pnpm|yarn|bun)\s+(?:install|i|ci)(?:\s|$)/i.test(command.trim());
 }
 
 function isBuildStep(command: string): boolean {
@@ -198,7 +201,9 @@ async function cliBuildRequired(context: ProjectSourceContext): Promise<boolean>
     if (!existsSync(binPath)) return true;
     try {
       const source = await readFile(binPath, 'utf8');
-      const relativeImports = [...source.matchAll(/(?:from\s*|import\s*\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g)];
+      const relativeImports = [
+        ...source.matchAll(/(?:from\s*|import\s*\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g),
+      ];
       if (
         relativeImports.some(
           (match) =>
@@ -237,7 +242,8 @@ function groundDeclaredCliCommand(
   const entries = typeof bin === 'string' ? [['', bin]] : Object.entries(bin);
   const normalized = proposed.trim().replace(/\s+/g, ' ');
   for (const [name, entry] of entries) {
-    const projectPath = context.projectPath === '.' ? '' : `${context.projectPath.replaceAll('\\', '/')}/`;
+    const projectPath =
+      context.projectPath === '.' ? '' : `${context.projectPath.replaceAll('\\', '/')}/`;
     const invocation = `node ${projectPath}${entry.replace(/^\.\//, '')}`;
     const finalFlag = proposed.trim().split(/\s+/).at(-1);
     const safeFlag = ['--help', '-h', '--version', '-v', '--dry-run'].includes(

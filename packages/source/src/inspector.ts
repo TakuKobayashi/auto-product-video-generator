@@ -262,7 +262,13 @@ async function discoverCliCommandPaths(
   const sourceFiles = files.filter((file) => /\.(?:ts|tsx|js|mjs|cjs)$/i.test(file));
   const definitions = new Map<
     string,
-    { command?: string; defaultCommand?: string; children: Array<{ fn: string; arg?: string }>; direct: string[]; dryRun: boolean }
+    {
+      command?: string;
+      defaultCommand?: string;
+      children: Array<{ fn: string; arg?: string }>;
+      direct: string[];
+      dryRun: boolean;
+    }
   >();
   let rootSource = '';
 
@@ -341,8 +347,10 @@ async function readCliSourceExcerpt(rootDir: string, files: string[]): Promise<s
     .filter((item): item is { file: string; source: string } => Boolean(item))
     .sort((a, b) => {
       const priority = (source: string, file: string) =>
-        (/addCommand\s*\(/.test(source) ? 0 : /(?:^|\/)index\./i.test(file) ? 1 : 2);
-      return priority(a.source, a.file) - priority(b.source, b.file) || a.file.localeCompare(b.file);
+        /addCommand\s*\(/.test(source) ? 0 : /(?:^|\/)index\./i.test(file) ? 1 : 2;
+      return (
+        priority(a.source, a.file) - priority(b.source, b.file) || a.file.localeCompare(b.file)
+      );
     });
   let excerpt = '';
   for (const { file, source } of ordered) {
