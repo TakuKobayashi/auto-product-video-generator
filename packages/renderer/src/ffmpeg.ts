@@ -119,14 +119,22 @@ export class FfmpegRenderer {
         .map((t, i) => {
           const idx = vOffset + i;
           const delay = Math.round(t.startTime * 1000);
-          const vol = t.volume ?? 0.9;
+          const vol = t.volume ?? 1.0;
           return `[${idx}:a]adelay=${delay}|${delay},volume=${vol}[a${i}]`;
         })
         .join(';');
 
       const aMixInputs = audioTracks.map((_, i) => `[a${i}]`).join('');
       filterParts.push(audioInputs);
-      filterParts.push(`${aMixInputs}amix=inputs=${audioTracks.length}:duration=longest[aout]`);
+      // amix defaults to normalize=1, which attenuates early narration by
+      // the total number of delayed clips and makes the beginning sound much
+      // quieter. Keep each clip at its intended gain, then normalize the
+      // completed narration to a loud, speech-friendly level. TP=-1 protects
+      // against clipping during AAC encoding.
+      filterParts.push(
+        `${aMixInputs}amix=inputs=${audioTracks.length}:duration=longest:normalize=0,` +
+          `loudnorm=I=-14:LRA=7:TP=-1[aout]`
+      );
     }
 
     args.push('-filter_complex', filterParts.join(';'));

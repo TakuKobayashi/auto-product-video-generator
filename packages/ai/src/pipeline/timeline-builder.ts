@@ -45,7 +45,7 @@ export class TimelineBuilder {
         src: scene.voiceFile,
         startTime: scene.startTime,
         endTime: scene.endTime,
-        volume: 0.9,
+        volume: 1.0,
       });
 
       // Subtitle tracks are display-only slices of the original narration.
