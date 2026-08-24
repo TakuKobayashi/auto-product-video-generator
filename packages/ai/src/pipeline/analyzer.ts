@@ -6,7 +6,7 @@ import {
   logger,
   withHeartbeat,
 } from '@auto-product-video-generator/core';
-import { ProjectSourceContext } from '@auto-product-video-generator/source';
+import { detectStartCommand, ProjectSourceContext } from '@auto-product-video-generator/source';
 import { relative } from 'node:path';
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
@@ -92,11 +92,23 @@ export class ProjectAnalyzer {
       case 'web':
         // Whatever URL the LLM guessed for a background server, replace it
         // with the actual configured target used by Playwright.
-        if (targetUrl) {
-          summary.setupSteps = summary.setupSteps.map((step) =>
-            step.background ? { ...step, readyUrl: targetUrl } : step
-          );
-        }
+        // Also ground the start command in the selected application's
+        // package.json. Setup steps execute relative to context.rootDir, so an
+        // LLM-generated workspace command such as `pnpm --dir apps/web dev`
+        // would otherwise resolve to `apps/web/apps/web`.
+        const detectedStartCommand = detectStartCommand(
+          context.packageJson,
+          context.packageManager
+        );
+        summary.setupSteps = summary.setupSteps.map((step) =>
+          step.background
+            ? {
+                ...step,
+                ...(detectedStartCommand ? { command: detectedStartCommand, cwd: undefined } : {}),
+                ...(targetUrl ? { readyUrl: targetUrl } : {}),
+              }
+            : step
+        );
         break;
     }
 
