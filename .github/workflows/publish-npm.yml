@@ -57,16 +57,7 @@ jobs:
         run: pnpm build
 
       - name: Verify npm authentication
-        run: |
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || {
-            echo "GitHub OIDC is unavailable; check the id-token: write permission." >&2
-            exit 1
-          }
-          test -z "${NODE_AUTH_TOKEN:-}" || {
-            echo "NODE_AUTH_TOKEN must not be set when using trusted publishing." >&2
-            exit 1
-          }
-          npm --version
+        run: node .github/automation/verify-npm-auth.mjs
 
       - name: Publish CLI
         working-directory: packages/cli
@@ -76,39 +67,7 @@ jobs:
 
       - name: Collect npm publish diagnostics
         if: failure()
-        run: |
-          diagnostics="$RUNNER_TEMP/npm-publish-diagnostics"
-          mkdir -p "$diagnostics/npm-logs"
-
-          npm --version > "$diagnostics/npm-version.txt"
-          node --version > "$diagnostics/node-version.txt"
-          npm config get registry > "$diagnostics/registry.txt"
-
-          {
-            echo "repository=${GITHUB_REPOSITORY}"
-            echo "workflow_ref=${GITHUB_WORKFLOW_REF}"
-            echo "ref=${GITHUB_REF}"
-            echo "runner_environment=${RUNNER_ENVIRONMENT}"
-            if [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
-              echo "oidc_request_url=present"
-            else
-              echo "oidc_request_url=missing"
-            fi
-            if [ -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
-              echo "oidc_request_token=present"
-            else
-              echo "oidc_request_token=missing"
-            fi
-            if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
-              echo "node_auth_token=present"
-            else
-              echo "node_auth_token=missing"
-            fi
-          } > "$diagnostics/environment.txt"
-
-          if [ -d "$HOME/.npm/_logs" ]; then
-            cp -R "$HOME/.npm/_logs/." "$diagnostics/npm-logs/"
-          fi
+        run: node .github/automation/collect-npm-publish-diagnostics.mjs
 
       - name: Upload npm publish diagnostics
         if: failure()
@@ -123,7 +82,7 @@ jobs:
     name: Create GitHub Release
     needs: publish
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
@@ -134,10 +93,10 @@ jobs:
 
       - name: Create AI-generated release notes
         id: release-notes
-        uses: ./.github/actions/ai-release-notes
+        uses: TakuKobayashi/auto-generate-release-note@v1
         with:
           github-token: ${{ github.token }}
           tag: ${{ github.ref_name }}
           model: qwen2.5-coder:7b-instruct
-          language: jp
+          language: ja
           bilingual: 'true'
