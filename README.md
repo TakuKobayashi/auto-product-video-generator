@@ -1,5 +1,53 @@
 # auto-product-video-generator
 
+## GitHub Action
+
+Generate a narrated promotional video on an Ubuntu GitHub-hosted runner. The
+action uses Ollama for local scenario generation, VOICEVOX for Japanese
+narration, Playwright for recording, and FFmpeg for rendering.
+
+```yaml
+name: Generate product video
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v6
+      - id: apvg
+        uses: TakuKobayashi/auto-product-video-generator@v1
+        with:
+          apvg-version: latest
+          video-type: demo
+          ollama-model: qwen2.5:7b-instruct
+      - uses: actions/upload-artifact@v7
+        with:
+          name: promotional-video
+          path: ${{ steps.apvg.outputs['artifacts-path'] }}
+```
+
+By default, the action analyzes the repository in which the workflow is running,
+checked out into `github.workspace`. To generate a video for another public
+repository, set `repository` to its Git URL. Optional inputs include
+`apvg-version`, `ref`, `project-path`, `target-url`, `voicevox-speaker`,
+`voicevox-image`, `output-directory`, and `preview`.
+
+The Marketplace action is intentionally a thin wrapper around the npm package.
+It installs `auto-product-video-generator@latest` by default; pin `apvg-version`
+to an npm version such as `0.3.0` when reproducibility is more important than
+automatically receiving CLI updates.
+
+The action currently requires an Ubuntu/Linux runner with Docker and `sudo`.
+The generated MP4 path is available as `steps.<id>.outputs.video-path`; the
+complete output directory is `steps.<id>.outputs.artifacts-path`.
+
 AI-powered promotional video generator for web, CLI, and Android applications.
 APVG reads a real git-managed project, plans the presentation, records the
 application, and produces a narrated video.

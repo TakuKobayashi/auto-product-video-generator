@@ -1,5 +1,40 @@
 # auto-product-video-generator
 
+## GitHub Action
+
+UbuntuのGitHub-hosted runner上で、対象リポジトリの解析、シナリオ生成、VOICEVOX音声生成、画面録画、動画レンダリングまで実行できます。
+
+```yaml
+name: Generate product video
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v6
+      - id: apvg
+        uses: TakuKobayashi/auto-product-video-generator@v1
+        with:
+          apvg-version: latest
+          video-type: demo
+          ollama-model: qwen2.5:7b-instruct
+      - uses: actions/upload-artifact@v7
+        with:
+          name: promotional-video
+          path: ${{ steps.apvg.outputs['artifacts-path'] }}
+```
+
+既定では、workflowが実行されているリポジトリ自身をcheckoutして解析します。別の公開リポジトリを対象にする場合だけ、`repository`へGit URLを指定してください。生成されたMP4は`video-path`、中間ファイルを含む出力ディレクトリは`artifacts-path`から取得できます。
+
+Marketplace Actionはnpmパッケージの薄いラッパーです。既定では`auto-product-video-generator@latest`をインストールします。再現性を優先する場合は、`apvg-version: 0.3.0`のようにnpmバージョンを固定できます。
+
 Web、CLI、Androidアプリ向けのAIプロモーション動画自動生成ツールです。実在するgit管理プロジェクトを
 指定すると、実際のソースコードを読み込み、録画計画を立て、ブラウザまたはAndroid端末を操作し、
 ナレーション付きの動画を生成します。

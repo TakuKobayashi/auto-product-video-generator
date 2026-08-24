@@ -1,0 +1,257 @@
+name: Auto Product Video Generator
+description: Generate an AI-narrated promotional video from a Git repository
+author: TakuKobayashi
+
+branding:
+  icon: video
+  color: purple
+
+inputs:
+  apvg-version:
+    description: auto-product-video-generator npm version to install
+    required: false
+    default: latest
+  repository:
+    description: Git repository URL to analyze; when omitted, uses the repository running this workflow
+    required: false
+    default: ''
+  ref:
+    description: Branch, tag, or commit to use when repository is provided
+    required: false
+    default: ''
+  project-path:
+    description: Application path inside a monorepo; normally detected automatically
+    required: false
+    default: ''
+  video-type:
+    description: Video format (teaser, shorts, demo, or tutorial)
+    required: false
+    default: demo
+  target-url:
+    description: Local application URL; leave empty to detect it from the project
+    required: false
+    default: ''
+  ollama-model:
+    description: Ollama model used for project analysis and scenario generation
+    required: false
+    default: qwen2.5:7b-instruct
+  voicevox-speaker:
+    description: VOICEVOX speaker ID used for Japanese narration
+    required: false
+    default: '3'
+  voicevox-image:
+    description: VOICEVOX Engine Docker image
+    required: false
+    default: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+  output-directory:
+    description: Output directory, relative to the workflow workspace or absolute
+    required: false
+    default: apvg-output
+  preview:
+    description: Render a faster, lower-quality preview
+    required: false
+    default: 'false'
+
+outputs:
+  video-path:
+    description: Absolute path to the generated MP4 file
+    value: ${{ steps.result.outputs['video-path'] }}
+  artifacts-path:
+    description: Absolute path containing the video and intermediate artifacts
+    value: ${{ steps.result.outputs['artifacts-path'] }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+        package-manager-cache: false
+
+    - name: Validate inputs and prepare paths
+      shell: bash
+      env:
+        VIDEO_TYPE: ${{ inputs['video-type'] }}
+        VOICEVOX_SPEAKER: ${{ inputs['voicevox-speaker'] }}
+        OUTPUT_DIRECTORY: ${{ inputs['output-directory'] }}
+      run: |
+        set -Eeuo pipefail
+        [[ "${RUNNER_OS:-Linux}" == "Linux" ]] || {
+          echo "::error::This action requires an Ubuntu/Linux runner."
+          exit 1
+        }
+        [[ "$VIDEO_TYPE" =~ ^(teaser|shorts|demo|tutorial)$ ]] || {
+          echo "::error::video-type must be teaser, shorts, demo, or tutorial"
+          exit 1
+        }
+        [[ "$VOICEVOX_SPEAKER" =~ ^[0-9]+$ ]] || {
+          echo "::error::voicevox-speaker must be a non-negative integer"
+          exit 1
+        }
+        run_dir="$RUNNER_TEMP/apvg-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
+        if [[ "$OUTPUT_DIRECTORY" = /* ]]; then
+          output_dir="$OUTPUT_DIRECTORY"
+        else
+          output_dir="$GITHUB_WORKSPACE/$OUTPUT_DIRECTORY"
+        fi
+        mkdir -p "$run_dir" "$output_dir"
+        echo "APVG_RUN_DIR=$run_dir" >> "$GITHUB_ENV"
+        echo "APVG_OUTPUT_DIR=$output_dir" >> "$GITHUB_ENV"
+        echo "APVG_CONFIG=$run_dir/apvg.config.yml" >> "$GITHUB_ENV"
+
+    - name: Install APVG from npm
+      shell: bash
+      env:
+        APVG_VERSION: ${{ inputs['apvg-version'] }}
+      run: |
+        npm install --global "auto-product-video-generator@$APVG_VERSION"
+        echo "APVG_PACKAGE_ROOT=$(npm root --global)/auto-product-video-generator" >> "$GITHUB_ENV"
+        apvg --version
+
+    - name: Install Playwright Chromium
+      shell: bash
+      run: |
+        playwright_cli=$(node --input-type=module -e '
+          import { createRequire } from "node:module";
+          import { dirname, join } from "node:path";
+          const require = createRequire(`${process.env.APVG_PACKAGE_ROOT}/package.json`);
+          console.log(join(dirname(require.resolve("playwright/package.json")), "cli.js"));
+        ')
+        node "$playwright_cli" install --with-deps chromium
+
+    - name: Install FFmpeg
+      shell: bash
+      run: |
+        if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+        fi
+        echo "FFMPEG_PATH=$(command -v ffmpeg)" >> "$GITHUB_ENV"
+        echo "FFPROBE_PATH=$(command -v ffprobe)" >> "$GITHUB_ENV"
+
+    - name: Install Ollama
+      shell: bash
+      run: |
+        if ! command -v ollama >/dev/null 2>&1; then
+          curl -fsSL https://ollama.com/install.sh | sh
+        fi
+
+    - name: Start Ollama
+      shell: bash
+      run: |
+        echo "OLLAMA_HOST=http://127.0.0.1:11434" >> "$GITHUB_ENV"
+        nohup ollama serve > "$APVG_RUN_DIR/ollama.log" 2>&1 &
+        for attempt in $(seq 1 60); do
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null && exit 0
+          [[ "$attempt" -lt 60 ]] || {
+            echo "::error::Ollama did not become ready"
+            exit 1
+          }
+          sleep 2
+        done
+
+    - name: Download Ollama model
+      shell: bash
+      env:
+        OLLAMA_MODEL: ${{ inputs['ollama-model'] }}
+        OLLAMA_HOST: http://127.0.0.1:11434
+        OLLAMA_NUM_PARALLEL: '1'
+      run: ollama pull "$OLLAMA_MODEL"
+
+    - name: Initialize APVG project
+      shell: bash
+      env:
+        REPOSITORY: ${{ inputs.repository }}
+        REPOSITORY_REF: ${{ inputs.ref }}
+        PROJECT_PATH: ${{ inputs['project-path'] }}
+        VIDEO_TYPE: ${{ inputs['video-type'] }}
+        TARGET_URL: ${{ inputs['target-url'] }}
+      run: |
+        args=(project init "$APVG_RUN_DIR" --type "$VIDEO_TYPE" --force)
+        if [[ -n "$REPOSITORY" ]]; then
+          args+=(--repo "$REPOSITORY")
+          [[ -z "$REPOSITORY_REF" ]] || args+=(--ref "$REPOSITORY_REF")
+        else
+          args+=(--source "$GITHUB_WORKSPACE")
+        fi
+        [[ -z "$PROJECT_PATH" ]] || args+=(--project-path "$PROJECT_PATH")
+        [[ -z "$TARGET_URL" ]] || args+=(--url "$TARGET_URL")
+        apvg "${args[@]}"
+
+    - name: Configure CI generation
+      shell: bash
+      env:
+        APVG_MODEL: ${{ inputs['ollama-model'] }}
+        APVG_VOICEVOX_SPEAKER: ${{ inputs['voicevox-speaker'] }}
+      run: node "${{ github.action_path }}/.github/automation/configure-ci-apvg.mjs"
+
+    - name: Analyze project
+      shell: bash
+      run: apvg project analyze --config "$APVG_CONFIG"
+
+    - name: Generate recording scenario
+      shell: bash
+      run: apvg video scenario generate --config "$APVG_CONFIG"
+
+    - name: Release Ollama resources
+      shell: bash
+      env:
+        OLLAMA_MODEL: ${{ inputs['ollama-model'] }}
+      run: ollama stop "$OLLAMA_MODEL" || true
+
+    - name: Start VOICEVOX Engine
+      shell: bash
+      env:
+        VOICEVOX_IMAGE: ${{ inputs['voicevox-image'] }}
+      run: |
+        docker run -d --rm --name apvg-voicevox-action -p 50021:50021 "$VOICEVOX_IMAGE"
+        for attempt in $(seq 1 90); do
+          curl -fsS http://127.0.0.1:50021/version >/dev/null && exit 0
+          [[ "$attempt" -lt 90 ]] || {
+            docker logs apvg-voicevox-action || true
+            echo "::error::VOICEVOX Engine did not become ready"
+            exit 1
+          }
+          sleep 2
+        done
+
+    - name: Synthesize narration
+      shell: bash
+      run: apvg video voice --config "$APVG_CONFIG"
+
+    - name: Record application
+      shell: bash
+      run: apvg video record --config "$APVG_CONFIG"
+
+    - name: Render promotional video
+      shell: bash
+      env:
+        PREVIEW: ${{ inputs.preview }}
+      run: |
+        args=(video render --config "$APVG_CONFIG" --ffmpeg "$FFMPEG_PATH")
+        [[ "$PREVIEW" != "true" ]] || args+=(--preview)
+        apvg "${args[@]}"
+
+    - name: Set action outputs
+      id: result
+      shell: bash
+      run: |
+        video_path="$APVG_OUTPUT_DIR/final.mp4"
+        [[ -f "$video_path" ]] || {
+          echo "::error::Expected output was not created: $video_path"
+          exit 1
+        }
+        echo "video-path=$video_path" >> "$GITHUB_OUTPUT"
+        echo "artifacts-path=$APVG_OUTPUT_DIR" >> "$GITHUB_OUTPUT"
+        echo "### Auto Product Video Generator" >> "$GITHUB_STEP_SUMMARY"
+        echo "Generated: \`$video_path\`" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Stop managed services
+      if: always()
+      shell: bash
+      env:
+        OLLAMA_MODEL: ${{ inputs['ollama-model'] }}
+      run: |
+        docker rm -f apvg-voicevox-action >/dev/null 2>&1 || true
+        command -v ollama >/dev/null 2>&1 && ollama stop "$OLLAMA_MODEL" >/dev/null 2>&1 || true

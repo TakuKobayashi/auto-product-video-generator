@@ -1,15 +1,10 @@
-name: Generate promotional video
+name: Test Marketplace action
 
 on:
   push:
     branches:
-      - main
+      - generate-video
   workflow_dispatch:
-    inputs:
-      target_repository:
-        description: Git repository URL of the project to record
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -24,162 +19,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
-    env:
-      # Manual runs can override the target. Push-triggered runs currently use
-      # this web application until APVG can generate videos for CLI projects.
-      TARGET_REPOSITORY: ${{ inputs.target_repository || 'https://github.com/TakuKobayashi/fullstack-media-converter.git' }}
-      OLLAMA_HOST: http://127.0.0.1:11434
-      OLLAMA_KEEP_ALIVE: -1
-      OLLAMA_NUM_PARALLEL: 1
-      VOICEVOX_IMAGE: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
-      FFMPEG_PATH: /usr/bin/ffmpeg
-      FFPROBE_PATH: /usr/bin/ffprobe
-
     steps:
-      - name: Check out video generator
+      - name: Check out action repository
         uses: actions/checkout@v6
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - name: Generate promotional video
+        id: apvg
+        uses: ./
         with:
-          node-version: 22
-          package-manager-cache: false
-
-      - name: Enable pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@10.30.1 --activate
-
-      - name: Install project dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Initialize configuration for the selected target
-        run: |
-          pnpm apvg project init \
-            --repo "$TARGET_REPOSITORY" \
-            --type demo \
-            --force
-
-      - name: Read Ollama models from configuration
-        run: |
-          models=$(node -e '
-            const fs = require("node:fs");
-            const yaml = require("js-yaml");
-            const config = yaml.load(fs.readFileSync("apvg.config.yml", "utf8"));
-            const llm = config?.llm || {};
-            const models = new Set();
-            const add = (provider, model) => {
-              if (provider === "ollama" && model) models.add(model);
-            };
-            add(llm.provider, llm.model);
-            add(llm.fallbackProvider, llm.fallbackModel || llm.model);
-            for (const task of Object.values(llm.tasks || {})) {
-              add(task.provider || llm.provider, task.model || llm.model);
-            }
-            if (models.size === 0) throw new Error("No Ollama model is configured in apvg.config.yml");
-            process.stdout.write([...models].join(" "));
-          ')
-          echo "OLLAMA_MODELS=$models" >> "$GITHUB_ENV"
-          echo "Using configured Ollama model(s): $models"
-
-      - name: Remove stale generated build files
-        run: pnpm clean
-
-      - name: Install Playwright Chromium and Linux dependencies
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Install system ffmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes ffmpeg
-          test -x "$FFMPEG_PATH"
-          test -x "$FFPROBE_PATH"
-          "$FFMPEG_PATH" -version | head -1
-          "$FFPROBE_PATH" -version | head -1
-
-      - name: Install Ollama
-        run: curl -fsSL https://ollama.com/install.sh | sh
-
-      - name: Start Ollama and download CI model
-        run: |
-          nohup ollama serve > ollama.log 2>&1 &
-          for attempt in $(seq 1 60); do
-            if curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null; then
-              break
-            fi
-            if [ "$attempt" -eq 60 ]; then
-              echo "Ollama did not become ready" >&2
-              exit 1
-            fi
-            sleep 2
-          done
-          for model in $OLLAMA_MODELS; do
-            ollama pull "$model"
-          done
-
-      - name: Analyze project
-        run: pnpm apvg project analyze
-
-      - name: Generate recording scenario
-        run: pnpm apvg video scenario generate
-
-      - name: Release Ollama resources before media processing
-        run: |
-          for model in $OLLAMA_MODELS; do
-            ollama stop "$model" || true
-            ollama rm "$model" || true
-          done
-
-      - name: Start VOICEVOX Engine
-        run: |
-          docker run -d --rm \
-            --name apvg-voicevox \
-            -p 50021:50021 \
-            "$VOICEVOX_IMAGE"
-          for attempt in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1:50021/version >/dev/null; then
-              break
-            fi
-            if [ "$attempt" -eq 90 ]; then
-              echo "VOICEVOX Engine did not become ready" >&2
-              docker logs apvg-voicevox
-              exit 1
-            fi
-            sleep 2
-          done
-
-      - name: Synthesize narration
-        run: pnpm apvg video voice
-
-      - name: Record browser interactions
-        run: pnpm apvg video record
-
-      - name: Render promotional video
-        run: pnpm apvg video render
+          apvg-version: latest
+          video-type: demo
+          ollama-model: qwen2.5:7b-instruct
+          output-directory: apvg-output
 
       - name: Upload final video and intermediate artifacts
         uses: actions/upload-artifact@v7
         with:
           name: promotional-video-${{ github.run_number }}
-          path: output/
+          path: ${{ steps.apvg.outputs['artifacts-path'] }}
           if-no-files-found: error
           retention-days: 14
-
-      - name: Collect service logs after failure
-        if: failure()
-        run: |
-          docker logs apvg-voicevox > voicevox.log 2>&1 || true
-
-      - name: Upload failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: video-generation-diagnostics-${{ github.run_number }}
-          path: |
-            .apvg/
-            apvg.config.yml
-            ollama.log
-            voicevox.log
-          include-hidden-files: true
-          if-no-files-found: warn
-          retention-days: 7

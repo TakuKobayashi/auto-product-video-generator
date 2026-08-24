@@ -51,20 +51,7 @@ jobs:
       - name: Verify tag and package versions
         env:
           RELEASE_VERSION: ${{ github.ref_name }}
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          if (!/^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(process.env.RELEASE_VERSION)) {
-            throw new Error(`Invalid release tag: ${process.env.RELEASE_VERSION}`);
-          }
-          const expected = process.env.RELEASE_VERSION.replace(/^v/, '');
-          const packageJson = JSON.parse(fs.readFileSync('packages/cli/package.json', 'utf8'));
-          if (packageJson.version !== expected) {
-            throw new Error(
-              `Tag ${process.env.RELEASE_VERSION} does not match ${packageJson.name}@${packageJson.version}`,
-            );
-          }
-          NODE
+        run: node .github/automation/verify-release-tag.mjs
 
       - name: Build
         run: pnpm build
