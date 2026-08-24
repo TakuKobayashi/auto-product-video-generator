@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
-import { CliRecorder } from './cli-recorder.js';
+import { CliRecorder, resolveCliSetupCwd } from './cli-recorder.js';
 
 describe('CliRecorder', () => {
+  it('normalizes Windows setup paths for the Linux container', () => {
+    expect(resolveCliSetupCwd('packages/cli', '..\\..')).toBe('/workspace');
+  });
+
   it('supports dry-run without starting Docker', async () => {
     const recorder = new CliRecorder(
       {

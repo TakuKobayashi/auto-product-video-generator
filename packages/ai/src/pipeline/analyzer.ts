@@ -85,6 +85,26 @@ export class ProjectAnalyzer {
 
     switch (summary.platform) {
       case 'cli':
+        // CLI applications do not need a background development server.
+        // Keep finite preparation steps only, and ground demonstration
+        // commands in package.json's declared bin entry rather than accepting
+        // an invented executable name from the LLM.
+        summary.setupSteps = summary.setupSteps.filter((step) => !step.background);
+        if (context.packageJson?.scripts?.build) {
+          summary.setupSteps.push({
+            name: 'Build CLI',
+            command: `${context.packageManager} run build`,
+            background: false,
+            readyTimeoutMs: 60000,
+          });
+        }
+        const cliCommand = declaredCliHelpCommand(context);
+        if (cliCommand) {
+          summary.features = summary.features.map((feature) => ({
+            ...feature,
+            command: cliCommand,
+          }));
+        }
         summary.features = summary.features.filter(
           (feature) => !feature.command || isSafeCliCommand(feature.command)
         );
@@ -159,6 +179,17 @@ export class ProjectAnalyzer {
     }
     return summary;
   }
+}
+
+function declaredCliHelpCommand(context: ProjectSourceContext): string | undefined {
+  const bin = context.packageJson?.bin;
+  if (!bin) return undefined;
+  const executable =
+    typeof bin === 'string' ? bin : Object.values(bin).find((value) => typeof value === 'string');
+  if (!executable) return undefined;
+  const projectPath =
+    context.projectPath === '.' ? '' : `${context.projectPath.replaceAll('\\', '/')}/`;
+  return `node ${projectPath}${executable.replace(/^\.\//, '')} --help`;
 }
 
 function buildPrompt(context: ProjectSourceContext, targetUrl?: string): string {

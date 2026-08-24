@@ -168,7 +168,7 @@ export class CliRecorder implements PlatformRecorder {
       const projectPath = relative(repositoryRoot, resolve(this.context.rootDir!))
         .split('\\')
         .join('/');
-      const cwd = posix.resolve('/workspace', projectPath, step.cwd || '.');
+      const cwd = resolveCliSetupCwd(projectPath, step.cwd);
       if (cwd !== '/workspace' && !cwd.startsWith('/workspace/')) {
         throw new Error(`CLI setup cwd must stay inside the recording workspace: ${step.cwd}`);
       }
@@ -185,6 +185,10 @@ export class CliRecorder implements PlatformRecorder {
     }
     this.setupComplete = true;
   }
+}
+
+export function resolveCliSetupCwd(projectPath: string, stepCwd?: string): string {
+  return posix.resolve('/workspace', projectPath, (stepCwd || '.').replaceAll('\\', '/'));
 }
 
 function dockerCopyCommand(patterns: string[]): string {

@@ -54,4 +54,64 @@ describe('ProjectAnalyzer setup grounding', () => {
       }),
     ]);
   });
+
+  it('removes web-server setup and grounds commands for a CLI workspace', async () => {
+    const llm: LlmProvider = {
+      generate: async () => '',
+      generateJson: async <T>() =>
+        ({
+          name: 'Example CLI',
+          description: 'Example',
+          platform: 'cli',
+          setupSteps: [
+            { name: 'Install dependencies', command: 'npm install', background: false },
+            {
+              name: 'Start application',
+              command: 'npm run dev',
+              background: true,
+              readyUrl: 'http://localhost:3000',
+            },
+          ],
+          features: [
+            {
+              id: 'help',
+              title: 'Help',
+              description: 'Show help',
+              command: 'invented-command --help',
+              demoable: true,
+              priority: 'high',
+            },
+          ],
+          targetAudience: 'Everyone',
+          keyValueProps: [],
+          suggestedVideoTypes: ['demo'],
+        }) as T,
+    };
+    const context = {
+      rootDir: 'C:\\repo\\packages\\cli',
+      repositoryRoot: 'C:\\repo',
+      projectPath: 'packages\\cli',
+      packageManager: 'pnpm',
+      packageJson: {
+        name: 'example-cli',
+        scripts: { build: 'tsc' },
+        bin: { example: 'bin/example.js' },
+      },
+      readme: '',
+      framework: 'unknown',
+      routes: [],
+      fileTree: [],
+      platformHints: ['package.json declares bin command(s)'],
+      assetFiles: [],
+    } as ProjectSourceContext;
+
+    const summary = await new ProjectAnalyzer(llm).analyze(context);
+
+    expect(summary.setupSteps).toEqual([
+      expect.objectContaining({ command: 'pnpm install', cwd: '..\\..', background: false }),
+      expect.objectContaining({ command: 'pnpm run build', background: false }),
+    ]);
+    expect(summary.setupSteps.every((step) => !step.background)).toBe(true);
+    expect(summary.features[0].command).toBe('node packages/cli/bin/example.js --help');
+  });
 });
