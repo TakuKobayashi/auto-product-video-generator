@@ -20,6 +20,14 @@ export function isSafeCliCommand(
   const discoveryFlags = ['--help', '-h', '--version', '-v'];
   if (discoveryFlags.includes(args.at(-1)?.toLowerCase() || '')) return true;
 
+  // A documented dry-run is useful in CLI demos because it exercises a real
+  // workflow without applying its side effects. Keep high-risk operations
+  // blocked even when they claim to support dry-run.
+  if (args.at(-1)?.toLowerCase() === '--dry-run') {
+    const destructive = ['publish', 'login', 'logout', 'token', 'secret', 'remove', 'delete'];
+    return !destructive.some((pattern) => lower.includes(pattern));
+  }
+
   if (deniedPatterns.some((pattern) => lower.includes(pattern.toLowerCase()))) return false;
   return allowedCommands.includes(normalized);
 }

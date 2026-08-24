@@ -60,7 +60,7 @@ Hard rules:
 - setupSteps and features may be empty arrays, but must always be present.
 - Every feature must contain id, title, description, demoable, and priority.
 - For web projects, set route when it is known. For CLI projects, set each demoable feature's "command" to an exact safe command documented by package.json or README and omit route when it is not meaningful.
-- CLI feature commands MUST be finite, read-only discovery commands ending in --help, -h, --version, or -v. Never select commands that publish, authenticate, expose environment/secrets, create/delete files, start servers/watchers, or generate/record/render media.
+- CLI feature commands MUST be finite and safe. Prefer several real subcommand demonstrations rather than repeating root --help. A command may end in --help, -h, --version, -v, or --dry-run. Use --dry-run only when that exact option is documented by the supplied source. Never select commands that publish, authenticate, expose environment/secrets, create/delete files, or start servers/watchers.
 - Optional setup fields must be OMITTED when unused. NEVER write null.
 - A foreground setup step has no readyUrl key.
 - A background web-server step has readyUrl as a real URL string.
@@ -106,12 +106,10 @@ export class ProjectAnalyzer {
           });
         }
         const cliCommand = declaredCliHelpCommand(context);
-        if (cliCommand) {
-          summary.features = summary.features.map((feature) => ({
-            ...feature,
-            command: cliCommand,
-          }));
-        }
+        summary.features = summary.features.map((feature) => ({
+          ...feature,
+          command: groundDeclaredCliCommand(context, feature.command, feature.id) || cliCommand,
+        }));
         summary.features = summary.features.filter(
           (feature) => !feature.command || isSafeCliCommand(feature.command)
         );
@@ -228,6 +226,73 @@ function declaredCliHelpCommand(context: ProjectSourceContext): string | undefin
   return `node ${projectPath}${executable.replace(/^\.\//, '')} --help`;
 }
 
+function groundDeclaredCliCommand(
+  context: ProjectSourceContext,
+  proposed: string | undefined,
+  featureId?: string
+): string | undefined {
+  if (!proposed) return undefined;
+  const bin = context.packageJson?.bin;
+  if (!bin) return undefined;
+  const entries = typeof bin === 'string' ? [['', bin]] : Object.entries(bin);
+  const normalized = proposed.trim().replace(/\s+/g, ' ');
+  for (const [name, entry] of entries) {
+    const projectPath = context.projectPath === '.' ? '' : `${context.projectPath.replaceAll('\\', '/')}/`;
+    const invocation = `node ${projectPath}${entry.replace(/^\.\//, '')}`;
+    const finalFlag = proposed.trim().split(/\s+/).at(-1);
+    const safeFlag = ['--help', '-h', '--version', '-v', '--dry-run'].includes(
+      finalFlag?.toLowerCase() || ''
+    )
+      ? finalFlag
+      : '--help';
+    const proposedLower = proposed.toLowerCase();
+    const proposedTokens = `${featureId || ''} ${proposed}`.toLowerCase().split(/[^a-z0-9-]+/);
+    const discoveredPath = [...(context.cliCommands || [])]
+      .map((path) => {
+        const pathLower = path.toLowerCase();
+        const pathTokens = pathLower.split(' ');
+        const leaf = pathTokens.at(-1)!;
+        const score = proposedLower.includes(pathLower)
+          ? 100 + pathTokens.length
+          : pathTokens.every((token) => proposedTokens.includes(token))
+            ? 50 + pathTokens.length
+            : proposedTokens.includes(leaf)
+              ? 10 - pathTokens.length
+              : 0;
+        return { path, score };
+      })
+      .sort((a, b) => b.score - a.score)
+      .find((candidate) => candidate.score > 0)?.path;
+    if (discoveredPath) {
+      const pathIndex = proposedLower.indexOf(discoveredPath.toLowerCase());
+      const proposedSuffix =
+        pathIndex >= 0 ? proposed.slice(pathIndex + discoveredPath.length).trim() : '';
+      let grounded = `${invocation} ${discoveredPath} ${safeFlag}`;
+      if (proposedSuffix) {
+        const withSampleArguments = `${invocation} ${discoveredPath} ${proposedSuffix}`;
+        if (isSafeCliCommand(withSampleArguments)) grounded = withSampleArguments;
+      }
+      if (
+        context.cliDryRunCommands?.includes(discoveredPath) &&
+        discoveredPath.endsWith(' analyze')
+      ) {
+        grounded = `${invocation} ${discoveredPath} --dry-run`;
+      }
+      if (isSafeCliCommand(grounded)) return grounded;
+    }
+    if (!isSafeCliCommand(proposed)) return undefined;
+    const acceptedPrefixes = [name, context.packageJson?.name, entry, `node ${entry}`]
+      .filter(Boolean)
+      .map((value) => String(value).replace(/^\.\//, ''));
+    const prefix = acceptedPrefixes.find(
+      (value) => normalized === value || normalized.startsWith(`${value} `)
+    );
+    if (prefix) return `${invocation}${normalized.slice(prefix.length)}`;
+    if (normalized === invocation || normalized.startsWith(`${invocation} `)) return normalized;
+  }
+  return undefined;
+}
+
 function buildPrompt(context: ProjectSourceContext, targetUrl?: string): string {
   const pkg = context.packageJson;
   const assetFiles = context.assetFiles ?? [];
@@ -275,6 +340,12 @@ Key dependencies: ${(pkg?.dependencies || []).slice(0, 40).join(', ') || '(none 
 
 ${context.readme ? `README:\n${context.readme}\n` : '(No README found)'}
 
+CLI command-definition source excerpts (use exact command names/options only):
+${context.cliSourceExcerpt || '(none; do not invent subcommands or options)'}
+
+Statically discovered CLI command paths (exact hierarchy; prepend a declared bin name):
+${context.cliCommands?.map((command) => `- ${command}`).join('\n') || '(none discovered)'}
+
 ${routesSection}
 
 Representative promotional asset paths (names only; contents were not inspected):
@@ -295,6 +366,16 @@ install dependencies only when the CLI depends on installed packages, and run a 
 script only when the declared bin needs generated output. Do not assume pnpm, npm, yarn,
 or bun merely because the project is a CLI; this repository's detected package manager
 is "${context.packageManager}". Never add a dev server for a CLI.
+
+CLI demo rule: when this is a CLI, identify multiple distinct, useful subcommands from
+the README and command-definition excerpts. Give each demonstrated task its own feature
+and exact command. Prefer a safe documented --dry-run example with realistic placeholder
+arguments when available; otherwise use that subcommand's --help. Do not repeat the root
+--help command for every feature. Preserve the complete parent/child command hierarchy
+shown by addCommand calls (for example, a child added to "video" must be invoked through
+"<bin> video <child>"). Every feature.command must start with a declared package.json bin
+name and end in --help, --version, or a documented --dry-run. Never invent a subcommand,
+option, or required argument.
 
 Based on all of the above: first classify the platform (see "Platform classification"),
 then produce the setup plan (see "Setup plan"), then identify the features that are

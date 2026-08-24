@@ -83,6 +83,22 @@ describe('ProjectAnalyzer setup grounding', () => {
               demoable: true,
               priority: 'high',
             },
+            {
+              id: 'video-help',
+              title: 'Video commands',
+              description: 'Show video workflows',
+              command: 'example video --help',
+              demoable: true,
+              priority: 'medium',
+            },
+            {
+              id: 'generate',
+              title: 'Generate',
+              description: 'Generate a video',
+              command: 'example video generate --help',
+              demoable: true,
+              priority: 'high',
+            },
           ],
           targetAudience: 'Everyone',
           keyValueProps: [],
@@ -105,6 +121,8 @@ describe('ProjectAnalyzer setup grounding', () => {
       fileTree: [],
       platformHints: ['package.json declares bin command(s)'],
       assetFiles: [],
+      cliCommands: ['video', 'video generate', 'video scenario generate'],
+      cliDryRunCommands: [],
     } as ProjectSourceContext;
 
     const summary = await new ProjectAnalyzer(llm).analyze(context);
@@ -115,6 +133,10 @@ describe('ProjectAnalyzer setup grounding', () => {
     ]);
     expect(summary.setupSteps.every((step) => !step.background)).toBe(true);
     expect(summary.features[0].command).toBe('node packages/cli/bin/example.js --help');
+    expect(summary.features[1].command).toBe('node packages/cli/bin/example.js video --help');
+    expect(summary.features[2].command).toBe(
+      'node packages/cli/bin/example.js video generate --help'
+    );
   });
 
   it('does not invent install or build steps for an already executable CLI', async () => {

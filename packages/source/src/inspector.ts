@@ -54,6 +54,12 @@ export interface ProjectSourceContext {
    * strong evidence.
    */
   platformHints: string[];
+  /** Capped source excerpts that define CLI commands/options, for grounded demo planning. */
+  cliSourceExcerpt?: string;
+  /** Command paths discovered from CLI composition source, without the executable name. */
+  cliCommands?: string[];
+  /** Discovered command paths that explicitly declare a --dry-run option. */
+  cliDryRunCommands?: string[];
 }
 
 const EXCLUDED_DIRS = new Set([
@@ -72,6 +78,7 @@ const EXCLUDED_DIRS = new Set([
 ]);
 
 const MAX_README_CHARS = 4000;
+const MAX_CLI_SOURCE_CHARS = 20000;
 const MAX_FILE_TREE_ENTRIES = 200;
 const MAX_ASSET_FILE_ENTRIES = 40;
 const MAX_INSPECTED_FILE_ENTRIES = 1000;
@@ -214,6 +221,12 @@ export async function inspectProject(
   const fileTree = routes.length === 0 ? fileIndex.sourceFiles : [];
   const assetFiles = fileIndex.assetFiles;
   const platformHints = await detectPlatformHints(rootDir, packageJson, deps);
+  const cliSourceExcerpt = packageJson?.bin
+    ? await readCliSourceExcerpt(rootDir, fileIndex.sourceFiles)
+    : undefined;
+  const cliCommandCatalog = packageJson?.bin
+    ? await discoverCliCommandPaths(rootDir, fileIndex.sourceFiles)
+    : undefined;
 
   logger.success(
     `Detected: ${framework}` +
@@ -236,7 +249,108 @@ export async function inspectProject(
     fileTree,
     assetFiles,
     platformHints,
+    cliSourceExcerpt,
+    cliCommands: cliCommandCatalog?.commands,
+    cliDryRunCommands: cliCommandCatalog?.dryRunCommands,
   };
+}
+
+async function discoverCliCommandPaths(
+  rootDir: string,
+  files: string[]
+): Promise<{ commands: string[]; dryRunCommands: string[] }> {
+  const sourceFiles = files.filter((file) => /\.(?:ts|tsx|js|mjs|cjs)$/i.test(file));
+  const definitions = new Map<
+    string,
+    { command?: string; defaultCommand?: string; children: Array<{ fn: string; arg?: string }>; direct: string[]; dryRun: boolean }
+  >();
+  let rootSource = '';
+
+  for (const file of sourceFiles) {
+    let source: string;
+    try {
+      source = await readFile(join(rootDir, file), 'utf8');
+    } catch {
+      continue;
+    }
+    if (/(?:^|\/)index\.[^.]+$/i.test(file)) rootSource += `\n${source}`;
+    const matches = [...source.matchAll(/export\s+function\s+(\w+)\s*\(([^)]*)\)[^{]*\{/g)];
+    matches.forEach((match, index) => {
+      const bodyStart = (match.index || 0) + match[0].length;
+      const bodyEnd = matches[index + 1]?.index ?? source.length;
+      const body = source.slice(bodyStart, bodyEnd);
+      const literal = body.match(/new\s+Command\(\s*['"]([^'"]+)['"]\s*\)/)?.[1];
+      const variable = body.match(/new\s+Command\(\s*(\w+)\s*\)/)?.[1];
+      const defaultCommand = variable
+        ? match[2].match(new RegExp(`${variable}\\s*=\\s*['\"]([^'\"]+)['\"]`))?.[1]
+        : undefined;
+      const children = [...body.matchAll(/\.addCommand\(\s*(\w+)\(\s*(?:['"]([^'"]+)['"])?/g)].map(
+        (child) => ({ fn: child[1], arg: child[2] })
+      );
+      const direct = [
+        ...body.matchAll(/\.command\(\s*['"]([^'"]+)['"]\s*\)/g),
+        ...body.matchAll(/\.addCommand\(\s*new\s+Command\(\s*['"]([^'"]+)['"]/g),
+      ].map((child) => child[1]);
+      definitions.set(match[1], {
+        command: literal,
+        defaultCommand,
+        children,
+        direct,
+        dryRun: /\.option\(\s*['"][^'"]*--dry-run(?:\s|['"])/.test(body),
+      });
+    });
+  }
+
+  const roots = [...rootSource.matchAll(/\.addCommand\(\s*(\w+)\(\s*(?:['"]([^'"]+)['"])?/g)].map(
+    (match) => ({ fn: match[1], arg: match[2] })
+  );
+  const paths = new Set<string>();
+  const dryRunCommands = new Set<string>();
+  const visit = (fn: string, arg: string | undefined, parent: string[], seen: Set<string>) => {
+    const definition = definitions.get(fn);
+    if (!definition || seen.has(fn)) return;
+    const name = arg || definition.command || definition.defaultCommand;
+    if (!name) return;
+    const path = [...parent, name];
+    paths.add(path.join(' '));
+    if (definition.dryRun) dryRunCommands.add(path.join(' '));
+    const nextSeen = new Set(seen).add(fn);
+    definition.direct.forEach((child) => paths.add([...path, child].join(' ')));
+    definition.children.forEach((child) => visit(child.fn, child.arg, path, nextSeen));
+  };
+  roots.forEach((root) => visit(root.fn, root.arg, [], new Set()));
+  return { commands: [...paths], dryRunCommands: [...dryRunCommands] };
+}
+
+async function readCliSourceExcerpt(rootDir: string, files: string[]): Promise<string | undefined> {
+  const candidates = files.filter(
+    (file) =>
+      (/(?:^|\/)(?:commands?|cli)(?:\/|\.)/i.test(file) || /(?:^|\/)index\.[^.]+$/i.test(file)) &&
+      /\.(?:ts|tsx|js|mjs|cjs|py|go|rs)$/i.test(file)
+  );
+  const sources = await Promise.all(
+    candidates.map(async (file) => {
+      try {
+        return { file, source: await readFile(join(rootDir, file), 'utf8') };
+      } catch {
+        return undefined;
+      }
+    })
+  );
+  const ordered = sources
+    .filter((item): item is { file: string; source: string } => Boolean(item))
+    .sort((a, b) => {
+      const priority = (source: string, file: string) =>
+        (/addCommand\s*\(/.test(source) ? 0 : /(?:^|\/)index\./i.test(file) ? 1 : 2);
+      return priority(a.source, a.file) - priority(b.source, b.file) || a.file.localeCompare(b.file);
+    });
+  let excerpt = '';
+  for (const { file, source } of ordered) {
+    if (excerpt.length >= MAX_CLI_SOURCE_CHARS) break;
+    const remaining = MAX_CLI_SOURCE_CHARS - excerpt.length;
+    excerpt += `\n--- ${file} ---\n${source.slice(0, remaining)}`;
+  }
+  return excerpt.trim() || undefined;
 }
 
 function detectPackageManager(root: string): 'pnpm' | 'yarn' | 'npm' | 'bun' {

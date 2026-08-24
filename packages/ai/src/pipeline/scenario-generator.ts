@@ -141,7 +141,7 @@ Editorial direction:
 
 ${
   isCli
-    ? 'This is a CLI project. Use only the exact commands listed above. Commands must be finite and read-only, ending in --help or --version. Never publish, authenticate, expose secrets/environment variables, modify files, start a server/watcher, or generate/record/render media. Do not use goto, click, type, scroll, hover, or mobile actions.'
+    ? 'This is a CLI project. Create a separate scene for each useful command listed above and use only those exact commands. Show real safe workflows ending in --dry-run when provided; otherwise show the relevant subcommand --help. Do not repeat root --help in every scene. Never publish, authenticate, expose secrets/environment variables, modify files, or start a server/watcher. Do not use goto, click, type, scroll, hover, or mobile actions.'
     : `The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
 demonstrate a specific feature should "goto" that feature's URL from the list above.`
 }

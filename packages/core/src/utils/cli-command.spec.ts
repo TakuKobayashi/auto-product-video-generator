@@ -12,6 +12,12 @@ describe('isSafeCliCommand', () => {
     expect(isSafeCliCommand('demo inspect')).toBe(false);
   });
 
+  it('allows safe dry-run workflows but not high-risk dry-runs', () => {
+    expect(isSafeCliCommand('apvg project analyze --dry-run')).toBe(true);
+    expect(isSafeCliCommand('tool publish --dry-run')).toBe(false);
+    expect(isSafeCliCommand('tool login --dry-run')).toBe(false);
+  });
+
   it('rejects denied and compound shell commands', () => {
     expect(isSafeCliCommand('npm publish', ['npm publish'], ['publish'])).toBe(false);
     expect(isSafeCliCommand('apvg --help; env')).toBe(false);
