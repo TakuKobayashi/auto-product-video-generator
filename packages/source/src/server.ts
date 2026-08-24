@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { openSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger, SetupStep } from '@auto-product-video-generator/core';
@@ -35,6 +35,10 @@ export interface RunSetupStepsOptions {
   logPath: string;
 }
 
+export interface StartedApp {
+  stop(): Promise<void>;
+}
+
 /**
  * Executes an ordered list of SetupStep — the Taskfile-like "how do I get
  * this project running" plan AI-generated during `analyze` and stored in
@@ -53,7 +57,8 @@ export interface RunSetupStepsOptions {
 export async function runSetupSteps(
   steps: SetupStep[],
   options: RunSetupStepsOptions
-): Promise<void> {
+): Promise<StartedApp | undefined> {
+  let startedApp: StartedApp | undefined;
   for (const step of steps) {
     const stepCwd = step.cwd ? join(options.cwd, step.cwd) : options.cwd;
     logger.step('setup', `${step.name}: ${step.command}`);
@@ -63,7 +68,7 @@ export async function runSetupSteps(
       continue;
     }
 
-    spawnDetached(step.command, stepCwd, options.logPath);
+    startedApp = spawnDetached(step.command, stepCwd, options.logPath);
     logger.dim(`  (started in background, logs: ${options.logPath})`);
 
     if (!step.readyUrl) continue;
@@ -89,6 +94,7 @@ export async function runSetupSteps(
       );
     }
   }
+  return startedApp;
 }
 
 export interface EnsureAppRunningOptions {
@@ -114,10 +120,12 @@ export interface EnsureAppRunningOptions {
  *      manual override.
  *   3. Else warn that nothing could be started automatically.
  */
-export async function ensureAppRunning(options: EnsureAppRunningOptions): Promise<void> {
+export async function ensureAppRunning(
+  options: EnsureAppRunningOptions
+): Promise<StartedApp | undefined> {
   if (await httpReachable(options.url)) {
     logger.success(`Target already reachable: ${options.url}`);
-    return;
+    return undefined;
   }
 
   if (options.setupSteps.length > 0) {
@@ -130,16 +138,20 @@ export async function ensureAppRunning(options: EnsureAppRunningOptions): Promis
       // installDeps was requested — run it first as a courtesy.
       await runToCompletion('npm install', options.cwd, options.logPath);
     }
-    await runSetupSteps(options.setupSteps, { cwd: options.cwd, logPath: options.logPath });
+    const startedApp = await runSetupSteps(options.setupSteps, {
+      cwd: options.cwd,
+      logPath: options.logPath,
+    });
     if (!(await httpReachable(options.url))) {
+      await startedApp?.stop();
       throw new Error(
         `Setup finished, but ${options.url} is still unreachable. Check ${options.logPath}.`
       );
     }
-    return;
+    return startedApp;
   }
 
-  await ensureServerRunning({
+  const startedApp = await ensureServerRunning({
     url: options.url,
     startCommand: options.startCommand,
     cwd: options.cwd,
@@ -147,10 +159,12 @@ export async function ensureAppRunning(options: EnsureAppRunningOptions): Promis
     logPath: options.logPath,
   });
   if (!(await httpReachable(options.url))) {
+    await startedApp?.stop();
     throw new Error(
       `Cannot record because ${options.url} is unreachable. Check ${options.logPath}.`
     );
   }
+  return startedApp;
 }
 
 export interface EnsureServerRunningOptions {
@@ -171,17 +185,19 @@ export interface EnsureServerRunningOptions {
  * scenario.yml's `setup` plan when available) — this is what it falls
  * back to when there's no `setup` plan.
  */
-export async function ensureServerRunning(options: EnsureServerRunningOptions): Promise<void> {
+export async function ensureServerRunning(
+  options: EnsureServerRunningOptions
+): Promise<StartedApp | undefined> {
   if (await httpReachable(options.url)) {
     logger.success(`Target already reachable: ${options.url}`);
-    return;
+    return undefined;
   }
 
   if (!options.startCommand) {
     logger.warn(`${options.url} is not reachable, and no source.startCommand is configured.`);
     logger.warn('Start your app yourself (e.g. `npm run dev`) before running this command, or set');
     logger.warn('source.startCommand in apvg.config.yml to have it started automatically.');
-    return;
+    return undefined;
   }
 
   if (options.installDeps) {
@@ -192,7 +208,7 @@ export async function ensureServerRunning(options: EnsureServerRunningOptions): 
   logger.step('server', `Starting dev server: ${options.startCommand}`);
   logger.dim(`  (in ${options.cwd}, logs: ${options.logPath})`);
 
-  spawnDetached(options.startCommand, options.cwd, options.logPath);
+  const startedApp = spawnDetached(options.startCommand, options.cwd, options.logPath);
 
   const timeoutMs = options.timeoutMs ?? 60000;
   const start = Date.now();
@@ -203,11 +219,12 @@ export async function ensureServerRunning(options: EnsureServerRunningOptions): 
   while (Date.now() - start < timeoutMs) {
     if (await httpReachable(options.url)) {
       logger.success(`Dev server is up: ${options.url}`);
-      return;
+      return startedApp;
     }
     await sleep(1000);
   }
 
+  await startedApp.stop();
   throw new Error(
     `${options.url} did not become reachable within ${Math.round(timeoutMs / 1000)}s. ` +
       `Check ${options.logPath} for errors.`
@@ -226,7 +243,7 @@ function sleep(ms: number): Promise<void> {
  * pass the whole string through `/bin/sh -c` (POSIX) or `cmd.exe /c`
  * (Windows) itself, handling quoting correctly on both.
  */
-function spawnDetached(command: string, cwd: string, logPath: string): void {
+function spawnDetached(command: string, cwd: string, logPath: string): StartedApp {
   const logFd = openSync(logPath, 'a');
   const proc = spawn(command, {
     cwd,
@@ -235,6 +252,28 @@ function spawnDetached(command: string, cwd: string, logPath: string): void {
     shell: true,
   });
   proc.unref();
+  return {
+    stop: async () => {
+      if (!proc.pid || proc.exitCode !== null) return;
+      logger.step('server', `Stopping dev server started by APVG (PID ${proc.pid})...`);
+      await stopProcessTree(proc.pid);
+      logger.success('Dev server stopped.');
+    },
+  };
+}
+
+function stopProcessTree(pid: number): Promise<void> {
+  if (process.platform === 'win32') {
+    return new Promise((resolve) => {
+      execFile('taskkill', ['/pid', String(pid), '/t', '/f'], () => resolve());
+    });
+  }
+  try {
+    process.kill(-pid, 'SIGTERM');
+  } catch {
+    // It may already have exited between the reachability check and cleanup.
+  }
+  return Promise.resolve();
 }
 
 /** Same shell-correctness note as spawnDetached — runs to completion instead of backgrounding. */

@@ -75,13 +75,14 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   logger.info(`Slow-mo:          ${options.slowMo || '0'}ms`);
 
   let rootDir: string | undefined;
+  let startedApp: Awaited<ReturnType<typeof ensureAppRunning>>;
   if (!options.dryRun) {
     const cloneDir = options.sourceDir || join(workDir, 'source-repo');
     rootDir = await resolveProjectSource({ source: config.source, cloneDir });
     if (scenario.meta.platform === 'web') {
       const serverLogPath = options.serverLog || join(workDir, 'dev-server.log');
       await ensureDir(dirname(serverLogPath));
-      await ensureAppRunning({
+      startedApp = await ensureAppRunning({
         url: config.target.url,
         setupSteps: scenario.setup,
         startCommand: config.source.startCommand,
@@ -141,6 +142,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
     }
   } finally {
     await recorder.dispose?.();
+    await startedApp?.stop();
   }
 
   logger.info('');

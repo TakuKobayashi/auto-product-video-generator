@@ -266,6 +266,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
 
   // ── Step 4: Record ───────────────────────────────────────────────────────
   if (!options.skipRecord) {
+    let startedApp: Awaited<ReturnType<typeof ensureAppRunning>>;
     logger.step('4/5', `Recording ${scenario.meta.platform} interactions...`);
     if (!dryRun) {
       for (const scriptScene of script.scenes) {
@@ -275,7 +276,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         }
       }
       if (scenario.meta.platform === 'web') {
-        await ensureAppRunning({
+        startedApp = await ensureAppRunning({
           url: config.target.url,
           setupSteps: scenario.setup,
           startCommand: config.source.startCommand,
@@ -322,6 +323,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       }
     } finally {
       await recorder.dispose?.();
+      await startedApp?.stop();
     }
   } else {
     logger.step('4/5', 'Skipping record (--skip-record)');
