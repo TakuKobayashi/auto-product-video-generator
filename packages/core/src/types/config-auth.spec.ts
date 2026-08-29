@@ -49,3 +49,14 @@ describe('video subtitle config', () => {
     expect(config.video.singleLineSubtitles).toBe(false);
   });
 });
+
+describe('source environment config', () => {
+  it('accepts an environment file path', () => {
+    const config = ApvgConfigSchema.parse({
+      ...configWithAuth({}),
+      source: { localPath: '.', environmentFile: '/secure/product.env' },
+    });
+
+    expect(config.source.environmentFile).toBe('/secure/product.env');
+  });
+});

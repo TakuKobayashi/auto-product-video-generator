@@ -77,6 +77,10 @@ export const SourceConfigSchema = z
     localPath: z.string().optional(),
     ref: z.string().optional(), // branch / tag / commit; only meaningful with `repository`
     installDeps: z.boolean().default(false),
+    // Optional environment file copied into the selected runnable project before
+    // analysis/build/recording. Its contents are converted to the convention used
+    // by that project (.env, Cloudflare .dev.vars, or Android local.properties).
+    environmentFile: z.string().min(1).optional(),
     // Command to start the app's dev server, run from the source root
     // (e.g. "npm run dev", "pnpm run dev"). If set, the video recording
     // and generation commands will

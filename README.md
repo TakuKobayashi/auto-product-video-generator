@@ -187,6 +187,31 @@ also omitted from LLM input.
 The finished video is written to `output/final.mp4`; intermediate artifacts are
 written to `output/artifacts/`. Check services with `apvg services status`.
 
+### Supply a `.env` file to the recorded application
+
+If the recorded application needs environment variables such as API keys, set
+the path of the `.env` file you normally use in `source.environmentFile`:
+
+```yaml
+source:
+  localPath: /path/to/product
+  environmentFile: /secure/path/product.env
+```
+
+You can also specify the `.env` file without changing the configuration:
+
+```bash
+apvg video record --env-file /secure/path/product.env
+apvg video generate --env-file /secure/path/product.env
+```
+
+Before the app is built or started, APVG places the supplied `.env` file in the
+selected application. It remains `.env` for ordinary web projects and is
+automatically converted to Cloudflare `.dev.vars` or Android
+`local.properties` (under `android/` for Flutter and React Native). The
+destination is written with owner-only permissions. Because these files can
+contain secrets, do not commit the source `.env` file or generated destination.
+
 ## Recording an authenticated web application
 
 Configure a manual authentication state:
@@ -342,6 +367,7 @@ write values detected from the environment or source.
 | `source.localPath`        | Local source         | One of the two |                                                                                                        | Local git repository path           |
 | `source.ref`              | git reference        | No             |                                                                                                        | Branch, tag, or commit              |
 | `source.installDeps`      | Install dependencies | No             | `false`                                                                                                | Install before starting the app     |
+| `source.environmentFile`  | App environment file | No             |                                                                                                        | Convert and place before app startup |
 | `source.startCommand`     | Start application    | No             | Auto-detected                                                                                          | Development-server command          |
 | `source.projectPath`      | Monorepo selection   | No             | Auto-selected                                                                                          | Application directory               |
 | `source.platformPriority` | Detection priority   | No             | `web`<br>`cli`<br>`android`<br>`flutter`<br>`react-native`<br>`unity`<br>`ios`<br>`desktop`<br>`other` | Platform priority order             |

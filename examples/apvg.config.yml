@@ -35,6 +35,11 @@ source:
   # doesn't have node_modules yet.
   # installDeps: false
 
+  # Optional secrets/config file for the recorded app. APVG places it in the
+  # selected app as .env, Cloudflare .dev.vars, or Android local.properties,
+  # converting KEY=VALUE entries when the source format differs.
+  # environmentFile: "/secure/path/product.env"
+
 # Where the app can actually be reached once it's running, so Playwright can
 # record it. If source.startCommand is set, `record`/`build` start it
 # automatically whenever this isn't already reachable — otherwise start your

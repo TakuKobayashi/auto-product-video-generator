@@ -14,6 +14,7 @@ import {
   ensureAppRunning,
   findRepositoryRoot,
   loadSourceExcludePatterns,
+  placeProjectEnvironmentFile,
 } from '@auto-product-video-generator/source';
 import { resolveWebStorageState } from '../utils/web-auth.js';
 
@@ -25,6 +26,7 @@ interface RecordOptions {
   recordingsDir?: string;
   screenshotsDir?: string;
   sourceDir?: string;
+  envFile?: string;
   serverLog?: string;
   scene?: string;
   headed?: boolean;
@@ -79,6 +81,11 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   if (!options.dryRun) {
     const cloneDir = options.sourceDir || join(workDir, 'source-repo');
     rootDir = await resolveProjectSource({ source: config.source, cloneDir });
+    const environmentFile = options.envFile || config.source.environmentFile;
+    if (environmentFile) {
+      const placed = await placeProjectEnvironmentFile(environmentFile, rootDir);
+      logger.info(`Project environment (${placed.kind}): ${placed.path}`);
+    }
     if (scenario.meta.platform === 'web') {
       const serverLogPath = options.serverLog || join(workDir, 'dev-server.log');
       await ensureDir(dirname(serverLogPath));

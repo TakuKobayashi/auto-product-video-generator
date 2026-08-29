@@ -34,6 +34,7 @@ import {
   ensureAppRunning,
   findRepositoryRoot,
   loadSourceExcludePatterns,
+  placeProjectEnvironmentFile,
 } from '@auto-product-video-generator/source';
 import { exportArtifacts } from '../utils/export-artifacts.js';
 import { applyInferredTargetUrl } from '../utils/inferred-target.js';
@@ -43,6 +44,7 @@ interface BuildOptions {
   config?: string;
   type?: string;
   url?: string;
+  envFile?: string;
   skipAnalyze?: boolean;
   skipScenario?: boolean;
   skipRecord?: boolean;
@@ -99,6 +101,11 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   let rootDir: string | undefined;
   if (!dryRun) {
     rootDir = await resolveProjectSource({ source: config.source, cloneDir });
+    const environmentFile = options.envFile || config.source.environmentFile;
+    if (environmentFile) {
+      const placed = await placeProjectEnvironmentFile(environmentFile, rootDir);
+      logger.info(`Project environment (${placed.kind}): ${placed.path}`);
+    }
   }
 
   // ── Step 1: Analyze ──────────────────────────────────────────────────────

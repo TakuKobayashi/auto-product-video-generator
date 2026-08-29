@@ -13,6 +13,7 @@ export function recordCommand(): Command {
       'screenshot output directory (default: <workDir>/screenshots)'
     )
     .option('--source-dir <path>', 'source clone/cache directory (default: <workDir>/source-repo)')
+    .option('--env-file <path>', 'environment file to convert and place in the selected project')
     .option(
       '--server-log <path>',
       'development server log output (default: <workDir>/dev-server.log)'

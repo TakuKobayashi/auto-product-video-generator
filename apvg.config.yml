@@ -4,6 +4,7 @@ project:
 source:
   repository: https://github.com/your-org/your-repo.git
   installDeps: false
+  # environmentFile: /path/to/project.env
   platformPriority:
     - web
     - cli

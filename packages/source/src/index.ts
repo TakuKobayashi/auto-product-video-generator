@@ -3,3 +3,4 @@ export * from './inspector.js';
 export * from './server.js';
 export * from './workspace-selector.js';
 export * from './source-ignore.js';
+export * from './environment-file.js';

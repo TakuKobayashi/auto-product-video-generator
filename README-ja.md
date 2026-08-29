@@ -184,6 +184,30 @@ Unityプロジェクトはビルド方法がプロジェクトごとに異なり
 完成動画は`output/final.mp4`、途中生成物は`output/artifacts/`へ出力されます。VOICEVOXと
 Ollamaの状態は`apvg services status`で確認できます。
 
+### 録画対象アプリへ`.env`ファイルを渡す
+
+録画対象アプリの起動にAPIキーなどの環境変数が必要な場合は、普段利用している`.env`
+ファイルのパスを`source.environmentFile`へ指定できます。
+
+```yaml
+source:
+  localPath: /path/to/product
+  environmentFile: /secure/path/product.env
+```
+
+設定ファイルを変更せず、コマンドから`.env`ファイルを指定することもできます。
+
+```bash
+apvg video record --env-file /secure/path/product.env
+apvg video generate --env-file /secure/path/product.env
+```
+
+APVGはアプリのビルド・起動前に、指定された`.env`ファイルを選択済みのアプリへ配置します。
+通常のWebプロジェクトでは`.env`のまま配置し、Cloudflareプロジェクトでは`.dev.vars`、
+Androidプロジェクトでは`local.properties`（Flutter・React Nativeでは`android/`配下）へ
+自動的に変換します。配置先は所有者のみ読み書き可能にします。機密情報を含むため、入力元の
+`.env`ファイルと配置されたファイルはcommitしないでください。
+
 ## ログインが必要なWebアプリを録画する場合
 
 最初に認証状態の保存先を設定します。
@@ -379,6 +403,7 @@ actions:
 | `source.localPath`        | ローカルソース | どちらか必須 |                                                                                                        | ローカルgitリポジトリのパス。`repository`とどちらか一方を指定 |
 | `source.ref`              | git参照        | 任意         |                                                                                                        | 使用するbranch、tag、commit                                   |
 | `source.installDeps`      | 依存関係の導入 | 任意         | `false`                                                                                                | アプリ起動前に依存パッケージをインストール                    |
+| `source.environmentFile`  | 環境変数ファイル | 任意       |                                                                                                        | プロジェクト形式へ変換し、アプリ起動前に配置                  |
 | `source.startCommand`     | アプリ起動     | 任意         | 自動検出                                                                                               | 開発サーバーの起動コマンド                                    |
 | `source.projectPath`      | モノレポ選択   | 任意         | 自動選択                                                                                               | 動画化するアプリのディレクトリ                                |
 | `source.platformPriority` | 検出優先順     | 任意         | `web`<br>`cli`<br>`android`<br>`flutter`<br>`react-native`<br>`unity`<br>`ios`<br>`desktop`<br>`other` | 複数アプリがある場合のプラットフォーム優先順                  |
