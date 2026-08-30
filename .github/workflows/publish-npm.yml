@@ -93,9 +93,8 @@ jobs:
 
       - name: Create AI-generated release notes
         id: release-notes
-        uses: TakuKobayashi/auto-generate-release-note@v1
+        uses: TakuKobayashi/auto-generate-release-note@v2
         with:
-          github-token: ${{ github.token }}
           tag: ${{ github.ref_name }}
           model: qwen2.5-coder:7b-instruct
           language: ja
