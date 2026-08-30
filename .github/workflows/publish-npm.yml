@@ -48,6 +48,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Set package version from release tag
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: pnpm version:set "$RELEASE_VERSION"
+
       - name: Verify tag and package versions
         env:
           RELEASE_VERSION: ${{ github.ref_name }}
@@ -59,7 +64,21 @@ jobs:
       - name: Verify npm authentication
         run: node .github/automation/verify-npm-auth.mjs
 
+      - name: Check whether this version is already published
+        id: npm-version
+        shell: bash
+        run: |
+          PACKAGE_NAME=$(node --print "require('./packages/cli/package.json').name")
+          PACKAGE_VERSION=$(node --print "require('./packages/cli/package.json').version")
+          if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version --registry https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "already-published=true" >> "$GITHUB_OUTPUT"
+            echo "$PACKAGE_NAME@$PACKAGE_VERSION is already published; skipping npm publish."
+          else
+            echo "already-published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish CLI
+        if: steps.npm-version.outputs.already-published != 'true'
         working-directory: packages/cli
         run: npm publish --registry https://registry.npmjs.org --access public --tag "$NPM_DIST_TAG" --loglevel verbose
         env:
