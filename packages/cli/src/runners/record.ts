@@ -17,6 +17,7 @@ import {
   placeProjectEnvironmentFile,
 } from '@auto-product-video-generator/source';
 import { resolveWebStorageState } from '../utils/web-auth.js';
+import { applyResolvedConfig } from '../utils/resolved-config.js';
 
 interface RecordOptions {
   config?: string;
@@ -38,7 +39,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
   logger.header('apvg video record');
 
   const configPath = options.config || 'apvg.config.yml';
-  const config = await loadConfig(configPath);
+  const config = await applyResolvedConfig(await loadConfig(configPath));
 
   const workDir = config.output.workDir;
   const scenarioPath = options.scenario || join(workDir, 'scenario.yml');

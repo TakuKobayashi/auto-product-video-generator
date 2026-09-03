@@ -1,7 +1,6 @@
 import { join } from 'node:path';
 import {
   loadConfig,
-  saveConfig,
   writeJson,
   logger,
   describeTaskLlm,
@@ -13,6 +12,7 @@ import {
   detectStartCommand,
 } from '@auto-product-video-generator/source';
 import { applyInferredTargetUrl } from '../utils/inferred-target.js';
+import { saveResolvedConfig } from '../utils/resolved-config.js';
 
 interface AnalyzeOptions {
   config?: string;
@@ -74,12 +74,11 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
     const detected = detectStartCommand(sourceContext.packageJson, sourceContext.packageManager);
     if (detected) {
       config.source.startCommand = detected;
-      await saveConfig(configPath, config);
       logger.info(
-        `Detected dev server command '${detected}' — saved to ${configPath} (source.startCommand).`
+        `Detected dev server command '${detected}' (stored in resolved analysis state).`
       );
       logger.dim(
-        `  Edit apvg.config.yml if this isn't right, or clear it to start the app yourself.`
+        `  Set source.startCommand in apvg.config.yml to override this detection.`
       );
     }
   }
@@ -89,7 +88,7 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   const analyzer = new ProjectAnalyzer(llm);
   const summary = await analyzer.analyze(sourceContext, targetUrl);
 
-  if (applyInferredTargetUrl(config, summary)) await saveConfig(configPath, config);
+  applyInferredTargetUrl(config, summary);
 
   switch (summary.platform) {
     case 'android':
@@ -101,19 +100,19 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
       summary.setupSteps = [];
       config.target.type = 'android';
       config.target.android ||= { autoStartEmulator: true, autoInstall: true };
-      await saveConfig(configPath, config);
-      logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
+      logger.info(`Enabled automatic Android build/emulator preparation.`);
       break;
     case 'cli':
       config.target.type = 'cli';
-      await saveConfig(configPath, config);
-      logger.info(`Enabled Docker-based CLI recording in ${configPath}.`);
+      logger.info(`Enabled Docker-based CLI recording.`);
       break;
   }
 
   await writeJson(summaryPath, summary);
+  const resolvedPath = await saveResolvedConfig(config, summary.platform);
 
   logger.success(`Saved: ${summaryPath}`);
+  logger.success(`Saved: ${resolvedPath}`);
   logger.info('');
   logger.info(`Platform: ${summary.platform}`);
   logger.info(`Found ${summary.features.length} features:`);

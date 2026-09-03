@@ -17,6 +17,7 @@ import {
   SubtitleGenerator,
 } from '@auto-product-video-generator/ai';
 import { resolveVoiceProfiles } from '@auto-product-video-generator/voicevox';
+import { applyResolvedConfig } from '../utils/resolved-config.js';
 
 interface ScenarioGenerateOptions {
   config?: string;
@@ -34,7 +35,7 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
   logger.header('apvg video scenario generate');
 
   const configPath = options.config || 'apvg.config.yml';
-  const config = await loadConfig(configPath);
+  const config = await applyResolvedConfig(await loadConfig(configPath));
 
   const workDir = config.output.workDir;
   const summaryPath = options.projectSummary || join(workDir, 'project-summary.json');

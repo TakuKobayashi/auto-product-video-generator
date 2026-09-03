@@ -3,7 +3,6 @@ import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import {
   loadConfig,
-  saveConfig,
   readJson,
   readYaml,
   writeJson,
@@ -38,6 +37,7 @@ import {
 } from '@auto-product-video-generator/source';
 import { exportArtifacts } from '../utils/export-artifacts.js';
 import { applyInferredTargetUrl } from '../utils/inferred-target.js';
+import { applyResolvedConfig, saveResolvedConfig } from '../utils/resolved-config.js';
 import { resolveWebStorageState } from '../utils/web-auth.js';
 
 interface BuildOptions {
@@ -69,6 +69,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   }
   if (options.type) config.video.type = options.type as typeof config.video.type;
   if (options.scenarioPrompt) config.video.scenarioPrompt = options.scenarioPrompt;
+  if (options.skipAnalyze) config = await applyResolvedConfig(config);
 
   const workDir = config.output.workDir;
   await ensureDir(workDir);
@@ -127,8 +128,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         );
         if (detected) {
           config.source.startCommand = detected;
-          await saveConfig(configPath, config);
-          logger.info(`Detected dev server command '${detected}' — saved to ${configPath}.`);
+          logger.info(`Detected dev server command '${detected}'.`);
         }
       }
 
@@ -137,7 +137,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         sourceContext,
         config.target.autoDetectUrl ? undefined : config.target.url
       );
-      if (applyInferredTargetUrl(config, summary)) await saveConfig(configPath, config);
+      applyInferredTargetUrl(config, summary);
       switch (summary.platform) {
         case 'android':
         case 'flutter':
@@ -146,16 +146,15 @@ export async function runBuild(options: BuildOptions): Promise<void> {
           summary.setupSteps = [];
           config.target.type = 'android';
           config.target.android ||= { autoStartEmulator: true, autoInstall: true };
-          await saveConfig(configPath, config);
-          logger.info(`Enabled automatic Android build/emulator preparation in ${configPath}.`);
+          logger.info(`Enabled automatic Android build/emulator preparation.`);
           break;
         case 'cli':
           config.target.type = 'cli';
-          await saveConfig(configPath, config);
-          logger.info(`Enabled Docker-based CLI recording in ${configPath}.`);
+          logger.info(`Enabled Docker-based CLI recording.`);
           break;
       }
       await writeJson(summaryPath, summary);
+      await saveResolvedConfig(config, summary.platform);
       logger.success(`Saved: ${summaryPath}`);
     } else {
       logger.dryRun(`Would resolve source: ${config.source.repository || config.source.localPath}`);
