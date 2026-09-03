@@ -320,6 +320,7 @@ apvg video render
 | `apvg video voice`               | `.apvg/voice/*.wav` and updated timing                                                  |
 | `apvg video record`              | `.apvg/recordings/*.mp4`                                                                |
 | `apvg video render`              | `output/final.mp4`, `output/artifacts/`                                                 |
+| `apvg video export remotion`     | Standalone editable Remotion project in `output/remotion-project/`                      |
 
 ### Inspecting and adjusting output
 
@@ -337,6 +338,25 @@ apvg video render
 `apvg video generate` supports `--skip-analyze`, `--skip-scenario`,
 `--skip-record`, and `--skip-voice` to reuse existing stage output. Existing
 WAV files are still required when recording with `--skip-voice`.
+
+### Exporting an editable Remotion project
+
+After the timeline, recordings, and narration have been generated, export them independently
+from the generation pipeline:
+
+```bash
+apvg video export remotion
+cd output/remotion-project
+npm install
+npm run dev
+```
+
+The export contains a normal Node.js + TypeScript project with a `ProductVideo` composition.
+Video and audio files are copied into `public/assets`, while timing, subtitles, and styles are
+written to `src/data/timeline.json`. The default output location can be changed with `--output`;
+an existing non-empty directory requires `--force`. APVG does not run `npm install` and does not
+create a `package-lock.json` during export. This command only reads completed assets and does not
+run or modify `apvg video generate`.
 
 ## Recording CLI projects
 

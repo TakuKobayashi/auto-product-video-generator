@@ -4,6 +4,7 @@ import { scenarioCommand } from './scenario.js';
 import { voiceCommand } from './voice.js';
 import { recordCommand } from './record.js';
 import { renderCommand } from './render.js';
+import { exportCommand } from './export.js';
 
 export function videoCommand(): Command {
   const command = new Command('video').description(
@@ -15,5 +16,6 @@ export function videoCommand(): Command {
   command.addCommand(voiceCommand());
   command.addCommand(recordCommand());
   command.addCommand(renderCommand());
+  command.addCommand(exportCommand());
   return command;
 }
