@@ -37,6 +37,7 @@ describe('video subtitle config', () => {
   it('enables sequential one-line subtitles by default', () => {
     const config = ApvgConfigSchema.parse(configWithAuth({}));
 
+    expect(config.video.subtitles).toBe(true);
     expect(config.video.singleLineSubtitles).toBe(true);
   });
 
@@ -54,6 +55,14 @@ describe('video duration config', () => {
   it('uses unrestricted length by default', () => {
     const config = ApvgConfigSchema.parse(configWithAuth({}));
     expect(config.video.duration).toBeUndefined();
+  });
+
+  it('allows subtitle rendering to be disabled', () => {
+    const config = ApvgConfigSchema.parse({
+      ...configWithAuth({}),
+      video: { subtitles: false },
+    });
+    expect(config.video.subtitles).toBe(false);
   });
 
   it('accepts an explicit target duration', () => {

@@ -48,6 +48,7 @@ video:
   resolution: 1920x1080
   fps: 30
   language: ja
+  subtitles: true # false to render without subtitles
   singleLineSubtitles: true
   pageReadyWaitSeconds: 2
   sceneGapSeconds: 1

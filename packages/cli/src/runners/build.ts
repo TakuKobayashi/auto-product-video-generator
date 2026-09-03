@@ -362,7 +362,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
 
   const renderer = new FfmpegRenderer();
   await renderer.render(timeline, outputPath, {
-    noSubtitles: options.subtitles === false,
+    noSubtitles: options.subtitles === false || !config.video.subtitles,
     noVoice: options.skipVoice || false,
     preview: options.preview || false,
     dryRun,

@@ -181,6 +181,8 @@ export const VideoConfigSchema = z.object({
   language: z.string().default('ja'),
   // Optional creative direction appended to the scenario-generation prompt.
   scenarioPrompt: z.string().min(1).optional(),
+  // Overlay generated subtitles during final rendering.
+  subtitles: z.boolean().default(true),
   // Split each narration into short, sequential one-line subtitle cues.
   // Disable this to show the full scene narration for the scene's duration.
   singleLineSubtitles: z.boolean().default(true),
