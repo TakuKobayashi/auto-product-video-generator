@@ -51,6 +51,10 @@ inputs:
     description: Render a faster, lower-quality preview
     required: false
     default: 'false'
+  export-remotion:
+    description: Export an editable Remotion project and include it in the artifact output
+    required: false
+    default: 'true'
 
 outputs:
   video-path:
@@ -59,6 +63,9 @@ outputs:
   artifacts-path:
     description: Absolute path containing the video and intermediate artifacts
     value: ${{ steps.result.outputs['artifacts-path'] }}
+  remotion-project-path:
+    description: Absolute path to the exported Remotion project; empty when export-remotion is false
+    value: ${{ steps.result.outputs['remotion-project-path'] }}
 
 runs:
   using: composite
@@ -75,6 +82,7 @@ runs:
         VIDEO_TYPE: ${{ inputs['video-type'] }}
         VOICEVOX_SPEAKER: ${{ inputs['voicevox-speaker'] }}
         OUTPUT_DIRECTORY: ${{ inputs['output-directory'] }}
+        EXPORT_REMOTION: ${{ inputs['export-remotion'] }}
       run: |
         set -Eeuo pipefail
         [[ "${RUNNER_OS:-Linux}" == "Linux" ]] || {
@@ -87,6 +95,10 @@ runs:
         }
         [[ "$VOICEVOX_SPEAKER" =~ ^[0-9]+$ ]] || {
           echo "::error::voicevox-speaker must be a non-negative integer"
+          exit 1
+        }
+        [[ "$EXPORT_REMOTION" =~ ^(true|false)$ ]] || {
+          echo "::error::export-remotion must be true or false"
           exit 1
         }
         run_dir="$RUNNER_TEMP/apvg-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
@@ -233,6 +245,11 @@ runs:
         [[ "$PREVIEW" != "true" ]] || args+=(--preview)
         apvg "${args[@]}"
 
+    - name: Export editable Remotion project
+      if: inputs.export-remotion == 'true'
+      shell: bash
+      run: apvg video export remotion --config "$APVG_CONFIG"
+
     - name: Set action outputs
       id: result
       shell: bash
@@ -244,8 +261,18 @@ runs:
         }
         echo "video-path=$video_path" >> "$GITHUB_OUTPUT"
         echo "artifacts-path=$APVG_OUTPUT_DIR" >> "$GITHUB_OUTPUT"
+        remotion_path=""
+        if [[ "${{ inputs['export-remotion'] }}" == "true" ]]; then
+          remotion_path="$APVG_OUTPUT_DIR/remotion-project"
+          [[ -f "$remotion_path/package.json" ]] || {
+            echo "::error::Expected Remotion project was not created: $remotion_path"
+            exit 1
+          }
+        fi
+        echo "remotion-project-path=$remotion_path" >> "$GITHUB_OUTPUT"
         echo "### Auto Product Video Generator" >> "$GITHUB_STEP_SUMMARY"
         echo "Generated: \`$video_path\`" >> "$GITHUB_STEP_SUMMARY"
+        [[ -z "$remotion_path" ]] || echo "Remotion project: \`$remotion_path\`" >> "$GITHUB_STEP_SUMMARY"
 
     - name: Stop managed services
       if: always()

@@ -25,11 +25,17 @@ jobs:
           apvg-version: latest
           video-type: demo
           ollama-model: qwen2.5:7b-instruct
+          export-remotion: 'true'
       - uses: actions/upload-artifact@v7
         with:
           name: promotional-video
           path: ${{ steps.apvg.outputs['artifacts-path'] }}
 ```
+
+Marketplace Actionでは、編集可能なRemotionプロジェクトも既定で生成され、
+`artifacts-path`配下の`remotion-project/`に含まれます。個別のパスは
+`remotion-project-path`から取得できます。不要な場合は
+`export-remotion: 'false'`を指定してください。
 
 既定では、workflowが実行されているリポジトリ自身をcheckoutして解析します。別の公開リポジトリを対象にする場合だけ、`repository`へGit URLを指定してください。生成されたMP4は`video-path`、中間ファイルを含む出力ディレクトリは`artifacts-path`から取得できます。
 

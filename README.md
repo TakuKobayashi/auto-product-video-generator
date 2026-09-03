@@ -27,6 +27,7 @@ jobs:
           apvg-version: latest
           video-type: demo
           ollama-model: qwen2.5:7b-instruct
+          export-remotion: 'true'
       - uses: actions/upload-artifact@v7
         with:
           name: promotional-video
@@ -37,7 +38,9 @@ By default, the action analyzes the repository in which the workflow is running,
 checked out into `github.workspace`. To generate a video for another public
 repository, set `repository` to its Git URL. Optional inputs include
 `apvg-version`, `ref`, `project-path`, `target-url`, `voicevox-speaker`,
-`voicevox-image`, `output-directory`, and `preview`.
+`voicevox-image`, `output-directory`, `preview`, and `export-remotion`. The
+`export-remotion` input defaults to `true`; set it to `false` to upload only the
+rendered video and regular intermediate artifacts.
 
 The Marketplace action is intentionally a thin wrapper around the npm package.
 It installs `auto-product-video-generator@latest` by default; pin `apvg-version`
@@ -46,7 +49,9 @@ automatically receiving CLI updates.
 
 The action currently requires an Ubuntu/Linux runner with Docker and `sudo`.
 The generated MP4 path is available as `steps.<id>.outputs.video-path`; the
-complete output directory is `steps.<id>.outputs.artifacts-path`.
+complete output directory is `steps.<id>.outputs.artifacts-path`. When enabled,
+the editable project is also available as `steps.<id>.outputs.remotion-project-path`
+and is included under `remotion-project/` in that output directory.
 
 AI-powered promotional video generator for web, CLI, and Android applications.
 APVG reads a real git-managed project, plans the presentation, records the
@@ -251,7 +256,8 @@ uses its `TARGET_REPOSITORY` value.
 The workflow prepares Node.js, pnpm, dependencies, Playwright Chromium, system
 ffmpeg, Ollama with the models from `apvg.config.yml`, and VOICEVOX Engine. It
 releases Ollama resources before media processing. Successful runs upload the
-video and artifacts; failed runs upload diagnostic files and service logs.
+video, an editable Remotion project, and artifacts; failed runs upload diagnostic
+files and service logs.
 
 ### Choosing an Ollama model
 

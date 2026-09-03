@@ -31,8 +31,9 @@ jobs:
           video-type: demo
           ollama-model: qwen2.5:7b-instruct
           output-directory: apvg-output
+          export-remotion: 'true'
 
-      - name: Upload final video and intermediate artifacts
+      - name: Upload final video, Remotion project, and intermediate artifacts
         uses: actions/upload-artifact@v7
         with:
           name: promotional-video-${{ github.run_number }}

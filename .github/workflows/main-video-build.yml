@@ -128,7 +128,10 @@ jobs:
       - name: Render final video
         run: pnpm apvg video render --ffmpeg "$FFMPEG_PATH"
 
-      - name: Upload generated video and intermediate artifacts
+      - name: Export editable Remotion project
+        run: pnpm apvg video export remotion
+
+      - name: Upload generated video, Remotion project, and intermediate artifacts
         uses: actions/upload-artifact@v7
         with:
           name: main-branch-video-${{ github.run_number }}
