@@ -3,7 +3,7 @@
 ## GitHub Action
 
 Generate a narrated promotional video on an Ubuntu GitHub-hosted runner. The
-action uses Ollama for local scenario generation, VOICEVOX for Japanese
+action uses Ollama for local scenario generation, VOICEVOX or AITalk for Japanese
 narration, Playwright for recording, and FFmpeg for rendering.
 
 ```yaml
@@ -312,14 +312,14 @@ apvg video render
 | Recording actions changed          | Start from `apvg video record` |
 | Only render settings changed       | Run `apvg video render`        |
 
-| Command                          | Produces                                                        |
-| -------------------------------- | --------------------------------------------------------------- |
-| `apvg project init --repo <url>` | `apvg.config.yml`                                               |
-| `apvg project analyze`           | `.apvg/source-context.json`, `.apvg/project-summary.json`       |
-| `apvg video scenario generate`   | `.apvg/scenario.yml`, `.apvg/script.yml`, `.apvg/subtitles.srt` |
-| `apvg video voice`               | `.apvg/voice/*.wav` and updated timing                          |
-| `apvg video record`              | `.apvg/recordings/*.mp4`                                        |
-| `apvg video render`              | `output/final.mp4`, `output/artifacts/`                         |
+| Command                          | Produces                                                                                |
+| -------------------------------- | --------------------------------------------------------------------------------------- |
+| `apvg project init --repo <url>` | `apvg.config.yml`                                                                       |
+| `apvg project analyze`           | `.apvg/source-context.json`, `.apvg/project-summary.json`, `.apvg/resolved-config.json` |
+| `apvg video scenario generate`   | `.apvg/scenario.yml`, `.apvg/script.yml`, `.apvg/subtitles.srt`                         |
+| `apvg video voice`               | `.apvg/voice/*.wav` and updated timing                                                  |
+| `apvg video record`              | `.apvg/recordings/*.mp4`                                                                |
+| `apvg video render`              | `output/final.mp4`, `output/artifacts/`                                                 |
 
 ### Inspecting and adjusting output
 
@@ -350,12 +350,86 @@ commands. Add other exact commands to `target.cli.allowedCommands`; patterns in
 
 ---
 
+## Narration, voices, and scenario customization
+
+Narration is conversational by default. Add project-specific character or tone
+instructions with a multiline prompt:
+
+```yaml
+video:
+  # Omit duration for unrestricted length; set it to request an approximate length.
+  # duration: 90
+  scenarioPrompt: |
+    Speak like Zundamon in a friendly tone and naturally end sentences with "nanoda".
+  subtitles: true # false renders without subtitle overlay
+```
+
+`apvg video scenario generate --prompt "..."` and
+`apvg video generate --scenario-prompt "..."` provide one-run overrides. The final
+duration follows the synthesized audio. When `video.duration` is set, the scenario
+generator adjusts scene count and narration length toward that target.
+
+Multiple voice profiles are assigned to scenes in declaration order and wrap around:
+
+```yaml
+voice:
+  profiles:
+    - name: character-a
+      type: voicevox
+      url: http://localhost:50021
+      speakerId: 1
+    - name: character-b
+      type: aitalk
+      url: https://webapi.aitalk.jp/webapi/v5/ttsget.php
+      speakerName: nozomi
+      username: ${AITALK_USERNAME}
+      password: ${AITALK_PASSWORD}
+      # https://www.ai-j.jp/manual/business/webapi/5/modules/Api/TTSGet.html
+      options:
+        use_udic: true
+        ext: wav
+        fs: auto
+        bit: 16
+        channels: 1
+        mvolume: 1.0
+        volume: 1.0
+        speed: 1.0
+        pitch: 1.0
+        range: 1.0
+        style:
+          j: 0.5 # joy
+          s: 0.15 # sadness
+          a: 0.35 # anger
+        spause: 150
+        lpause: 370
+        epause: 800
+        tpause: 0
+```
+
+AITalk `style` in the profile is fixed for every assigned scene. If `style` is
+omitted, scenario generation analyzes each narration and emits per-scene `j`, `s`,
+and `a` values automatically. Fixed configuration always wins.
+
+### Environment placeholders
+
+Every YAML string supports `${ANY_ENV_KEY}`. APVG automatically loads `.env` and
+`.env.local` next to `apvg.config.yml`; `voice.envFile` can name one additional
+dotenv file. Placeholders are expanded only in memory and secrets are never written
+back to the config.
+
+### Analysis state does not modify config
+
+`apvg.config.yml` remains user-owned and is not rewritten by `analyze` or `build`.
+Detected URLs, start commands, platform details, and other analysis-derived runtime
+values are stored in `.apvg/resolved-config.json`. Later stages combine that file
+with the user config in memory, with explicit user settings taking precedence.
+
 ## Configuration
 
 Configuration is stored in `apvg.config.yml`. See
 [`examples/apvg.config.yml`](./examples/apvg.config.yml) for a complete example.
-The table shows fallback behavior when a key is omitted; `project init` may
-write values detected from the environment or source.
+The table shows fallback behavior when a key is omitted. Only `project init` creates
+the config; analysis results are written to `.apvg/resolved-config.json`.
 
 ### Project and source
 
@@ -414,16 +488,18 @@ write values detected from the environment or source.
 
 ### Video
 
-| YAML key                     | Feature            | Required | Default     | Description                                              |
-| ---------------------------- | ------------------ | -------- | ----------- | -------------------------------------------------------- |
-| `video.type`                 | Video structure    | No       | `demo`      | `teaser`<br>`shorts`<br>`demo`<br>`tutorial`             |
-| `video.duration`             | Target duration    | No       | `60`        | Seconds                                                  |
-| `video.resolution`           | Resolution         | No       | `1920x1080` | `1920x1080`<br>`1280x720`<br>`1080x1920`                 |
-| `video.fps`                  | Frame rate         | No       | `30`        | `30` or `60`                                             |
-| `video.language`             | Language           | No       | `ja`        | Scenario and narration language                          |
-| `video.singleLineSubtitles`  | One-line subtitles | No       | `true`      | Show short timed cues; `false` shows the full scene text |
-| `video.pageReadyWaitSeconds` | Web settling       | No       | `2`         | Wait after initial page load                             |
-| `video.sceneGapSeconds`      | Scene gap          | No       | `1`         | Silence between narration clips                          |
+| YAML key                     | Feature            | Required | Default                  | Description                                              |
+| ---------------------------- | ------------------ | -------- | ------------------------ | -------------------------------------------------------- |
+| `video.type`                 | Video structure    | No       | `demo`                   | `teaser`<br>`shorts`<br>`demo`<br>`tutorial`             |
+| `video.duration`             | Target duration    | No       | Unrestricted             | Optional approximate seconds                             |
+| `video.resolution`           | Resolution         | No       | `1920x1080`              | `1920x1080`<br>`1280x720`<br>`1080x1920`                 |
+| `video.fps`                  | Frame rate         | No       | `30`                     | `30` or `60`                                             |
+| `video.language`             | Language           | No       | `ja`                     | Scenario and narration language                          |
+| `video.scenarioPrompt`       | Creative direction | No       | Conversational narration | Additional tone/character instructions                   |
+| `video.subtitles`            | Subtitle overlay   | No       | `true`                   | Set `false` to render without subtitles                  |
+| `video.singleLineSubtitles`  | One-line subtitles | No       | `true`                   | Show short timed cues; `false` shows the full scene text |
+| `video.pageReadyWaitSeconds` | Web settling       | No       | `2`                      | Wait after initial page load                             |
+| `video.sceneGapSeconds`      | Scene gap          | No       | `1`                      | Silence between narration clips                          |
 
 ### LLM
 
@@ -441,13 +517,15 @@ write values detected from the environment or source.
 
 ### Narration and output
 
-| YAML key             | Feature         | Required | Default                  | Description                              |
-| -------------------- | --------------- | -------- | ------------------------ | ---------------------------------------- |
-| `voice.profiles`     | Voice profiles  | No       | Legacy VOICEVOX profile  | Alternating `voicevox`/`aitalk` profiles |
-| `voicevox.host`      | Legacy endpoint | No       | `http://localhost:50021` | Deprecated single VOICEVOX URL           |
-| `voicevox.speakerId` | Legacy speaker  | No       | `3`                      | Deprecated single speaker ID             |
-| `output.dir`         | Final output    | No       | `./output`               | Final output directory                   |
-| `output.workDir`     | Working data    | No       | `./.apvg`                | Scenario, audio, and recordings          |
+| YAML key                   | Feature         | Required | Default                  | Description                              |
+| -------------------------- | --------------- | -------- | ------------------------ | ---------------------------------------- |
+| `voice.profiles`           | Voice profiles  | No       | Legacy VOICEVOX profile  | Alternating `voicevox`/`aitalk` profiles |
+| `voice.envFile`            | Extra dotenv    | No       |                          | Additional environment file              |
+| `voice.profiles[].options` | AITalk options  | No       | API defaults             | `ttsget` synthesis parameters            |
+| `voicevox.host`            | Legacy endpoint | No       | `http://localhost:50021` | Deprecated single VOICEVOX URL           |
+| `voicevox.speakerId`       | Legacy speaker  | No       | `3`                      | Deprecated single speaker ID             |
+| `output.dir`               | Final output    | No       | `./output`               | Final output directory                   |
+| `output.workDir`           | Working data    | No       | `./.apvg`                | Scenario, audio, and recordings          |
 
 ## License
 

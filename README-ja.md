@@ -2,7 +2,7 @@
 
 ## GitHub Action
 
-UbuntuのGitHub-hosted runner上で、対象リポジトリの解析、シナリオ生成、VOICEVOX音声生成、画面録画、動画レンダリングまで実行できます。
+UbuntuのGitHub-hosted runner上で、対象リポジトリの解析、シナリオ生成、VOICEVOXまたはAI Talkによる音声生成、画面録画、動画レンダリングまで実行できます。
 
 ```yaml
 name: Generate product video
@@ -332,14 +332,14 @@ apvg video render
 | 画面操作だけを変更                     | `apvg video record`から        |
 | 録画・音声は完成済みで合成設定だけ変更 | `apvg video render`のみ        |
 
-| コマンド                         | 生成物                                                          | 補足                                                       |
-| -------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------- |
-| `apvg project init --repo <URL>` | `apvg.config.yml`                                               | 初回のみ。ローカルの場合は`--source <パス>`                |
-| `apvg project analyze`           | `.apvg/source-context.json`、`.apvg/project-summary.json`       | 決定論的なソース走査 + AIによる分類                        |
-| `apvg video scenario generate`   | `.apvg/scenario.yml`、`.apvg/script.yml`、`.apvg/subtitles.srt` | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
-| `apvg video voice`               | `.apvg/voice/*.wav`                                             | 実音声の長さでscript/subtitlesの時刻も更新                 |
-| `apvg video record`              | `.apvg/recordings/*.mp4`                                        | 音声の実時間に合わせて操作し、到達不能なら停止             |
-| `apvg video render`              | `output/final.mp4`、`output/artifacts/`                         | 完成動画と途中生成物一式を出力                             |
+| コマンド                         | 生成物                                                                                  | 補足                                                       |
+| -------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `apvg project init --repo <URL>` | `apvg.config.yml`                                                                       | 初回のみ。ローカルの場合は`--source <パス>`                |
+| `apvg project analyze`           | `.apvg/source-context.json`、`.apvg/project-summary.json`、`.apvg/resolved-config.json` | 決定論的なソース走査 + AIによる分類と実行時設定            |
+| `apvg video scenario generate`   | `.apvg/scenario.yml`、`.apvg/script.yml`、`.apvg/subtitles.srt`                         | scenarioはAI生成、script/subtitlesはそこから決定論的に算出 |
+| `apvg video voice`               | `.apvg/voice/*.wav`                                                                     | 実音声の長さでscript/subtitlesの時刻も更新                 |
+| `apvg video record`              | `.apvg/recordings/*.mp4`                                                                | 音声の実時間に合わせて操作し、到達不能なら停止             |
+| `apvg video render`              | `output/final.mp4`、`output/artifacts/`                                                 | 完成動画と途中生成物一式を出力                             |
 
 ### 生成結果を確認・調整する
 
@@ -387,27 +387,101 @@ actions:
 
 ---
 
+## ナレーション・音声・シナリオのカスタマイズ
+
+ナレーションはデフォルトで、読み上げに適した自然な口語体になります。キャラクターや
+口調を指定する場合は、追加プロンプトを記述できます。
+
+```yaml
+video:
+  # 省略時は長さ無制限。指定時はおおよその目標尺になります。
+  # duration: 90
+  scenarioPrompt: |
+    ずんだもんらしい親しみやすい口調にしてください。
+    語尾には自然に「なのだ」を付けてください。
+  subtitles: true # falseにすると字幕なしでrender
+```
+
+一時的な上書きには`apvg video scenario generate --prompt "..."`、一括生成では
+`apvg video generate --scenario-prompt "..."`を利用できます。最終的な動画尺は合成音声の
+実時間に追従します。`video.duration`を指定した場合だけ、LLMがシーン数と文章量を目標尺へ
+近づけます。
+
+複数の音声プロファイルは定義順でシーンへ割り当てられ、末尾まで行くと先頭へ戻ります。
+
+```yaml
+voice:
+  profiles:
+    - name: character-a
+      type: voicevox
+      url: http://localhost:50021
+      speakerId: 1
+    - name: character-b
+      type: aitalk
+      url: https://webapi.aitalk.jp/webapi/v5/ttsget.php
+      speakerName: nozomi
+      username: ${AITALK_USERNAME}
+      password: ${AITALK_PASSWORD}
+      # https://www.ai-j.jp/manual/business/webapi/5/modules/Api/TTSGet.html
+      options:
+        use_udic: true
+        ext: wav
+        fs: auto
+        bit: 16
+        channels: 1
+        mvolume: 1.0
+        volume: 1.0
+        speed: 1.0
+        pitch: 1.0
+        range: 1.0
+        style:
+          j: 0.5 # 喜び
+          s: 0.15 # 悲しみ
+          a: 0.35 # 怒り
+        spause: 150
+        lpause: 370
+        epause: 800
+        tpause: 0
+```
+
+AI Talkプロファイルに`options.style`があれば、割り当てられた全シーンでその値を使います。
+省略した場合は、シナリオ生成時にナレーションごとの感情を分析し、`j`、`s`、`a`を
+自動生成します。configの固定指定が常に優先されます。
+
+### 環境変数プレースホルダー
+
+YAML内のすべての文字列で`${ANY_ENV_KEY}`を利用できます。`apvg.config.yml`と同じ場所の
+`.env`と`.env.local`は自動で読み込まれ、`voice.envFile`で追加のdotenvファイルも指定
+できます。値はメモリ上だけで展開され、秘密値がconfigへ書き戻されることはありません。
+
+### 解析結果とconfigの分離
+
+`apvg.config.yml`は利用者が管理する設定として扱い、`analyze`や`build`では書き換えません。
+検出したURL、起動コマンド、プラットフォームなどは`.apvg/resolved-config.json`へ保存します。
+後続工程ではconfigと中間ファイルをメモリ上で合成し、利用者が明示した設定を優先します。
+
 ## 設定ファイル
 
 設定は`apvg.config.yml`に記述します。値を含む完全な例は
 [`examples/apvg.config.yml`](./examples/apvg.config.yml)を参照してください。以下は未指定時の
-値または自動検出動作です。`project init`が環境や解析結果に応じた値を書き込む場合があります。
+値または自動検出動作です。configを作成するのは`project init`だけで、解析結果は
+`.apvg/resolved-config.json`へ保存されます。
 
 ### プロジェクトとソース
 
-| YAMLキー                  | 機能           | 必須         | デフォルト値                                                                                           | 説明                                                          |
-| ------------------------- | -------------- | ------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
-| `project.name`            | プロジェクト名 | 必須         |                                                                                                        | 動画化する製品名                                              |
-| `project.description`     | 製品説明       | 任意         |                                                                                                        | 任意の補足説明                                                |
-| `source.repository`       | リモートソース | どちらか必須 |                                                                                                        | gitリポジトリURL                                              |
-| `source.localPath`        | ローカルソース | どちらか必須 |                                                                                                        | ローカルgitリポジトリのパス。`repository`とどちらか一方を指定 |
-| `source.ref`              | git参照        | 任意         |                                                                                                        | 使用するbranch、tag、commit                                   |
-| `source.installDeps`      | 依存関係の導入 | 任意         | `false`                                                                                                | アプリ起動前に依存パッケージをインストール                    |
-| `source.environmentFile`  | 環境変数ファイル | 任意       |                                                                                                        | プロジェクト形式へ変換し、アプリ起動前に配置                  |
-| `source.startCommand`     | アプリ起動     | 任意         | 自動検出                                                                                               | 開発サーバーの起動コマンド                                    |
-| `source.projectPath`      | モノレポ選択   | 任意         | 自動選択                                                                                               | 動画化するアプリのディレクトリ                                |
-| `source.platformPriority` | 検出優先順     | 任意         | `web`<br>`cli`<br>`android`<br>`flutter`<br>`react-native`<br>`unity`<br>`ios`<br>`desktop`<br>`other` | 複数アプリがある場合のプラットフォーム優先順                  |
-| `source.exclude`          | 解析対象外     | 任意         | `[]`                                                                                                   | ソース解析から除外するgitignore形式のパターン                 |
+| YAMLキー                  | 機能             | 必須         | デフォルト値                                                                                           | 説明                                                          |
+| ------------------------- | ---------------- | ------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `project.name`            | プロジェクト名   | 必須         |                                                                                                        | 動画化する製品名                                              |
+| `project.description`     | 製品説明         | 任意         |                                                                                                        | 任意の補足説明                                                |
+| `source.repository`       | リモートソース   | どちらか必須 |                                                                                                        | gitリポジトリURL                                              |
+| `source.localPath`        | ローカルソース   | どちらか必須 |                                                                                                        | ローカルgitリポジトリのパス。`repository`とどちらか一方を指定 |
+| `source.ref`              | git参照          | 任意         |                                                                                                        | 使用するbranch、tag、commit                                   |
+| `source.installDeps`      | 依存関係の導入   | 任意         | `false`                                                                                                | アプリ起動前に依存パッケージをインストール                    |
+| `source.environmentFile`  | 環境変数ファイル | 任意         |                                                                                                        | プロジェクト形式へ変換し、アプリ起動前に配置                  |
+| `source.startCommand`     | アプリ起動       | 任意         | 自動検出                                                                                               | 開発サーバーの起動コマンド                                    |
+| `source.projectPath`      | モノレポ選択     | 任意         | 自動選択                                                                                               | 動画化するアプリのディレクトリ                                |
+| `source.platformPriority` | 検出優先順       | 任意         | `web`<br>`cli`<br>`android`<br>`flutter`<br>`react-native`<br>`unity`<br>`ios`<br>`desktop`<br>`other` | 複数アプリがある場合のプラットフォーム優先順                  |
+| `source.exclude`          | 解析対象外       | 任意         | `[]`                                                                                                   | ソース解析から除外するgitignore形式のパターン                 |
 
 ### 録画対象
 
@@ -453,10 +527,12 @@ actions:
 | YAMLキー                     | 機能        | 必須 | デフォルト値 | 説明                                                 |
 | ---------------------------- | ----------- | ---- | ------------ | ---------------------------------------------------- |
 | `video.type`                 | 動画構成    | 任意 | `demo`       | `teaser`<br>`shorts`<br>`demo`<br>`tutorial`から選択 |
-| `video.duration`             | 目標時間    | 任意 | `60`         | 動画の目標秒数                                       |
+| `video.duration`             | 目標時間    | 任意 | 無制限       | 指定時だけ動画のおおよその目標秒数として使用         |
 | `video.resolution`           | 解像度      | 任意 | `1920x1080`  | `1920x1080`<br>`1280x720`<br>`1080x1920`から選択     |
 | `video.fps`                  | frame rate  | 任意 | `30`         | `30`または`60`                                       |
 | `video.language`             | 言語        | 任意 | `ja`         | シナリオとナレーションの言語                         |
+| `video.scenarioPrompt`       | 追加指示    | 任意 | 自然な口語体 | キャラクター、口調などの追加プロンプト               |
+| `video.subtitles`            | 字幕表示    | 任意 | `true`       | `false`で字幕を付けずにrender                        |
 | `video.singleLineSubtitles`  | 1行字幕     | 任意 | `true`       | 約14文字ずつ表示。`false`ではシーン全文を表示        |
 | `video.pageReadyWaitSeconds` | Web準備待ち | 任意 | `2`          | 最初のページ読み込み後に待機する秒数                 |
 | `video.sceneGapSeconds`      | シーン間隔  | 任意 | `1`          | ナレーション間に入れる無音秒数                       |
@@ -477,12 +553,15 @@ actions:
 
 ### 音声と出力
 
-| YAMLキー             | 機能           | 必須 | デフォルト値             | 説明                                       |
-| -------------------- | -------------- | ---- | ------------------------ | ------------------------------------------ |
-| `voicevox.host`      | VOICEVOX接続先 | 任意 | `http://localhost:50021` | VOICEVOX Engine APIのURL                   |
-| `voicevox.speakerId` | 話者           | 任意 | `3`                      | ナレーションに使うVOICEVOX speaker ID      |
-| `output.dir`         | 完成動画       | 任意 | `./output`               | 最終出力ディレクトリ                       |
-| `output.workDir`     | 作業データ     | 任意 | `./.apvg`                | シナリオ、音声、録画などの保存ディレクトリ |
+| YAMLキー                   | 機能              | 必須 | デフォルト値             | 説明                                       |
+| -------------------------- | ----------------- | ---- | ------------------------ | ------------------------------------------ |
+| `voice.profiles`           | 音声プロファイル  | 任意 | 従来のVOICEVOX設定       | `voicevox`と`aitalk`を定義順に交互利用     |
+| `voice.envFile`            | 追加dotenv        | 任意 |                          | 追加で読み込む環境変数ファイル             |
+| `voice.profiles[].options` | AI Talkオプション | 任意 | APIデフォルト            | `ttsget`の音声合成パラメーター             |
+| `voicevox.host`            | 従来の接続先      | 任意 | `http://localhost:50021` | 後方互換用の単一VOICEVOX URL               |
+| `voicevox.speakerId`       | 従来の話者        | 任意 | `3`                      | 後方互換用の単一speaker ID                 |
+| `output.dir`               | 完成動画          | 任意 | `./output`               | 最終出力ディレクトリ                       |
+| `output.workDir`           | 作業データ        | 任意 | `./.apvg`                | シナリオ、音声、録画などの保存ディレクトリ |
 
 ## ライセンス
 
