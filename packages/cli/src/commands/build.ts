@@ -6,6 +6,7 @@ export function buildCommand(name = 'build'): Command {
     .option('-c, --config <path>', 'path to apvg.config.yml', 'apvg.config.yml')
     .option('-t, --type <type>', 'video type: teaser|shorts|demo|tutorial', 'demo')
     .option('-u, --url <url>', 'target application URL (overrides config)')
+    .option('--scenario-prompt <text>', 'additional narration style or character direction')
     .option('--env-file <path>', 'environment file to convert and place in the selected project')
     .option('--skip-analyze', 'skip analyze step (use existing project-summary.json)')
     .option('--skip-scenario', 'skip scenario generation (use existing scenario.yml)')

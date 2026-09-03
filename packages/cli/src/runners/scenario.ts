@@ -21,6 +21,7 @@ import { resolveVoiceProfiles } from '@auto-product-video-generator/voicevox';
 interface ScenarioGenerateOptions {
   config?: string;
   type?: string;
+  prompt?: string;
   projectSummary?: string;
   scenario?: string;
   script?: string;
@@ -56,11 +57,14 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
   const videoConfig = {
     ...config.video,
     ...(options.type ? { type: options.type as 'teaser' | 'shorts' | 'demo' | 'tutorial' } : {}),
+    ...(options.prompt ? { scenarioPrompt: options.prompt } : {}),
   };
 
   if (options.dryRun) {
     logger.dryRun(`Would generate scenario for: ${summary.name}`);
-    logger.dryRun(`Video type: ${videoConfig.type}, duration: ~${videoConfig.duration}s`);
+    logger.dryRun(
+      `Video type: ${videoConfig.type}, duration: ${videoConfig.duration === undefined ? 'unrestricted' : `~${videoConfig.duration}s`}`
+    );
     logger.dryRun(`Would write: ${scenarioPath}`);
     logger.dryRun(`Would write: ${scriptPath}`);
     logger.dryRun(`Would write: ${srtPath}`);

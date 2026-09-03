@@ -93,10 +93,13 @@ target:
 
 video:
   type: 'demo' # teaser | shorts | demo | tutorial
-  duration: 90 # target seconds
+  # duration: 90 # optional target seconds; omit for unrestricted length
   resolution: '1920x1080'
   fps: 30
   language: 'ja'
+  # Additional narration/character direction. Multi-line YAML is supported.
+  # scenarioPrompt: |
+  #   ずんだもんらしい親しみやすい口調にして、語尾には自然に「なのだ」を付けてください。
   singleLineSubtitles: true # split narration into short sequential one-line cues
   pageReadyWaitSeconds: 2 # extra wait after the first web page is fully loaded
   sceneGapSeconds: 1 # silence between narration clips/scenes, in seconds

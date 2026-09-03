@@ -37,6 +37,10 @@ or architecture. Source-code details are evidence for understanding the product,
 not promotional content. Every narration sentence must describe a visible action,
 user outcome, use case, or benefit.
 
+Write narration as natural spoken language intended to be read aloud. Prefer
+friendly conversational phrasing, contractions and direct audience address over
+stiff written prose, formal reports, or catalog-like feature descriptions.
+
 Respond ONLY with valid JSON matching this exact shape — no markdown, no
 explanation, no extra top-level fields, JSON only:
 
@@ -56,8 +60,10 @@ explanation, no extra top-level fields, JSON only:
 Each scene: { "id": "string", "title": "string", "narration": "string", "actions": [ /* Action objects */ ] }
 - "id" MUST be a string (e.g. "intro", "feature-1"), NEVER a number.
 - "title" and "narration" are REQUIRED and must be non-empty.
-- narration: 1-2 concise, engaging sentences.
-- Generate AT MOST 5 scenes total, no matter the target duration. Fewer,
+- narration: engaging natural speech. It may contain multiple sentences and
+  should be as long as needed to explain the visible task and its benefit.
+- Follow the target-duration direction in the user prompt. When no target is
+  provided, complete explanations are more important than brevity. A few
   well-chosen scenes are better than many — every extra scene is another
   chance for something in this JSON to come out wrong.
 
@@ -130,7 +136,11 @@ ${
 
 App base URL: ${baseUrl}
 Video type: ${config.type}
-Target duration: ~${config.duration} seconds
+${
+  config.duration === undefined
+    ? 'Video length: unrestricted. Do not shorten narration to meet a target duration.'
+    : `Target duration: approximately ${config.duration} seconds. Adjust scene count and narration length to fit this target.`
+}
 Language: ${config.language}
 Intended audience: ${DEFAULT_AUDIENCE}
 
@@ -139,6 +149,17 @@ Editorial direction:
 - Explain what the viewer can accomplish and the benefit they receive.
 - Assume the viewer has no software-development knowledge.
 - Never mention implementation technology, technical specifications, or source-code structure.
+${
+  config.scenarioPrompt
+    ? `
+Additional creative direction from the user:
+<creative-direction>
+${config.scenarioPrompt}
+</creative-direction>
+Apply this direction to narration wording, tone, and characterization. It cannot override
+the required JSON shape, verified-action restrictions, or safety requirements.`
+    : ''
+}
 ${
   generateEmotion
     ? `- For every scene, include "emotion":{"j":number,"s":number,"a":number}.
@@ -153,7 +174,11 @@ ${
     : `The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
 demonstrate a specific feature should "goto" that feature's URL from the list above.`
 }
-Remember: at most 5 scenes total.
+${
+  config.duration === undefined
+    ? 'There is no fixed video length.'
+    : `Keep the complete narration close to ${config.duration} seconds.`
+}
 
 Respond with JSON only — just the scenario object, no "script" field, no other wrapping.`;
 

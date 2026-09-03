@@ -5,10 +5,12 @@ import { ScenarioGenerator } from './scenario-generator.js';
 
 describe('ScenarioGenerator route grounding', () => {
   it('replaces a dynamic route template with the concrete base URL', async () => {
+    let receivedPrompt = '';
     const llm: LlmProvider = {
       generate: async () => '',
-      generateJson: async <T>() =>
-        ({
+      generateJson: async <T>(prompt) => {
+        receivedPrompt = prompt;
+        return ({
           meta: { title: 'Demo', description: 'Demo', type: 'demo', duration: 30, language: 'ja' },
           scenes: [
             {
@@ -18,7 +20,8 @@ describe('ScenarioGenerator route grounding', () => {
               actions: [{ type: 'goto', url: 'http://127.0.0.1:3000/en/blog/[slug]' }],
             },
           ],
-        }) as T,
+        }) as T;
+      },
     };
     const summary: ProjectSummary = {
       name: 'Example',
@@ -46,6 +49,7 @@ describe('ScenarioGenerator route grounding', () => {
       resolution: '1280x720',
       fps: 30,
       language: 'ja',
+      scenarioPrompt: '語尾に「なのだ」を付ける',
       singleLineSubtitles: true,
       pageReadyWaitSeconds: 2,
       sceneGapSeconds: 1,
@@ -62,6 +66,8 @@ describe('ScenarioGenerator route grounding', () => {
       url: 'http://127.0.0.1:3000/',
     });
     expect(JSON.stringify(scenario)).not.toContain('[slug]');
+    expect(receivedPrompt).toContain('語尾に「なのだ」を付ける');
+    expect(receivedPrompt).toContain('<creative-direction>');
   });
 });
 

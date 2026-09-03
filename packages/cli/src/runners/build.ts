@@ -44,6 +44,7 @@ interface BuildOptions {
   config?: string;
   type?: string;
   url?: string;
+  scenarioPrompt?: string;
   envFile?: string;
   skipAnalyze?: boolean;
   skipScenario?: boolean;
@@ -67,6 +68,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
     config.target.autoDetectUrl = false;
   }
   if (options.type) config.video.type = options.type as typeof config.video.type;
+  if (options.scenarioPrompt) config.video.scenarioPrompt = options.scenarioPrompt;
 
   const workDir = config.output.workDir;
   await ensureDir(workDir);
@@ -75,7 +77,9 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   logger.info(
     `Target:  ${config.target.autoDetectUrl ? 'auto-detect from source' : config.target.url}`
   );
-  logger.info(`Video:   ${config.video.type}, ~${config.video.duration}s`);
+  logger.info(
+    `Video:   ${config.video.type}, ${config.video.duration === undefined ? 'unrestricted length' : `~${config.video.duration}s`}`
+  );
   logger.info(`LLM (analyze):  ${describeTaskLlm(config.llm, 'analyze')}`);
   logger.info(`LLM (scenario): ${describeTaskLlm(config.llm, 'scenario')}`);
   logger.info('');

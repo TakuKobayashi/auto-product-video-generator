@@ -1,6 +1,6 @@
 project:
   name: auto-product-video-generator
-  description: ''
+  description: ""
 source:
   localPath: ./
   installDeps: false
@@ -45,7 +45,6 @@ target:
       - render
 video:
   type: demo
-  duration: 60
   resolution: 1920x1080
   fps: 30
   language: ja

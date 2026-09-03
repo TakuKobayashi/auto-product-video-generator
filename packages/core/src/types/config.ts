@@ -174,10 +174,13 @@ export const TargetConfigSchema = z.object({
 
 export const VideoConfigSchema = z.object({
   type: VideoTypeSchema.default('demo'),
-  duration: z.number().int().positive().default(60),
+  // Optional target duration. When omitted, scenario narration is not length-constrained.
+  duration: z.number().int().positive().optional(),
   resolution: z.enum(['1920x1080', '1280x720', '1080x1920']).default('1920x1080'),
   fps: z.union([z.literal(30), z.literal(60)]).default(30),
   language: z.string().default('ja'),
+  // Optional creative direction appended to the scenario-generation prompt.
+  scenarioPrompt: z.string().min(1).optional(),
   // Split each narration into short, sequential one-line subtitle cues.
   // Disable this to show the full scene narration for the scene's duration.
   singleLineSubtitles: z.boolean().default(true),

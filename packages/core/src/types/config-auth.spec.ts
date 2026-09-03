@@ -50,6 +50,26 @@ describe('video subtitle config', () => {
   });
 });
 
+describe('video duration config', () => {
+  it('uses unrestricted length by default', () => {
+    const config = ApvgConfigSchema.parse(configWithAuth({}));
+    expect(config.video.duration).toBeUndefined();
+  });
+
+  it('accepts an explicit target duration', () => {
+    const config = ApvgConfigSchema.parse({ ...configWithAuth({}), video: { duration: 90 } });
+    expect(config.video.duration).toBe(90);
+  });
+
+  it('accepts additional scenario direction', () => {
+    const config = ApvgConfigSchema.parse({
+      ...configWithAuth({}),
+      video: { scenarioPrompt: 'Use a friendly character voice.' },
+    });
+    expect(config.video.scenarioPrompt).toBe('Use a friendly character voice.');
+  });
+});
+
 describe('source environment config', () => {
   it('accepts an environment file path', () => {
     const config = ApvgConfigSchema.parse({
