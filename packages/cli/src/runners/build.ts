@@ -25,7 +25,7 @@ import {
   recomputeScriptTimingFromAudio,
 } from '@auto-product-video-generator/ai';
 import { createPlatformRecorder } from '@auto-product-video-generator/recorder';
-import { VoicevoxClient } from '@auto-product-video-generator/voicevox';
+import { VoicevoxClient, resolveVoiceProfiles } from '@auto-product-video-generator/voicevox';
 import { FfmpegRenderer } from '@auto-product-video-generator/renderer';
 import {
   resolveProjectSource,
@@ -223,12 +223,13 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   if (!options.skipVoice) {
     logger.step('3/5', 'Synthesizing voice narration...');
     if (!dryRun) {
-      const voicevox = new VoicevoxClient(config.voicevox);
+      const profiles = resolveVoiceProfiles(config.voice, config.voicevox);
+      const voicevox = new VoicevoxClient(profiles);
       const healthy = await voicevox.checkHealth();
       if (!healthy) {
         throw new Error(
-          `VOICEVOX is not available at ${config.voicevox.host}. Start it with: ` +
-            'docker run --rm -p 50021:50021 voicevox/voicevox_engine:cpu-latest'
+          `One or more configured voice engines are not available: ` +
+            profiles.map((profile) => profile.url).join(', ')
         );
       } else {
         await voicevox.synthesizeAll(script, { outputDir: voiceDir, dryRun });

@@ -243,6 +243,32 @@ export const VoicevoxConfigSchema = z.object({
   speakerId: z.number().int().nonnegative().default(3),
 });
 
+export const VoiceProfileSchema = z.discriminatedUnion('type', [
+  z.object({
+    name: z.string().min(1).optional(),
+    type: z.literal('voicevox'),
+    url: z.string().url(),
+    speakerId: z.number().int().nonnegative(),
+  }),
+  z.object({
+    name: z.string().min(1).optional(),
+    type: z.literal('aitalk'),
+    url: z.string().url().default('https://webapi.aitalk.jp/webapi/v5/ttsget.php'),
+    speakerName: z.string().min(1),
+    // Credentials are read from environment variables and are never stored here.
+    usernameEnv: z.string().min(1).default('AITALK_USERNAME'),
+    passwordEnv: z.string().min(1).default('AITALK_PASSWORD'),
+    speed: z.number().min(0.5).max(4).optional(),
+    pitch: z.number().min(0.5).max(2).optional(),
+    volume: z.number().min(0.01).max(2).optional(),
+  }),
+]);
+
+export const VoiceConfigSchema = z.object({
+  // Profiles are assigned to scenes in order, wrapping around when necessary.
+  profiles: z.array(VoiceProfileSchema).min(1),
+});
+
 export const OutputConfigSchema = z.object({
   dir: z.string().default('./output'),
   workDir: z.string().default('./.apvg'),
@@ -254,6 +280,8 @@ export const ApvgConfigSchema = z.object({
   target: TargetConfigSchema,
   video: VideoConfigSchema.default({}),
   llm: LlmConfigSchema.default({}),
+  voice: VoiceConfigSchema.optional(),
+  // Deprecated compatibility setting. Prefer voice.profiles.
   voicevox: VoicevoxConfigSchema.default({}),
   output: OutputConfigSchema.default({}),
 });
@@ -263,5 +291,7 @@ export type TargetConfig = z.infer<typeof TargetConfigSchema>;
 export type VideoConfig = z.infer<typeof VideoConfigSchema>;
 export type LlmConfig = z.infer<typeof LlmConfigSchema>;
 export type VoicevoxConfig = z.infer<typeof VoicevoxConfigSchema>;
+export type VoiceProfile = z.infer<typeof VoiceProfileSchema>;
+export type VoiceConfig = z.infer<typeof VoiceConfigSchema>;
 export type OutputConfig = z.infer<typeof OutputConfigSchema>;
 export type ApvgConfig = z.infer<typeof ApvgConfigSchema>;

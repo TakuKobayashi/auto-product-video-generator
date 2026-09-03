@@ -359,19 +359,19 @@ write values detected from the environment or source.
 
 ### Project and source
 
-| YAML key                  | Feature              | Required       | Default                                                                                                | Description                         |
-| ------------------------- | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------- |
-| `project.name`            | Project name         | Yes            |                                                                                                        | Product name                        |
-| `project.description`     | Product description  | No             |                                                                                                        | Optional context                    |
-| `source.repository`       | Remote source        | One of the two |                                                                                                        | git repository URL                  |
-| `source.localPath`        | Local source         | One of the two |                                                                                                        | Local git repository path           |
-| `source.ref`              | git reference        | No             |                                                                                                        | Branch, tag, or commit              |
-| `source.installDeps`      | Install dependencies | No             | `false`                                                                                                | Install before starting the app     |
+| YAML key                  | Feature              | Required       | Default                                                                                                | Description                          |
+| ------------------------- | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| `project.name`            | Project name         | Yes            |                                                                                                        | Product name                         |
+| `project.description`     | Product description  | No             |                                                                                                        | Optional context                     |
+| `source.repository`       | Remote source        | One of the two |                                                                                                        | git repository URL                   |
+| `source.localPath`        | Local source         | One of the two |                                                                                                        | Local git repository path            |
+| `source.ref`              | git reference        | No             |                                                                                                        | Branch, tag, or commit               |
+| `source.installDeps`      | Install dependencies | No             | `false`                                                                                                | Install before starting the app      |
 | `source.environmentFile`  | App environment file | No             |                                                                                                        | Convert and place before app startup |
-| `source.startCommand`     | Start application    | No             | Auto-detected                                                                                          | Development-server command          |
-| `source.projectPath`      | Monorepo selection   | No             | Auto-selected                                                                                          | Application directory               |
-| `source.platformPriority` | Detection priority   | No             | `web`<br>`cli`<br>`android`<br>`flutter`<br>`react-native`<br>`unity`<br>`ios`<br>`desktop`<br>`other` | Platform priority order             |
-| `source.exclude`          | Analysis exclusions  | No             | `[]`                                                                                                   | Additional gitignore-style patterns |
+| `source.startCommand`     | Start application    | No             | Auto-detected                                                                                          | Development-server command           |
+| `source.projectPath`      | Monorepo selection   | No             | Auto-selected                                                                                          | Application directory                |
+| `source.platformPriority` | Detection priority   | No             | `web`<br>`cli`<br>`android`<br>`flutter`<br>`react-native`<br>`unity`<br>`ios`<br>`desktop`<br>`other` | Platform priority order              |
+| `source.exclude`          | Analysis exclusions  | No             | `[]`                                                                                                   | Additional gitignore-style patterns  |
 
 ### Recording target
 
@@ -441,12 +441,13 @@ write values detected from the environment or source.
 
 ### Narration and output
 
-| YAML key             | Feature           | Required | Default                  | Description                     |
-| -------------------- | ----------------- | -------- | ------------------------ | ------------------------------- |
-| `voicevox.host`      | VOICEVOX endpoint | No       | `http://localhost:50021` | Engine API URL                  |
-| `voicevox.speakerId` | Speaker           | No       | `3`                      | VOICEVOX speaker ID             |
-| `output.dir`         | Final output      | No       | `./output`               | Final output directory          |
-| `output.workDir`     | Working data      | No       | `./.apvg`                | Scenario, audio, and recordings |
+| YAML key             | Feature         | Required | Default                  | Description                              |
+| -------------------- | --------------- | -------- | ------------------------ | ---------------------------------------- |
+| `voice.profiles`     | Voice profiles  | No       | Legacy VOICEVOX profile  | Alternating `voicevox`/`aitalk` profiles |
+| `voicevox.host`      | Legacy endpoint | No       | `http://localhost:50021` | Deprecated single VOICEVOX URL           |
+| `voicevox.speakerId` | Legacy speaker  | No       | `3`                      | Deprecated single speaker ID             |
+| `output.dir`         | Final output    | No       | `./output`               | Final output directory                   |
+| `output.workDir`     | Working data    | No       | `./.apvg`                | Scenario, audio, and recordings          |
 
 ## License
 

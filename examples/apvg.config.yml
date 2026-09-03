@@ -132,9 +132,18 @@ llm:
   #       provider: "gemini"
   #       model: "gemini-2.5-pro"
 
-voicevox:
-  host: 'http://localhost:50021'
-  speakerId: 3
+voice:
+  profiles:
+    - name: voicevox-narrator
+      type: voicevox
+      url: 'http://localhost:50021'
+      speakerId: 3
+    # - name: aitalk-narrator
+    #   type: aitalk
+    #   url: 'https://webapi.aitalk.jp/webapi/v5/ttsget.php'
+    #   speakerName: nozomi
+    #   usernameEnv: AITALK_USERNAME
+    #   passwordEnv: AITALK_PASSWORD
 
 output:
   dir: './output'
