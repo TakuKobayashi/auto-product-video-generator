@@ -24,6 +24,34 @@ export function resolveCredential(value: string | undefined, envName: string): s
   });
 }
 
+export function buildAitalkRequestBody(
+  text: string,
+  profile: Extract<VoiceProfile, { type: 'aitalk' }>
+): URLSearchParams {
+  const body = new URLSearchParams({
+    username: resolveCredential(profile.username, profile.usernameEnv),
+    password: resolveCredential(profile.password, profile.passwordEnv),
+    speaker_name: profile.speakerName,
+    input_type: 'text',
+    text,
+    ext: profile.options.ext,
+  });
+  for (const [key, value] of Object.entries(profile.options)) {
+    if (key === 'ext' || value === undefined) continue;
+    switch (key) {
+      case 'use_udic':
+        body.set(key, value ? '1' : '0');
+        break;
+      case 'style':
+        body.set(key, JSON.stringify(value));
+        break;
+      default:
+        body.set(key, String(value));
+    }
+  }
+  return body;
+}
+
 function healthUrl(profile: VoiceProfile): string {
   switch (profile.type) {
     case 'voicevox':
@@ -111,20 +139,7 @@ export class VoicevoxClient {
       return;
     }
 
-    const username = resolveCredential(profile.username, profile.usernameEnv);
-    const password = resolveCredential(profile.password, profile.passwordEnv);
-
-    const body = new URLSearchParams({
-      username,
-      password,
-      speaker_name: profile.speakerName,
-      input_type: 'text',
-      text,
-      ext: 'wav',
-    });
-    if (profile.speed !== undefined) body.set('speed', String(profile.speed));
-    if (profile.pitch !== undefined) body.set('pitch', String(profile.pitch));
-    if (profile.volume !== undefined) body.set('volume', String(profile.volume));
+    const body = buildAitalkRequestBody(text, profile);
 
     const response = await fetch(profile.url, {
       method: 'POST',

@@ -1,5 +1,54 @@
 import { describe, expect, it } from 'vitest';
-import { resolveCredential, resolveVoiceProfiles } from './client.js';
+import { buildAitalkRequestBody, resolveCredential, resolveVoiceProfiles } from './client.js';
+
+describe('buildAitalkRequestBody', () => {
+  it('maps every configured ttsget option to the API parameter', () => {
+    const body = buildAitalkRequestBody('テスト', {
+      type: 'aitalk',
+      url: 'https://webapi.aitalk.jp/webapi/v5/ttsget.php',
+      speakerName: 'nozomi',
+      username: 'user',
+      password: 'pass',
+      usernameEnv: 'UNUSED_USER',
+      passwordEnv: 'UNUSED_PASSWORD',
+      options: {
+        use_udic: true,
+        ext: 'wav',
+        fs: 48000,
+        bit: 16,
+        channels: 1,
+        mvolume: 1.1,
+        volume: 1.2,
+        speed: 1.3,
+        pitch: 1.4,
+        range: 1.5,
+        style: { j: 0.5, s: 0.2, a: 0.3 },
+        spause: 150,
+        lpause: 370,
+        epause: 800,
+        tpause: 0,
+      },
+    });
+
+    expect(Object.fromEntries(body)).toMatchObject({
+      use_udic: '1',
+      ext: 'wav',
+      fs: '48000',
+      bit: '16',
+      channels: '1',
+      mvolume: '1.1',
+      volume: '1.2',
+      speed: '1.3',
+      pitch: '1.4',
+      range: '1.5',
+      style: JSON.stringify({ j: 0.5, s: 0.2, a: 0.3 }),
+      spause: '150',
+      lpause: '370',
+      epause: '800',
+      tpause: '0',
+    });
+  });
+});
 
 describe('resolveCredential', () => {
   it('expands dotenv-style placeholders without changing literal credentials', () => {
@@ -26,6 +75,7 @@ describe('resolveVoiceProfiles', () => {
         speakerName: 'nozomi',
         usernameEnv: 'AITALK_USERNAME',
         passwordEnv: 'AITALK_PASSWORD',
+        options: { ext: 'wav' as const },
       },
     ];
     expect(resolveVoiceProfiles({ profiles }, { host: 'http://legacy', speakerId: 3 })).toBe(

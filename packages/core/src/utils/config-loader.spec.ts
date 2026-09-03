@@ -24,7 +24,7 @@ describe('config environment placeholders', () => {
     );
     await writeFile(
       configPath,
-      `project:\n  name: \${APVG_TEST_NAME}\nsource:\n  localPath: .\ntarget:\n  url: http://localhost:3000\nvoice:\n  profiles:\n    - type: aitalk\n      speakerName: nozomi\n      username: \${APVG_TEST_AITALK_USER}\n      password: \${APVG_TEST_AITALK_PASSWORD}\n`
+      `project:\n  name: \${APVG_TEST_NAME}\nsource:\n  localPath: .\ntarget:\n  url: http://localhost:3000\nvoice:\n  profiles:\n    - type: aitalk\n      speakerName: nozomi\n      username: \${APVG_TEST_AITALK_USER}\n      password: \${APVG_TEST_AITALK_PASSWORD}\n      options:\n        style:\n          j: 0.5\n          s: 0.2\n          a: 0.3\n`
     );
 
     const config = await loadConfig(configPath);
@@ -32,6 +32,7 @@ describe('config environment placeholders', () => {
     expect(config.voice?.profiles[0]).toMatchObject({
       username: 'user-value',
       password: 'secret-value',
+      options: { style: { j: 0.5, s: 0.2, a: 0.3 } },
     });
 
     await saveConfig(configPath, config);

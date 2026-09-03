@@ -243,6 +243,44 @@ export const VoicevoxConfigSchema = z.object({
   speakerId: z.number().int().nonnegative().default(3),
 });
 
+const AitalkStyleSchema = z
+  .object({
+    j: z.number().min(0).max(1).optional(),
+    a: z.number().min(0).max(1).optional(),
+    s: z.number().min(0).max(1).optional(),
+  })
+  .refine((style) => Object.values(style).reduce((sum, value) => sum + (value ?? 0), 0) <= 1, {
+    message: 'AITalk style values must total 1.0 or less',
+  });
+
+const AitalkOptionsSchema = z.object({
+  use_udic: z.boolean().optional(),
+  // APVG's timing pipeline consumes WAV files, so other AITalk formats are not accepted here.
+  ext: z.literal('wav').default('wav'),
+  fs: z.union([
+    z.literal('auto'),
+    z.literal(8000),
+    z.literal(11025),
+    z.literal(16000),
+    z.literal(22050),
+    z.literal(32000),
+    z.literal(44100),
+    z.literal(48000),
+  ]).optional(),
+  bit: z.union([z.literal(8), z.literal(16)]).optional(),
+  channels: z.union([z.literal(1), z.literal(2)]).optional(),
+  mvolume: z.number().min(0.01).max(5).optional(),
+  volume: z.number().min(0.01).max(2).optional(),
+  speed: z.number().min(0.5).max(4).optional(),
+  pitch: z.number().min(0.5).max(2).optional(),
+  range: z.number().min(0).max(2).optional(),
+  style: AitalkStyleSchema.optional(),
+  spause: z.number().int().min(80).max(500).optional(),
+  lpause: z.number().int().min(100).max(2000).optional(),
+  epause: z.number().int().min(200).max(10000).optional(),
+  tpause: z.number().int().min(0).max(10000).optional(),
+});
+
 export const VoiceProfileSchema = z.discriminatedUnion('type', [
   z.object({
     name: z.string().min(1).optional(),
@@ -261,9 +299,7 @@ export const VoiceProfileSchema = z.discriminatedUnion('type', [
     // Backward-compatible alternative to username/password placeholders.
     usernameEnv: z.string().min(1).default('AITALK_USERNAME'),
     passwordEnv: z.string().min(1).default('AITALK_PASSWORD'),
-    speed: z.number().min(0.5).max(4).optional(),
-    pitch: z.number().min(0.5).max(2).optional(),
-    volume: z.number().min(0.01).max(2).optional(),
+    options: AitalkOptionsSchema.default({}),
   }),
 ]);
 

@@ -146,6 +146,27 @@ voice:
     #   speakerName: nozomi
     #   username: ${AITALK_USERNAME}
     #   password: ${AITALK_PASSWORD}
+    #   AITalk ttsget options:
+    #   https://www.ai-j.jp/manual/business/webapi/5/modules/Api/TTSGet.html
+    #   options:
+    #     use_udic: true
+    #     ext: wav
+    #     fs: auto
+    #     bit: 16
+    #     channels: 1
+    #     mvolume: 1.0
+    #     volume: 1.0
+    #     speed: 1.0
+    #     pitch: 1.0
+    #     range: 1.0
+    #     style:
+    #       j: 0.5 # joy
+    #       s: 0.15 # sadness
+    #       a: 0.35 # anger
+    #     spause: 150
+    #     lpause: 370
+    #     epause: 800
+    #     tpause: 0
 
 output:
   dir: './output'
