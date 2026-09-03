@@ -185,7 +185,21 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   if (!options.skipScenario) {
     logger.step('2/5', 'Generating scenario...');
     const generator = new ScenarioGenerator(scenarioLlm);
-    const result = await generator.generate(summary, config.video, config.target.url);
+    const voiceProfiles = resolveVoiceProfiles(config.voice, config.voicevox);
+    const generateEmotion = voiceProfiles.some((profile) => {
+      switch (profile.type) {
+        case 'voicevox':
+          return false;
+        case 'aitalk':
+          return profile.options.style === undefined;
+      }
+    });
+    const result = await generator.generate(
+      summary,
+      config.video,
+      config.target.url,
+      generateEmotion
+    );
     scenario = result.scenario;
     script = result.script;
 

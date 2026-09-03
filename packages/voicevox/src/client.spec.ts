@@ -48,6 +48,27 @@ describe('buildAitalkRequestBody', () => {
       tpause: '0',
     });
   });
+
+  it('uses scene emotion only when the profile has no fixed style', () => {
+    const baseProfile = {
+      type: 'aitalk' as const,
+      url: 'https://webapi.aitalk.jp/webapi/v5/ttsget.php',
+      speakerName: 'nozomi',
+      username: 'user',
+      password: 'pass',
+      usernameEnv: 'UNUSED_USER',
+      passwordEnv: 'UNUSED_PASSWORD',
+      options: { ext: 'wav' as const },
+    };
+    expect(buildAitalkRequestBody('text', baseProfile, { j: 0.7, s: 0, a: 0 }).get('style')).toBe(
+      JSON.stringify({ j: 0.7, s: 0, a: 0 })
+    );
+
+    const fixed = { ...baseProfile, options: { ext: 'wav' as const, style: { j: 0, s: 0.4, a: 0 } } };
+    expect(buildAitalkRequestBody('text', fixed, { j: 0.7, s: 0, a: 0 }).get('style')).toBe(
+      JSON.stringify({ j: 0, s: 0.4, a: 0 })
+    );
+  });
 });
 
 describe('resolveCredential', () => {

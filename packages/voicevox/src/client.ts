@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   Script,
+  NarrationEmotion,
   VoiceProfile,
   VoicevoxConfig,
   logger,
@@ -26,17 +27,22 @@ export function resolveCredential(value: string | undefined, envName: string): s
 
 export function buildAitalkRequestBody(
   text: string,
-  profile: Extract<VoiceProfile, { type: 'aitalk' }>
+  profile: Extract<VoiceProfile, { type: 'aitalk' }>,
+  sceneEmotion?: NarrationEmotion
 ): URLSearchParams {
+  const options = {
+    ...profile.options,
+    style: profile.options.style ?? sceneEmotion,
+  };
   const body = new URLSearchParams({
     username: resolveCredential(profile.username, profile.usernameEnv),
     password: resolveCredential(profile.password, profile.passwordEnv),
     speaker_name: profile.speakerName,
     input_type: 'text',
     text,
-    ext: profile.options.ext,
+    ext: options.ext,
   });
-  for (const [key, value] of Object.entries(profile.options)) {
+  for (const [key, value] of Object.entries(options)) {
     if (key === 'ext' || value === undefined) continue;
     switch (key) {
       case 'use_udic':
@@ -105,7 +111,13 @@ export class VoicevoxClient {
       const sceneIndex = script.scenes.findIndex((item) => item.id === scene.id);
       const profile = this.profiles[sceneIndex % this.profiles.length];
       const outputPath = `${options.outputDir}/scene-${scene.id}.wav`;
-      await this.synthesizeWithProfile(scene.narration, profile, outputPath, options.dryRun);
+      await this.synthesizeWithProfile(
+        scene.narration,
+        profile,
+        outputPath,
+        options.dryRun,
+        scene.emotion
+      );
     }
   }
 
@@ -113,13 +125,14 @@ export class VoicevoxClient {
     text: string,
     profile: VoiceProfile,
     outputPath: string,
-    dryRun: boolean
+    dryRun: boolean,
+    sceneEmotion?: NarrationEmotion
   ): Promise<void> {
     switch (profile.type) {
       case 'voicevox':
         return this.synthesize(text, profile.speakerId, outputPath, dryRun, profile.url);
       case 'aitalk':
-        return this.synthesizeAitalk(text, profile, outputPath, dryRun);
+        return this.synthesizeAitalk(text, profile, outputPath, dryRun, sceneEmotion);
     }
   }
 
@@ -127,7 +140,8 @@ export class VoicevoxClient {
     text: string,
     profile: Extract<VoiceProfile, { type: 'aitalk' }>,
     outputPath: string,
-    dryRun: boolean
+    dryRun: boolean,
+    sceneEmotion?: NarrationEmotion
   ): Promise<void> {
     logger.step(
       'voice',
@@ -139,7 +153,7 @@ export class VoicevoxClient {
       return;
     }
 
-    const body = buildAitalkRequestBody(text, profile);
+    const body = buildAitalkRequestBody(text, profile, sceneEmotion);
 
     const response = await fetch(profile.url, {
       method: 'POST',

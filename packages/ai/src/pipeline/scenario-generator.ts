@@ -97,7 +97,8 @@ export class ScenarioGenerator {
   async generate(
     summary: ProjectSummary,
     config: VideoConfig,
-    targetUrl: string
+    targetUrl: string,
+    generateEmotion = false
   ): Promise<{ scenario: Scenario; script: Script }> {
     logger.step('scenario', `Generating ${config.type} scenario via LLM...`);
 
@@ -138,6 +139,13 @@ Editorial direction:
 - Explain what the viewer can accomplish and the benefit they receive.
 - Assume the viewer has no software-development knowledge.
 - Never mention implementation technology, technical specifications, or source-code structure.
+${
+  generateEmotion
+    ? `- For every scene, include "emotion":{"j":number,"s":number,"a":number}.
+  Analyze how the narration should be performed: j is joy, s is sadness, and a is anger.
+  Each value must be between 0 and 1 and their total must not exceed 1. Use zeros for neutral speech.`
+    : '- Do not include an emotion field; voice style is fixed by configuration.'
+}
 
 ${
   isCli

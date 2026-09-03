@@ -16,6 +16,7 @@ import {
   ScenarioGenerator,
   SubtitleGenerator,
 } from '@auto-product-video-generator/ai';
+import { resolveVoiceProfiles } from '@auto-product-video-generator/voicevox';
 
 interface ScenarioGenerateOptions {
   config?: string;
@@ -74,7 +75,20 @@ export async function runScenarioGenerate(options: ScenarioGenerateOptions): Pro
 
   const llm = createLlmProviderForTask(config.llm, 'scenario');
   const generator = new ScenarioGenerator(llm);
-  const { scenario, script } = await generator.generate(summary, videoConfig, config.target.url);
+  const generateEmotion = resolveVoiceProfiles(config.voice, config.voicevox).some((profile) => {
+    switch (profile.type) {
+      case 'voicevox':
+        return false;
+      case 'aitalk':
+        return profile.options.style === undefined;
+    }
+  });
+  const { scenario, script } = await generator.generate(
+    summary,
+    videoConfig,
+    config.target.url,
+    generateEmotion
+  );
 
   await writeYaml(scenarioPath, scenario);
   logger.success(`Saved: ${scenarioPath}`);
