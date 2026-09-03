@@ -133,6 +133,8 @@ llm:
   #       model: "gemini-2.5-pro"
 
 voice:
+  # ${ANY_ENV_KEY} works in every string in this file. .env is loaded automatically.
+  # envFile: './.env.local' # optional additional dotenv file
   profiles:
     - name: voicevox-narrator
       type: voicevox
@@ -142,8 +144,8 @@ voice:
     #   type: aitalk
     #   url: 'https://webapi.aitalk.jp/webapi/v5/ttsget.php'
     #   speakerName: nozomi
-    #   usernameEnv: AITALK_USERNAME
-    #   passwordEnv: AITALK_PASSWORD
+    #   username: ${AITALK_USERNAME}
+    #   password: ${AITALK_PASSWORD}
 
 output:
   dir: './output'

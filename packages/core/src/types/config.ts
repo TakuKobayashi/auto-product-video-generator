@@ -255,7 +255,10 @@ export const VoiceProfileSchema = z.discriminatedUnion('type', [
     type: z.literal('aitalk'),
     url: z.string().url().default('https://webapi.aitalk.jp/webapi/v5/ttsget.php'),
     speakerName: z.string().min(1),
-    // Credentials are read from environment variables and are never stored here.
+    // Any config string supports placeholders such as ${AITALK_USERNAME}.
+    username: z.string().min(1).optional(),
+    password: z.string().min(1).optional(),
+    // Backward-compatible alternative to username/password placeholders.
     usernameEnv: z.string().min(1).default('AITALK_USERNAME'),
     passwordEnv: z.string().min(1).default('AITALK_PASSWORD'),
     speed: z.number().min(0.5).max(4).optional(),
@@ -267,6 +270,8 @@ export const VoiceProfileSchema = z.discriminatedUnion('type', [
 export const VoiceConfigSchema = z.object({
   // Profiles are assigned to scenes in order, wrapping around when necessary.
   profiles: z.array(VoiceProfileSchema).min(1),
+  // Optional dotenv file. A .env next to apvg.config.yml is loaded automatically.
+  envFile: z.string().min(1).optional(),
 });
 
 export const OutputConfigSchema = z.object({

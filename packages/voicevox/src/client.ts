@@ -15,6 +15,15 @@ export interface SynthesizeOptions {
   sceneId?: string;
 }
 
+export function resolveCredential(value: string | undefined, envName: string): string {
+  const source = value ?? `\${${envName}}`;
+  return source.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_placeholder, name: string) => {
+    const resolved = process.env[name];
+    if (resolved === undefined) throw new Error(`Environment variable ${name} is not set.`);
+    return resolved;
+  });
+}
+
 function healthUrl(profile: VoiceProfile): string {
   switch (profile.type) {
     case 'voicevox':
@@ -102,13 +111,8 @@ export class VoicevoxClient {
       return;
     }
 
-    const username = process.env[profile.usernameEnv];
-    const password = process.env[profile.passwordEnv];
-    if (!username || !password) {
-      throw new Error(
-        `AITalk credentials are missing. Set ${profile.usernameEnv} and ${profile.passwordEnv}.`
-      );
-    }
+    const username = resolveCredential(profile.username, profile.usernameEnv);
+    const password = resolveCredential(profile.password, profile.passwordEnv);
 
     const body = new URLSearchParams({
       username,
