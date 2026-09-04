@@ -26,6 +26,9 @@ interface InitOptions {
   androidApk?: string;
   androidBuildCommand?: string;
   androidSdk?: string;
+  unityRecorder?: boolean;
+  unityEditor?: string;
+  unityScenes?: string;
   force?: boolean;
   dryRun?: boolean;
 }
@@ -101,6 +104,20 @@ export async function runInit(directory: string, options: InitOptions): Promise<
       sdkPath: options.androidSdk,
       autoStartEmulator: true,
       autoInstall: true,
+    };
+  }
+  if (options.unityRecorder || options.unityEditor || options.unityScenes) {
+    config.target.type = 'unity';
+    config.target.unity = {
+      editorPath: options.unityEditor,
+      scenes: options.unityScenes
+        ?.split(',')
+        .map((scene) => scene.trim())
+        .filter(Boolean),
+      sceneStartIndex: 0,
+      sceneLoadWaitSeconds: 2,
+      includeAudio: false,
+      timeoutSeconds: 900,
     };
   }
   config.video.type = (options.type as 'teaser' | 'shorts' | 'demo' | 'tutorial') || 'demo';

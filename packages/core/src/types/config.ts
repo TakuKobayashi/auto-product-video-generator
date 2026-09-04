@@ -121,12 +121,23 @@ export const WebAuthConfigSchema = z.object({
 });
 export type WebAuthConfig = z.infer<typeof WebAuthConfigSchema>;
 
+export const UnityConfigSchema = z.object({
+  // Uses UNITY_EDITOR_PATH or the matching Unity Hub editor when omitted.
+  editorPath: z.string().min(1).optional(),
+  // Explicit scene paths; otherwise enabled Build Settings scenes are used.
+  scenes: z.array(z.string().min(1)).min(1).optional(),
+  sceneStartIndex: z.number().int().nonnegative().default(0),
+  sceneLoadWaitSeconds: z.number().nonnegative().default(2),
+  includeAudio: z.boolean().default(false),
+  timeoutSeconds: z.number().int().positive().default(900),
+});
+
 export const TargetConfigSchema = z.object({
   url: z.string().url(),
   // Set by `project init` when --url is omitted. Analyze then adopts the
   // local readyUrl inferred by the LLM from the project's own start script.
   autoDetectUrl: z.boolean().default(false),
-  type: z.enum(['web', 'cli', 'android', 'ios']).default('web'),
+  type: z.enum(['web', 'cli', 'android', 'ios', 'unity']).default('web'),
   auth: WebAuthConfigSchema.optional(),
   // Retained for compatibility. Authentication secrets are deliberately not
   // read from this generic field; manual login persists browser state instead.
@@ -154,6 +165,7 @@ export const TargetConfigSchema = z.object({
       autoInstall: z.boolean().default(true),
     })
     .optional(),
+  unity: UnityConfigSchema.optional(),
   cli: z
     .object({
       image: z.string().min(1).default('apvg-cli-recorder:latest'),
@@ -334,6 +346,7 @@ export const ApvgConfigSchema = z.object({
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
 export type TargetConfig = z.infer<typeof TargetConfigSchema>;
+export type UnityConfig = z.infer<typeof UnityConfigSchema>;
 export type VideoConfig = z.infer<typeof VideoConfigSchema>;
 export type LlmConfig = z.infer<typeof LlmConfigSchema>;
 export type VoicevoxConfig = z.infer<typeof VoicevoxConfigSchema>;

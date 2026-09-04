@@ -7,8 +7,9 @@ export interface ResolvedConfig {
   source?: { startCommand?: string };
   target?: {
     url?: string;
-    type?: 'web' | 'cli' | 'android' | 'ios';
+    type?: 'web' | 'cli' | 'android' | 'ios' | 'unity';
     android?: { autoStartEmulator: boolean; autoInstall: boolean };
+    unity?: ApvgConfig['target']['unity'];
   };
   platform: ProjectPlatform;
   analyzedAt: string;
@@ -29,6 +30,7 @@ export async function saveResolvedConfig(
       ...(config.target.autoDetectUrl ? {} : { url: config.target.url }),
       type: platformToTargetType(platform),
       ...(config.target.android ? { android: config.target.android } : {}),
+      ...(config.target.unity ? { unity: config.target.unity } : {}),
     },
     platform,
     analyzedAt: new Date().toISOString(),
@@ -53,18 +55,22 @@ export async function applyResolvedConfig(config: ApvgConfig): Promise<ApvgConfi
   if (resolved.target?.android) {
     config.target.android = { ...resolved.target.android, ...config.target.android };
   }
+  if (resolved.target?.unity) {
+    config.target.unity = { ...resolved.target.unity, ...config.target.unity };
+  }
   return config;
 }
 
-function platformToTargetType(platform: ProjectPlatform): 'web' | 'cli' | 'android' | 'ios' {
+function platformToTargetType(platform: ProjectPlatform): 'web' | 'cli' | 'android' | 'ios' | 'unity' {
   switch (platform) {
     case 'cli':
       return 'cli';
     case 'android':
     case 'flutter':
     case 'react-native':
-    case 'unity':
       return 'android';
+    case 'unity':
+      return 'unity';
     case 'ios':
       return 'ios';
     case 'web':

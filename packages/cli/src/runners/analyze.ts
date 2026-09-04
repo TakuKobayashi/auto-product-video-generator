@@ -94,13 +94,17 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
     case 'android':
     case 'flutter':
     case 'react-native':
-    case 'unity':
       // Build/install/emulator setup is deterministic in AndroidRecorder; do
       // not retain an LLM-guessed setup plan that would duplicate those steps.
       summary.setupSteps = [];
       config.target.type = 'android';
       config.target.android ||= { autoStartEmulator: true, autoInstall: true };
       logger.info(`Enabled automatic Android build/emulator preparation.`);
+      break;
+    case 'unity':
+      summary.setupSteps = [];
+      config.target.type = 'unity';
+      logger.info(`Enabled Unity Recorder Build Settings scene capture.`);
       break;
     case 'cli':
       config.target.type = 'cli';

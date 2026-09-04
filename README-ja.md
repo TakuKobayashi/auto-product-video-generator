@@ -55,8 +55,8 @@ Playwrightで録画します。
 | CLIアプリ              | Docker内のブラウザターミナル               | 対応     |
 | Android                | adbによる端末・エミュレーター録画          | 対応     |
 | Flutter / React Native | Android APKをビルドしてadb録画             | 対応     |
-| Unity Android          | 既存APKまたは独自ビルドコマンドからadb録画 | 対応     |
-| iOS / Unity Desktop    |                                            | 未対応   |
+| Unity                  | Unity RecorderでBuild SettingsのSceneを録画 | 対応     |
+| iOS                    |                                            | 未対応   |
 
 ---
 
@@ -156,12 +156,40 @@ apvg video generate
 生成直後のシナリオは、安全な起動・待機・スワイプを中心に構成されます。必要に応じて
 `.apvg/scenario.yml`へ`tap`、`input_text`、`back`などの操作を追加してください。
 
-### UnityからAndroid向け動画を作る場合
+### Unity RecorderでSceneを録画する場合
 
-Unityプロジェクトはビルド方法がプロジェクトごとに異なります。既存APKを
-`target.android.apkPath`で指定するか、`target.android.buildCommand`にビルドコマンドを
-設定してください。APK生成後のインストールと録画は自動です。iOSとUnity Desktopの録画には
-現在対応していません。
+ローカルのUnity EditorとUnity Recorderを使い、Build Settingsで有効になっているSceneの
+Game Viewを順番に録画できます。対象Unityプロジェクトへ`com.unity.recorder`を
+インストールしてから、次のように初期化してください。
+
+```bash
+apvg project init --source ../MyUnityProject --unity-recorder
+apvg project analyze
+apvg video scenario generate
+apvg video voice
+apvg video record
+apvg video render
+```
+
+通常は`ProjectSettings/ProjectVersion.txt`と一致するUnity HubのEditorを自動検出します。
+別の場所にインストールしている場合は、初期化時の`--unity-editor <path>`または
+`target.unity.editorPath`で指定できます。APVGのシナリオSceneとBuild Settingsの有効Sceneは
+先頭から順に対応します。明示的な順番にしたい場合は`target.unity.scenes`へSceneのAssetパスを
+記述してください。録画中、同じUnityプロジェクトを別のEditorで開かないでください。
+
+```yaml
+target:
+  type: unity
+  unity:
+    # editorPath: C:/Program Files/Unity/Hub/Editor/6000.0.65f1/Editor/Unity.exe
+    # scenes:
+    #   - Assets/Scenes/Title.unity
+    #   - Assets/Scenes/Game.unity
+    sceneStartIndex: 0
+    sceneLoadWaitSeconds: 2
+    includeAudio: false
+    timeoutSeconds: 900
+```
 
 ## 初期化と自動検出
 

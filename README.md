@@ -67,8 +67,8 @@ application, and produces a narrated video.
 | CLI application        | Browser terminal running in Docker                 | Supported     |
 | Android                | Device or emulator recording through adb           | Supported     |
 | Flutter / React Native | Build an Android APK and record through adb        | Supported     |
-| Unity Android          | Record an existing or custom-built APK through adb | Supported     |
-| iOS / Unity Desktop    |                                                    | Not supported |
+| Unity                  | Record Build Settings scenes with Unity Recorder   | Supported     |
+| iOS                    |                                                    | Not supported |
 
 ---
 
@@ -157,11 +157,41 @@ you need to override automatic selection. Generated scenarios favor safe launch,
 wait, and swipe actions. Add `tap`, `input_text`, or `back` actions to
 `.apvg/scenario.yml` when needed.
 
-### Unity targeting Android
+### Unity Recorder (local Editor)
 
-Unity build methods vary by project. Set `target.android.apkPath` to an existing
-APK or provide `target.android.buildCommand`. Installation and recording are
-automatic after the APK is available.
+Unity projects can instead record the Game View of enabled Build Settings scenes directly with
+the Unity Recorder package. Install `com.unity.recorder` in the target project, then initialize
+APVG with the local Unity project:
+
+```bash
+apvg project init --source ../MyUnityProject --unity-recorder
+apvg project analyze
+apvg video scenario generate
+apvg video voice
+apvg video record
+apvg video render
+```
+
+APVG finds the Unity Hub editor matching `ProjectSettings/ProjectVersion.txt`. Use
+`--unity-editor <path>` during initialization or set `target.unity.editorPath` when Unity is
+installed elsewhere. Each APVG scenario scene is paired, in order, with an enabled Build Settings
+scene. To use an explicit order, set `target.unity.scenes` to Unity asset paths. The temporary
+APVG Editor script is removed after recording. Do not keep the same project open in another Unity
+Editor instance while batch recording.
+
+```yaml
+target:
+  type: unity
+  unity:
+    # editorPath: C:/Program Files/Unity/Hub/Editor/6000.0.65f1/Editor/Unity.exe
+    # scenes:
+    #   - Assets/Scenes/Title.unity
+    #   - Assets/Scenes/Game.unity
+    sceneStartIndex: 0
+    sceneLoadWaitSeconds: 2
+    includeAudio: false
+    timeoutSeconds: 900
+```
 
 ## Initialization and automatic detection
 

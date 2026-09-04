@@ -142,6 +142,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
           outputDir: recordingsDir,
           screenshotDir,
           dryRun: options.dryRun || false,
+          sceneIndex: scenario.scenes.findIndex((item) => item.id === scene.id),
           storageStatePath,
         },
         targetDurationSeconds,
