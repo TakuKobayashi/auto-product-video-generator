@@ -16,33 +16,6 @@ source:
     - desktop
     - other
   exclude: []
-target:
-  url: http://localhost:3000
-  autoDetectUrl: true
-  type: cli
-  cli:
-    image: apvg-cli-recorder:latest
-    shell: /bin/bash
-    columns: 100
-    rows: 30
-    fontSize: 22
-    allowedCommands: []
-    deniedCommandPatterns:
-      - publish
-      - login
-      - logout
-      - token
-      - secret
-      - clean
-      - remove
-      - delete
-      - serve
-      - start
-      - watch
-      - generate
-      - voice
-      - record
-      - render
 video:
   type: demo
   resolution: 1920x1080

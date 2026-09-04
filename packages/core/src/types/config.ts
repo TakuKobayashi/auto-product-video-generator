@@ -335,7 +335,13 @@ export const OutputConfigSchema = z.object({
 export const ApvgConfigSchema = z.object({
   project: ProjectConfigSchema,
   source: SourceConfigSchema,
-  target: TargetConfigSchema,
+  // An omitted target means "detect it during analyze". The normalized
+  // in-memory placeholder is never required in a user-authored config.
+  target: TargetConfigSchema.default({
+    url: 'http://localhost:3000',
+    autoDetectUrl: true,
+    type: 'web',
+  }),
   video: VideoConfigSchema.default({}),
   llm: LlmConfigSchema.default({}),
   voice: VoiceConfigSchema.optional(),

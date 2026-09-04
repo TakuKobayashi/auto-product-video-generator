@@ -122,8 +122,13 @@ function formatConfigError(configPath: string, error: ZodError): string {
   return `Invalid ${configPath}:\n${lines.join('\n')}${hint}`;
 }
 
-export async function saveConfig(configPath: string, config: ApvgConfig): Promise<void> {
+export async function saveConfig(
+  configPath: string,
+  config: ApvgConfig,
+  options: { omitAutoDetectedTarget?: boolean } = {}
+): Promise<void> {
   const serializable = structuredClone(config) as unknown as Record<string, unknown>;
+  if (options.omitAutoDetectedTarget) delete serializable.target;
   for (const placeholder of configPlaceholders.get(config) ?? []) {
     setAtPath(serializable, placeholder.path, placeholder.template);
   }
