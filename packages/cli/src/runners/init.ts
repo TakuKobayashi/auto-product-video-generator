@@ -26,7 +26,6 @@ interface InitOptions {
   androidApk?: string;
   androidBuildCommand?: string;
   androidSdk?: string;
-  unityRecorder?: boolean;
   unityEditor?: string;
   unityScenes?: string;
   force?: boolean;
@@ -106,7 +105,7 @@ export async function runInit(directory: string, options: InitOptions): Promise<
       autoInstall: true,
     };
   }
-  if (options.unityRecorder || options.unityEditor || options.unityScenes) {
+  if (options.unityEditor || options.unityScenes) {
     config.target.type = 'unity';
     config.target.unity = {
       editorPath: options.unityEditor,

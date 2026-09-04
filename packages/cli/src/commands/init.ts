@@ -45,7 +45,6 @@ export function initCommand(): Command {
       '--android-sdk <path>',
       'Android SDK root (otherwise ANDROID_SDK_ROOT/ANDROID_HOME/PATH)'
     )
-    .option('--unity-recorder', 'record Unity Build Settings scenes with Unity Recorder')
     .option('--unity-editor <path>', 'path to the Unity Editor executable')
     .option(
       '--unity-scenes <paths>',

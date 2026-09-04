@@ -163,7 +163,7 @@ Game Viewを順番に録画できます。対象Unityプロジェクトへ`com.u
 インストールしてから、次のように初期化してください。
 
 ```bash
-apvg project init --source ../MyUnityProject --unity-recorder
+apvg project init --source ../MyUnityProject
 apvg project analyze
 apvg video scenario generate
 apvg video voice

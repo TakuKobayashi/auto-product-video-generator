@@ -164,7 +164,7 @@ the Unity Recorder package. Install `com.unity.recorder` in the target project, 
 APVG with the local Unity project:
 
 ```bash
-apvg project init --source ../MyUnityProject --unity-recorder
+apvg project init --source ../MyUnityProject
 apvg project analyze
 apvg video scenario generate
 apvg video voice
