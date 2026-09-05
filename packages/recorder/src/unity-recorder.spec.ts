@@ -6,7 +6,7 @@ import { ApvgConfigSchema } from '@auto-product-video-generator/core';
 import { createPlatformRecorder } from './factory.js';
 import {
   resolveUnityEditorPath,
-  UNITY_EDITOR_SCRIPT,
+  loadUnityEditorScript,
   UnityRecorder,
   unityEditorCandidates,
 } from './unity-recorder.js';
@@ -41,10 +41,18 @@ describe('UnityRecorder', () => {
     await expect(resolveUnityEditorPath(root, executable)).resolves.toBe(executable);
   });
 
-  it('generates a batch recorder that reads enabled Build Settings scenes', () => {
-    expect(UNITY_EDITOR_SCRIPT).toContain('EditorBuildSettings.scenes');
-    expect(UNITY_EDITOR_SCRIPT).toContain('RecorderController');
-    expect(UNITY_EDITOR_SCRIPT).toContain('EditorApplication.EnterPlaymode()');
+  it('loads the external C# batch recorder for enabled Build Settings scenes', async () => {
+    const script = await loadUnityEditorScript();
+    expect(script).toContain('EditorBuildSettings.scenes');
+    expect(script).toContain('RecorderController');
+    expect(script).toContain('new RenderTextureInputSettings');
+    expect(script).toContain('EditorWindow.GetWindow(gameViewType');
+    expect(script).toContain('const string WarmingUp = "warming-up"');
+    expect(script).toContain('SetRecordModeToManual');
+    expect(script).toContain('controller.StopRecording()');
+    expect(script).toContain('IsFileReady(job.output)');
+    expect(script).toContain('EditorApplication.ExitPlaymode()');
+    expect(script).toContain('EditorApplication.EnterPlaymode()');
     expect(unityEditorCandidates('6000.0.1f1')[0]).toContain('6000.0.1f1');
   });
 });

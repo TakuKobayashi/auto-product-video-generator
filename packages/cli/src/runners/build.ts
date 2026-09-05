@@ -350,6 +350,7 @@ export async function runBuild(options: BuildOptions): Promise<void> {
           scriptScene.endTime - scriptScene.startTime
         );
       }
+      await recorder.finalize?.();
     } finally {
       await recorder.dispose?.();
       await startedApp?.stop();

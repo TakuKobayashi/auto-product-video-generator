@@ -1,4 +1,4 @@
-import { rm } from 'node:fs/promises';
+import { copyFile, mkdir, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
@@ -27,3 +27,12 @@ await build({
   sourcemap: true,
   target: 'node20',
 });
+
+const unityScript = new URL('../recorder/src/unity/ApvgRecorder.cs', import.meta.url);
+for (const destination of [
+  new URL('./dist/unity/ApvgRecorder.cs', import.meta.url),
+  new URL('../recorder/dist/unity/ApvgRecorder.cs', import.meta.url),
+]) {
+  await mkdir(new URL('.', destination), { recursive: true });
+  await copyFile(unityScript, destination);
+}

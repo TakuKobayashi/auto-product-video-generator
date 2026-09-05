@@ -12,6 +12,29 @@ async function packageJson(root: string, path: string, value: object): Promise<v
 }
 
 describe('selectProjectRoot', () => {
+  it('keeps a Unity repository root instead of selecting a nested Node.js server', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'apvg-unity-monorepo-'));
+    await mkdir(join(root, 'Assets'), { recursive: true });
+    await mkdir(join(root, 'Packages'), { recursive: true });
+    await mkdir(join(root, 'ProjectSettings'), { recursive: true });
+    await writeFile(
+      join(root, 'ProjectSettings', 'ProjectVersion.txt'),
+      'm_EditorVersion: 6000.3.6f1\n'
+    );
+    await packageJson(root, 'server', {
+      scripts: { dev: 'wrangler dev' },
+      dependencies: { commander: '^12.0.0' },
+    });
+
+    await expect(
+      selectProjectRoot(root, {
+        localPath: root,
+        installDeps: false,
+        platformPriority: DEFAULT_PLATFORM_PRIORITY,
+      })
+    ).resolves.toBe(root);
+  });
+
   it('selects the runnable web application in a mixed monorepo', async () => {
     const root = await mkdtemp(join(tmpdir(), 'apvg-monorepo-'));
     await packageJson(root, '.', { scripts: { dev: 'pnpm --filter @sample/web dev' } });

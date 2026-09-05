@@ -135,6 +135,33 @@ export class ProjectAnalyzer {
             : step
         );
         break;
+      case 'unity':
+        // Unity Recorder opens enabled Build Settings scenes directly. Unity
+        // projects do not need Node/server setup commands.
+        summary.setupSteps = [];
+        const unityScenes = context.unity?.enabledScenes || [];
+        const useGeneratedUnityFeatures = summary.features.length === unityScenes.length;
+        summary.features = unityScenes.map((scene, index) => {
+          const generated = useGeneratedUnityFeatures ? summary.features[index] : undefined;
+          const fallbackTitle = scene.path.split('/').pop()?.replace(/\.unity$/i, '') || `Scene ${index + 1}`;
+          const evidence = scene.objectNames.slice(0, 6).join(', ');
+          const controllers = scene.referencedScripts
+            .map((path) => path.split('/').pop()?.replace(/\.cs$/i, ''))
+            .filter(Boolean)
+            .slice(0, 8)
+            .join(', ');
+          return {
+            id: scene.path,
+            title: generated?.title || fallbackTitle,
+            description:
+              generated?.description ||
+              `${fallbackTitle} screen. Visible/object evidence: ${evidence || '(none parsed)'}. ` +
+                `Behavior/controller evidence: ${controllers || '(none parsed)'}.`,
+            demoable: true,
+            priority: generated?.priority || 'medium',
+          };
+        });
+        break;
     }
 
     // When the LLM selected a dependency-install step for a workspace package,
@@ -165,8 +192,8 @@ export class ProjectAnalyzer {
         break;
       default:
         logger.info(
-          `Platform classified as '${summary.platform}'. Android, Flutter, React Native, and Unity ` +
-            `Android builds can be recorded when target.android is configured; other targets report ` +
+          `Platform classified as '${summary.platform}'. Android, Flutter, and React Native can use ` +
+            `Android recording; Unity uses Unity Recorder; other targets report ` +
             `their required recorder environment before recording.`
         );
     }
@@ -305,7 +332,42 @@ function buildPrompt(context: ProjectSourceContext, targetUrl?: string): string 
   const concreteRoutes = context.routes.filter((route) => isConcreteWebRoute(route.path));
   const omittedTemplateCount = context.routes.length - concreteRoutes.length;
 
-  const routesSection =
+  const unitySection = context.unity
+    ? `Unity scene-first evidence (authoritative for product analysis):
+Editor version: ${context.unity.editorVersion || '(unknown)'}
+Enabled Build Settings scenes, in recording order:
+${context.unity.enabledScenes
+  .map(
+    (scene, index) =>
+      `${index}. ${scene.path}\n` +
+      `   GameObjects: ${scene.objectNames.join(', ') || '(none parsed)'}\n` +
+      `   Referenced project scripts: ${scene.referencedScripts.join(', ') || '(none parsed)'}\n` +
+      `   Other referenced assets: ${scene.referencedAssets
+        .filter((asset) => !scene.referencedScripts.includes(asset))
+        .slice(0, 30)
+        .join(', ') || '(none parsed)'}`
+  )
+  .join('\n')}
+
+Project script excerpts (use behavior and user-facing names as evidence):
+${context.unity.projectScripts
+  .map((script) => `--- ${script.path} ---\n${script.excerpt}`)
+  .join('\n')}
+
+Installed Unity packages (dependencies only, not product features):
+${context.unity.packages.join(', ') || '(none)'}`
+    : '';
+
+  const routesSection = context.unity
+    ? `${unitySection}
+
+Unity rules:
+- Create one demoable feature for each enabled Build Settings scene, in exactly the listed order.
+- Set each feature id to the exact scene path. Do not set route or command.
+- Infer the game/product experience primarily from scene GameObjects and project script excerpts.
+- Asset Store libraries, plugins, packages, frameworks, and technical systems are supporting dependencies, never product features.
+- If evidence is ambiguous, describe only directly supported visible gameplay or screen purpose; do not invent mechanics.`
+    :
     concreteRoutes.length > 0
       ? `Discovered routes (use these exact paths for the "route" field — do not invent others):\n` +
         concreteRoutes.map((r) => `- ${r.path}  (from ${r.file})`).join('\n') +

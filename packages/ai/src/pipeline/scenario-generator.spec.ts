@@ -136,3 +136,31 @@ describe('ScenarioGenerator CLI grounding', () => {
     ]);
   });
 });
+
+describe('ScenarioGenerator Unity grounding', () => {
+  it('asks for scene-ordered narration and retains only wait actions', async () => {
+    let receivedPrompt = '';
+    const llm = {
+      generate: async () => '',
+      generateJson: async <T>(prompt: string) => {
+        receivedPrompt = prompt;
+        return {
+          meta: { title: 'Game', description: 'Demo', type: 'demo', duration: 10, language: 'ja' },
+          scenes: [{ id: 'title', title: 'Title', narration: 'ゲームを始めます。', actions: [{ type: 'launch_app' }] }],
+        } as T;
+      },
+    };
+    const summary = {
+      name: 'Game', description: 'A game', platform: 'unity', setupSteps: [],
+      features: [{ id: 'Assets/Scenes/Title.unity', title: 'Title', description: 'Start screen', demoable: true, priority: 'high' }],
+      targetAudience: 'players', keyValueProps: ['fun'], suggestedVideoTypes: ['demo'],
+    } as const;
+    const config = { type: 'demo', language: 'ja', resolution: '1920x1080', fps: 30, sceneGapSeconds: 0.5 } as any;
+
+    const { scenario } = await new ScenarioGenerator(llm).generate(summary as any, config, 'http://localhost');
+
+    expect(receivedPrompt).toContain('Create exactly one scenario scene for each listed Unity Scene');
+    expect(receivedPrompt).toContain('Assets/Scenes/Title.unity');
+    expect(scenario.scenes[0].actions).toEqual([{ type: 'wait', ms: 1000 }]);
+  });
+});

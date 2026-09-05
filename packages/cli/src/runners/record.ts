@@ -149,6 +149,7 @@ export async function runRecord(options: RecordOptions): Promise<void> {
         scriptScene.endTime - scriptScene.startTime
       );
     }
+    await recorder.finalize?.();
   } finally {
     await recorder.dispose?.();
     await startedApp?.stop();

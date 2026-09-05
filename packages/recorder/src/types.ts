@@ -20,5 +20,7 @@ export interface PlatformRecorder {
     targetDurationSeconds?: number,
     actionDurationSeconds?: number
   ): Promise<string>;
+  /** Flush queued recordings after every scene has been validated. */
+  finalize?(): Promise<void>;
   dispose?(): Promise<void>;
 }
