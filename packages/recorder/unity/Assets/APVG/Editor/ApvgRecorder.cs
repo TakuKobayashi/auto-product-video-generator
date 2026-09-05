@@ -1,4 +1,4 @@
-// Copied into an isolated APVG Unity project. Requires com.unity.recorder.
+// APVG Unity Editor integration. Requires com.unity.recorder.
 #if UNITY_EDITOR
 using System;
 using System.IO;

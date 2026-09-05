@@ -124,11 +124,11 @@ export class UnityRecorder implements PlatformRecorder {
 
     logger.step('record:unity', `Preparing isolated Unity project for ${this.jobs.length} scene(s)...`);
     await copyUnityProject(sourceRoot, this.temporaryProject);
-    const scriptPath = join(this.temporaryProject, 'Assets', 'APVGGenerated', 'ApvgRecorder.cs');
+    const scriptPath = join(this.temporaryProject, 'Assets', 'APVG', 'Editor', 'ApvgRecorder.cs');
     await mkdir(dirname(scriptPath), { recursive: true });
     await mkdir(stagedOutputDir, { recursive: true });
     await mkdir(dirname(logPath), { recursive: true });
-    await writeFile(scriptPath, await loadUnityEditorScript(), 'utf8');
+    await copyFile(resolveUnityEditorAsset(), scriptPath);
 
     const plan: UnityRecordingPlan = {
       timeoutSeconds: this.target.timeoutSeconds,
@@ -285,6 +285,10 @@ function runUnity(command: string, args: string[], timeoutMs: number, logPath: s
   });
 }
 
-export async function loadUnityEditorScript(): Promise<string> {
-  return readFile(new URL('./unity/ApvgRecorder.cs', import.meta.url), 'utf8');
+function resolveUnityEditorAsset(): URL {
+  const packaged = new URL('./unity/Assets/APVG/Editor/ApvgRecorder.cs', import.meta.url);
+  if (existsSync(packaged)) return packaged;
+  const workspace = new URL('../unity/Assets/APVG/Editor/ApvgRecorder.cs', import.meta.url);
+  if (existsSync(workspace)) return workspace;
+  throw new Error('The packaged APVG Unity Editor integration could not be found.');
 }

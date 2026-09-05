@@ -6,7 +6,7 @@
   "files": [
     "dist/",
     "docker/",
-    "src/unity/*.cs"
+    "unity/Assets/APVG/Editor/"
   ],
   "license": "MIT",
   "repository": {

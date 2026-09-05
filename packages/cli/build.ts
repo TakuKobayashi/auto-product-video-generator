@@ -1,9 +1,12 @@
+// Run through tsx so the build tooling follows the same TypeScript execution
+// convention as the development CLI; no compiled build script is required.
 import { copyFile, mkdir, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
 const packageRoot = fileURLToPath(new URL('.', import.meta.url));
-const source = (name) => fileURLToPath(new URL(`../${name}/src/index.ts`, import.meta.url));
+const source = (name: string) =>
+  fileURLToPath(new URL(`../${name}/src/index.ts`, import.meta.url));
 
 await rm(new URL('./dist', import.meta.url), { recursive: true, force: true });
 
@@ -28,10 +31,13 @@ await build({
   target: 'node20',
 });
 
-const unityScript = new URL('../recorder/src/unity/ApvgRecorder.cs', import.meta.url);
+const unityScript = new URL(
+  '../recorder/unity/Assets/APVG/Editor/ApvgRecorder.cs',
+  import.meta.url
+);
 for (const destination of [
-  new URL('./dist/unity/ApvgRecorder.cs', import.meta.url),
-  new URL('../recorder/dist/unity/ApvgRecorder.cs', import.meta.url),
+  new URL('./dist/unity/Assets/APVG/Editor/ApvgRecorder.cs', import.meta.url),
+  new URL('../recorder/dist/unity/Assets/APVG/Editor/ApvgRecorder.cs', import.meta.url),
 ]) {
   await mkdir(new URL('.', destination), { recursive: true });
   await copyFile(unityScript, destination);

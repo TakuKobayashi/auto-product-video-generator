@@ -209,14 +209,14 @@ tasks:
         packages/voicevox/tsconfig.json
         packages/renderer/tsconfig.json
         packages/cli/tsconfig.json
-      - node packages/cli/build.mjs
+      - pnpm exec tsx packages/cli/build.ts
 
   build:cli:
     desc: '公開用 CLI パッケージをビルドします'
     dir: '{{.ROOT_DIR}}'
     cmds:
       - pnpm exec tsc -b packages/cli/tsconfig.json
-      - node packages/cli/build.mjs
+      - pnpm exec tsx packages/cli/build.ts
 
   build:watch:
     desc: '全パッケージを監視して TypeScript を再ビルドします'
