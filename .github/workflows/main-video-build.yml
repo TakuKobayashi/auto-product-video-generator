@@ -25,6 +25,7 @@ jobs:
       VOICEVOX_IMAGE: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
       FFMPEG_PATH: /usr/bin/ffmpeg
       FFPROBE_PATH: /usr/bin/ffprobe
+      APVG_WORK_DIR: ./.apvg-main-build
 
     steps:
       - name: Check out main branch source
@@ -131,9 +132,29 @@ jobs:
         if: steps.analyzed-project.outputs.platform == 'unity'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes xvfb
+          sudo apt-get install --yes xvfb x11-utils libgl1-mesa-dri libglu1-mesa
           Xvfb :99 -screen 0 1920x1080x24 > .apvg-main-build/xvfb.log 2>&1 &
           echo "DISPLAY=:99" >> "$GITHUB_ENV"
+          echo "LIBGL_ALWAYS_SOFTWARE=1" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 30); do
+            DISPLAY=:99 xdpyinfo >/dev/null 2>&1 && exit 0
+            if [ "$attempt" -eq 30 ]; then
+              cat .apvg-main-build/xvfb.log >&2
+              echo "Unity virtual display did not become ready" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Verify Unity recording environment
+        if: steps.analyzed-project.outputs.platform == 'unity'
+        run: |
+          [[ -x "$UNITY_EDITOR_PATH" ]] || {
+            echo "::error::UNITY_EDITOR_PATH is not an executable file: $UNITY_EDITOR_PATH"
+            exit 1
+          }
+          xdpyinfo -display "$DISPLAY" >/dev/null
+          "$FFMPEG_PATH" -version | head -1
 
       - name: Generate scenario
         run: pnpm apvg video scenario generate
