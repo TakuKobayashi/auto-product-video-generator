@@ -85,6 +85,20 @@ export class ProjectAnalyzer {
       })
     );
 
+    // Unity inspection is stronger evidence than an LLM classification: this
+    // object exists only after the source inspector found and parsed a Unity
+    // project, including its Build Settings scenes. Mixed repositories may
+    // also contain package.json files (for example, server-side tools), which
+    // can otherwise make the LLM incorrectly choose the CLI recorder.
+    const platformWasGroundedToUnity = Boolean(context.unity && summary.platform !== 'unity');
+    if (platformWasGroundedToUnity) {
+      logger.warn(
+        `LLM classified the project as '${summary.platform}', but parsed Unity project evidence ` +
+          `was found. Using platform='unity'.`
+      );
+      summary.platform = 'unity';
+    }
+
     switch (summary.platform) {
       case 'cli':
         // CLI applications do not need a background development server.
@@ -140,7 +154,8 @@ export class ProjectAnalyzer {
         // projects do not need Node/server setup commands.
         summary.setupSteps = [];
         const unityScenes = context.unity?.enabledScenes || [];
-        const useGeneratedUnityFeatures = summary.features.length === unityScenes.length;
+        const useGeneratedUnityFeatures =
+          !platformWasGroundedToUnity && summary.features.length === unityScenes.length;
         summary.features = unityScenes.map((scene, index) => {
           const generated = useGeneratedUnityFeatures ? summary.features[index] : undefined;
           const fallbackTitle =

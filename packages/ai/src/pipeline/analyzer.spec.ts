@@ -254,4 +254,71 @@ describe('ProjectAnalyzer setup grounding', () => {
       expect.objectContaining({ command: 'pnpm run build', background: false }),
     ]);
   });
+
+  it('uses parsed Unity evidence instead of an incorrect LLM CLI classification', async () => {
+    const llm: LlmProvider = {
+      generate: async () => '',
+      generateJson: async <T>() =>
+        ({
+          name: 'Mixed Unity project',
+          description: 'Example game with server-side tooling',
+          platform: 'cli',
+          setupSteps: [
+            { name: 'Install dependencies', command: 'npm install', background: false },
+          ],
+          features: [
+            {
+              id: 'help',
+              title: 'CLI help',
+              description: 'Show CLI help',
+              command: 'example --help',
+              demoable: true,
+              priority: 'high',
+            },
+          ],
+          targetAudience: 'Players',
+          keyValueProps: [],
+          suggestedVideoTypes: ['demo'],
+        }) as T,
+    };
+    const context = {
+      rootDir: '/repo',
+      repositoryRoot: '/repo',
+      projectPath: '.',
+      packageManager: 'npm',
+      packageJson: { name: 'server-tools', bin: { example: 'bin/example.js' } },
+      readme: '',
+      framework: 'unknown',
+      routes: [],
+      fileTree: ['Assets/Main.unity', 'ProjectSettings/ProjectVersion.txt', 'package.json'],
+      platformHints: ['ProjectSettings/ProjectVersion.txt found (Unity)'],
+      assetFiles: [],
+      unity: {
+        editorVersion: '6000.3.6f1',
+        enabledScenes: [
+          {
+            path: 'Assets/Main.unity',
+            objectNames: ['Main Camera', 'Player'],
+            referencedAssets: ['Assets/Scripts/PlayerController.cs'],
+            referencedScripts: ['Assets/Scripts/PlayerController.cs'],
+          },
+        ],
+        projectScripts: [],
+        packages: ['com.unity.recorder'],
+      },
+    } as ProjectSourceContext;
+
+    const summary = await new ProjectAnalyzer(llm).analyze(context);
+
+    expect(summary.platform).toBe('unity');
+    expect(summary.setupSteps).toEqual([]);
+    expect(summary.features).toEqual([
+      expect.objectContaining({
+        id: 'Assets/Main.unity',
+        title: 'Main',
+        demoable: true,
+      }),
+    ]);
+    expect(summary.features[0].command).toBeUndefined();
+  });
 });
