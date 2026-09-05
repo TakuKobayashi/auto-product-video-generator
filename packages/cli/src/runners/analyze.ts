@@ -1,10 +1,5 @@
 import { join } from 'node:path';
-import {
-  loadConfig,
-  writeJson,
-  logger,
-  describeTaskLlm,
-} from '@auto-product-video-generator/core';
+import { loadConfig, writeJson, logger, describeTaskLlm } from '@auto-product-video-generator/core';
 import { createLlmProviderForTask, ProjectAnalyzer } from '@auto-product-video-generator/ai';
 import {
   resolveProjectSource,
@@ -74,12 +69,8 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
     const detected = detectStartCommand(sourceContext.packageJson, sourceContext.packageManager);
     if (detected) {
       config.source.startCommand = detected;
-      logger.info(
-        `Detected dev server command '${detected}' (stored in resolved analysis state).`
-      );
-      logger.dim(
-        `  Set source.startCommand in apvg.config.yml to override this detection.`
-      );
+      logger.info(`Detected dev server command '${detected}' (stored in resolved analysis state).`);
+      logger.dim(`  Set source.startCommand in apvg.config.yml to override this detection.`);
     }
   }
 

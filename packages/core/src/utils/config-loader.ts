@@ -42,7 +42,9 @@ function expandEnvironmentPlaceholders(
       (_placeholder, name: string) => {
         const resolved = process.env[name];
         if (resolved === undefined) {
-          throw new Error(`Environment variable ${name} referenced at ${path.join('.')} is not set.`);
+          throw new Error(
+            `Environment variable ${name} referenced at ${path.join('.')} is not set.`
+          );
         }
         return resolved;
       }

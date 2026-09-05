@@ -367,7 +367,10 @@ async function walkUnityMetaFiles(
 }
 
 function uniqueMatches(source: string, pattern: RegExp, limit: number): string[] {
-  return [...new Set([...source.matchAll(pattern)].map((match) => match[1].trim()))].slice(0, limit);
+  return [...new Set([...source.matchAll(pattern)].map((match) => match[1].trim()))].slice(
+    0,
+    limit
+  );
 }
 
 function isLikelyThirdPartyUnityAsset(path: string): boolean {

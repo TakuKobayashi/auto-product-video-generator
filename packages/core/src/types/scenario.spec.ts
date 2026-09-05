@@ -9,9 +9,9 @@ describe('narration emotion', () => {
       s: 0.1,
       a: 0.2,
     });
-    expect(() =>
-      SceneSchema.parse({ ...scene, emotion: { j: 0.7, s: 0.3, a: 0.2 } })
-    ).toThrow(/total 1.0 or less/);
+    expect(() => SceneSchema.parse({ ...scene, emotion: { j: 0.7, s: 0.3, a: 0.2 } })).toThrow(
+      /total 1.0 or less/
+    );
   });
 });
 

@@ -121,7 +121,7 @@ export class ScenarioGenerator {
           ? `- ${f.title}: ${f.description}\n  Command: ${f.command}`
           : isUnity
             ? `- Scene ${f.id}: ${f.title}: ${f.description}`
-          : `- ${f.title}: ${f.description}\n  URL: ${resolveFeatureUrl(baseUrl, f.route)}`
+            : `- ${f.title}: ${f.description}\n  URL: ${resolveFeatureUrl(baseUrl, f.route)}`
       )
       .join('\n');
     const prompt = `Create a ${config.type} promotional video scenario.
@@ -139,7 +139,7 @@ ${
     ? '- (no documented CLI commands were identified; use a safe --help command)'
     : isUnity
       ? '- (no enabled Unity scenes were identified)'
-    : `- (no demoable features identified; use ${baseUrl} as a general intro)`)
+      : `- (no demoable features identified; use ${baseUrl} as a general intro)`)
 }
 
 App base URL: ${baseUrl}
@@ -181,7 +181,7 @@ ${
     ? 'This is a CLI project. Create a separate scene for each useful command listed above and use only those exact commands. Show real safe workflows ending in --dry-run when provided; otherwise show the relevant subcommand --help. Do not repeat root --help in every scene. Never publish, authenticate, expose secrets/environment variables, modify files, or start a server/watcher. Do not use goto, click, type, scroll, hover, or mobile actions.'
     : isUnity
       ? 'This is a Unity project recorded by opening Build Settings scenes in order. Create exactly one scenario scene for each listed Unity Scene, preserving that order. Narrate only the corresponding screen or gameplay evidence. Use only wait actions for pacing; do not use goto, launch_app, tap, click, type, scroll, screenshot, or run_command.'
-    : `The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
+      : `The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
 demonstrate a specific feature should "goto" that feature's URL from the list above.`
 }
 ${
@@ -240,23 +240,25 @@ Respond with JSON only — just the scenario object, no "script" field, no other
 
 function groundUnityScenarioActions(scenario: Scenario, summary: ProjectSummary): void {
   const generated = scenario.scenes;
-  scenario.scenes = summary.features.filter((feature) => feature.demoable).map((feature, index) => {
-    const scene = generated[index] || {
-      id: `unity-scene-${index + 1}`,
-      title: feature.title,
-      narration: feature.description,
-      actions: [],
-    };
-    scene.id =
-      feature.id
-        .split('/')
-        .pop()
-        ?.replace(/\.unity$/i, '')
-        .replace(/[^a-zA-Z0-9_-]+/g, '-') || `unity-scene-${index + 1}`;
-    const waits = scene.actions.filter((action) => action.type === 'wait');
-    scene.actions = waits.length > 0 ? waits : [{ type: 'wait', ms: 1000 }];
-    return scene;
-  });
+  scenario.scenes = summary.features
+    .filter((feature) => feature.demoable)
+    .map((feature, index) => {
+      const scene = generated[index] || {
+        id: `unity-scene-${index + 1}`,
+        title: feature.title,
+        narration: feature.description,
+        actions: [],
+      };
+      scene.id =
+        feature.id
+          .split('/')
+          .pop()
+          ?.replace(/\.unity$/i, '')
+          .replace(/[^a-zA-Z0-9_-]+/g, '-') || `unity-scene-${index + 1}`;
+      const waits = scene.actions.filter((action) => action.type === 'wait');
+      scene.actions = waits.length > 0 ? waits : [{ type: 'wait', ms: 1000 }];
+      return scene;
+    });
 }
 
 function groundCliScenarioActions(scenario: Scenario, summary: ProjectSummary): void {

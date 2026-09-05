@@ -4,11 +4,7 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ApvgConfigSchema } from '@auto-product-video-generator/core';
 import { createPlatformRecorder } from './factory.js';
-import {
-  resolveUnityEditorPath,
-  UnityRecorder,
-  unityEditorCandidates,
-} from './unity-recorder.js';
+import { resolveUnityEditorPath, UnityRecorder, unityEditorCandidates } from './unity-recorder.js';
 
 const temporaryDirectories: string[] = [];
 

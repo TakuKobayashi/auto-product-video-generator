@@ -143,7 +143,11 @@ export class ProjectAnalyzer {
         const useGeneratedUnityFeatures = summary.features.length === unityScenes.length;
         summary.features = unityScenes.map((scene, index) => {
           const generated = useGeneratedUnityFeatures ? summary.features[index] : undefined;
-          const fallbackTitle = scene.path.split('/').pop()?.replace(/\.unity$/i, '') || `Scene ${index + 1}`;
+          const fallbackTitle =
+            scene.path
+              .split('/')
+              .pop()
+              ?.replace(/\.unity$/i, '') || `Scene ${index + 1}`;
           const evidence = scene.objectNames.slice(0, 6).join(', ');
           const controllers = scene.referencedScripts
             .map((path) => path.split('/').pop()?.replace(/\.cs$/i, ''))
@@ -342,10 +346,12 @@ ${context.unity.enabledScenes
       `${index}. ${scene.path}\n` +
       `   GameObjects: ${scene.objectNames.join(', ') || '(none parsed)'}\n` +
       `   Referenced project scripts: ${scene.referencedScripts.join(', ') || '(none parsed)'}\n` +
-      `   Other referenced assets: ${scene.referencedAssets
-        .filter((asset) => !scene.referencedScripts.includes(asset))
-        .slice(0, 30)
-        .join(', ') || '(none parsed)'}`
+      `   Other referenced assets: ${
+        scene.referencedAssets
+          .filter((asset) => !scene.referencedScripts.includes(asset))
+          .slice(0, 30)
+          .join(', ') || '(none parsed)'
+      }`
   )
   .join('\n')}
 
@@ -367,8 +373,7 @@ Unity rules:
 - Infer the game/product experience primarily from scene GameObjects and project script excerpts.
 - Asset Store libraries, plugins, packages, frameworks, and technical systems are supporting dependencies, never product features.
 - If evidence is ambiguous, describe only directly supported visible gameplay or screen purpose; do not invent mechanics.`
-    :
-    concreteRoutes.length > 0
+    : concreteRoutes.length > 0
       ? `Discovered routes (use these exact paths for the "route" field — do not invent others):\n` +
         concreteRoutes.map((r) => `- ${r.path}  (from ${r.file})`).join('\n') +
         (omittedTemplateCount > 0

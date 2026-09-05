@@ -61,7 +61,9 @@ export async function applyResolvedConfig(config: ApvgConfig): Promise<ApvgConfi
   return config;
 }
 
-function platformToTargetType(platform: ProjectPlatform): 'web' | 'cli' | 'android' | 'ios' | 'unity' {
+function platformToTargetType(
+  platform: ProjectPlatform
+): 'web' | 'cli' | 'android' | 'ios' | 'unity' {
   switch (platform) {
     case 'cli':
       return 'cli';

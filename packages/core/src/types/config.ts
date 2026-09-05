@@ -274,16 +274,18 @@ const AitalkOptionsSchema = z.object({
   use_udic: z.boolean().optional(),
   // APVG's timing pipeline consumes WAV files, so other AITalk formats are not accepted here.
   ext: z.literal('wav').default('wav'),
-  fs: z.union([
-    z.literal('auto'),
-    z.literal(8000),
-    z.literal(11025),
-    z.literal(16000),
-    z.literal(22050),
-    z.literal(32000),
-    z.literal(44100),
-    z.literal(48000),
-  ]).optional(),
+  fs: z
+    .union([
+      z.literal('auto'),
+      z.literal(8000),
+      z.literal(11025),
+      z.literal(16000),
+      z.literal(22050),
+      z.literal(32000),
+      z.literal(44100),
+      z.literal(48000),
+    ])
+    .optional(),
   bit: z.union([z.literal(8), z.literal(16)]).optional(),
   channels: z.union([z.literal(1), z.literal(2)]).optional(),
   mvolume: z.number().min(0.01).max(5).optional(),

@@ -129,15 +129,15 @@ export async function runInit(directory: string, options: InitOptions): Promise<
 
   const hasExplicitTarget = Boolean(
     options.url ||
-      options.androidPackage ||
-      options.androidActivity ||
-      options.androidSerial ||
-      options.androidAvd ||
-      options.androidApk ||
-      options.androidBuildCommand ||
-      options.androidSdk ||
-      options.unityEditor ||
-      options.unityScenes
+    options.androidPackage ||
+    options.androidActivity ||
+    options.androidSerial ||
+    options.androidAvd ||
+    options.androidApk ||
+    options.androidBuildCommand ||
+    options.androidSdk ||
+    options.unityEditor ||
+    options.unityScenes
   );
   await saveConfig(configPath, config, { omitAutoDetectedTarget: !hasExplicitTarget });
 

@@ -10,7 +10,7 @@ describe('ScenarioGenerator route grounding', () => {
       generate: async () => '',
       generateJson: async <T>(prompt) => {
         receivedPrompt = prompt;
-        return ({
+        return {
           meta: { title: 'Demo', description: 'Demo', type: 'demo', duration: 30, language: 'ja' },
           scenes: [
             {
@@ -20,7 +20,7 @@ describe('ScenarioGenerator route grounding', () => {
               actions: [{ type: 'goto', url: 'http://127.0.0.1:3000/en/blog/[slug]' }],
             },
           ],
-        }) as T;
+        } as T;
       },
     };
     const summary: ProjectSummary = {
@@ -146,20 +146,52 @@ describe('ScenarioGenerator Unity grounding', () => {
         receivedPrompt = prompt;
         return {
           meta: { title: 'Game', description: 'Demo', type: 'demo', duration: 10, language: 'ja' },
-          scenes: [{ id: 'title', title: 'Title', narration: 'ゲームを始めます。', actions: [{ type: 'launch_app' }] }],
+          scenes: [
+            {
+              id: 'title',
+              title: 'Title',
+              narration: 'ゲームを始めます。',
+              actions: [{ type: 'launch_app' }],
+            },
+          ],
         } as T;
       },
     };
     const summary = {
-      name: 'Game', description: 'A game', platform: 'unity', setupSteps: [],
-      features: [{ id: 'Assets/Scenes/Title.unity', title: 'Title', description: 'Start screen', demoable: true, priority: 'high' }],
-      targetAudience: 'players', keyValueProps: ['fun'], suggestedVideoTypes: ['demo'],
+      name: 'Game',
+      description: 'A game',
+      platform: 'unity',
+      setupSteps: [],
+      features: [
+        {
+          id: 'Assets/Scenes/Title.unity',
+          title: 'Title',
+          description: 'Start screen',
+          demoable: true,
+          priority: 'high',
+        },
+      ],
+      targetAudience: 'players',
+      keyValueProps: ['fun'],
+      suggestedVideoTypes: ['demo'],
     } as const;
-    const config = { type: 'demo', language: 'ja', resolution: '1920x1080', fps: 30, sceneGapSeconds: 0.5 } as any;
+    const config = {
+      type: 'demo',
+      language: 'ja',
+      resolution: '1920x1080',
+      fps: 30,
+      sceneGapSeconds: 0.5,
+    } as any;
 
-    const { scenario } = await new ScenarioGenerator(llm).generate(summary as any, config, 'http://localhost');
+    const { scenario } = await new ScenarioGenerator(llm).generate(
+      summary as any,
+      config,
+      'http://localhost'
+    );
 
-    expect(receivedPrompt).toContain('Create exactly one scenario scene for each listed Unity Scene');
+    expect(receivedPrompt).toContain(
+      'Create exactly one scenario scene for each listed Unity Scene'
+    );
     expect(receivedPrompt).toContain('Assets/Scenes/Title.unity');
     expect(scenario.scenes[0].actions).toEqual([{ type: 'wait', ms: 1000 }]);
   });

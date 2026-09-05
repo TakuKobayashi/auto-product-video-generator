@@ -64,7 +64,10 @@ describe('buildAitalkRequestBody', () => {
       JSON.stringify({ j: 0.7, s: 0, a: 0 })
     );
 
-    const fixed = { ...baseProfile, options: { ext: 'wav' as const, style: { j: 0, s: 0.4, a: 0 } } };
+    const fixed = {
+      ...baseProfile,
+      options: { ext: 'wav' as const, style: { j: 0, s: 0.4, a: 0 } },
+    };
     expect(buildAitalkRequestBody('text', fixed, { j: 0.7, s: 0, a: 0 }).get('style')).toBe(
       JSON.stringify({ j: 0, s: 0.4, a: 0 })
     );
