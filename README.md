@@ -42,6 +42,11 @@ repository, set `repository` to its Git URL. Optional inputs include
 `export-remotion` input defaults to `true`; set it to `false` to upload only the
 rendered video and regular intermediate artifacts.
 
+After analysis, the action automatically installs the matching Unity Editor when
+the selected project is Unity, activates a Personal license, and starts a virtual
+display for Unity Recorder. Pass repository secrets through `unity-email` and
+`unity-password`; they are required only for Unity projects.
+
 The Marketplace action is intentionally a thin wrapper around the npm package.
 It installs `auto-product-video-generator@latest` by default; pin `apvg-version`
 to an npm version such as `0.3.0` when reproducibility is more important than
@@ -61,14 +66,14 @@ application, and produces a narrated video.
 
 ## Supported platforms
 
-| Target                 | Recording method                                   | Status        |
-| ---------------------- | -------------------------------------------------- | ------------- |
-| Web application        | Playwright Chromium                                | Supported     |
-| CLI application        | Browser terminal running in Docker                 | Supported     |
-| Android                | Device or emulator recording through adb           | Supported     |
-| Flutter / React Native | Build an Android APK and record through adb        | Supported     |
-| Unity                  | Record Build Settings scenes with Unity Recorder   | Supported     |
-| iOS                    |                                                    | Not supported |
+| Target                 | Recording method                                 | Status        |
+| ---------------------- | ------------------------------------------------ | ------------- |
+| Web application        | Playwright Chromium                              | Supported     |
+| CLI application        | Browser terminal running in Docker               | Supported     |
+| Android                | Device or emulator recording through adb         | Supported     |
+| Flutter / React Native | Build an Android APK and record through adb      | Supported     |
+| Unity                  | Record Build Settings scenes with Unity Recorder | Supported     |
+| iOS                    |                                                  | Not supported |
 
 ---
 

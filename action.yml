@@ -55,6 +55,14 @@ inputs:
     description: Export an editable Remotion project and include it in the artifact output
     required: false
     default: 'true'
+  unity-email:
+    description: Unity ID email used to activate a Personal license when analysis detects Unity
+    required: false
+    default: ''
+  unity-password:
+    description: Unity ID password used to activate a Personal license when analysis detects Unity
+    required: false
+    default: ''
 
 outputs:
   video-path:
@@ -111,6 +119,7 @@ runs:
         echo "APVG_RUN_DIR=$run_dir" >> "$GITHUB_ENV"
         echo "APVG_OUTPUT_DIR=$output_dir" >> "$GITHUB_ENV"
         echo "APVG_CONFIG=$run_dir/apvg.config.yml" >> "$GITHUB_ENV"
+        echo "APVG_WORK_DIR=$run_dir/work" >> "$GITHUB_ENV"
 
     - name: Install APVG from npm
       shell: bash
@@ -201,6 +210,47 @@ runs:
     - name: Analyze project
       shell: bash
       run: apvg project analyze --config "$APVG_CONFIG"
+
+    - name: Read analyzed project type
+      id: analyzed-project
+      shell: bash
+      run: node "${{ github.action_path }}/.github/automation/export-analyzed-project.mjs"
+
+    - name: Validate Unity license credentials
+      if: steps.analyzed-project.outputs.platform == 'unity'
+      shell: bash
+      env:
+        UNITY_EMAIL: ${{ inputs['unity-email'] }}
+        UNITY_PASSWORD: ${{ inputs['unity-password'] }}
+      run: |
+        [[ -n "$UNITY_EMAIL" && -n "$UNITY_PASSWORD" ]] || {
+          echo "::error::unity-email and unity-password are required when the analyzed project is Unity"
+          exit 1
+        }
+
+    - name: Set up Unity Editor
+      if: steps.analyzed-project.outputs.platform == 'unity'
+      uses: RageAgainstThePixel/unity-setup@v2
+      with:
+        version-file: ${{ steps.analyzed-project.outputs.unity-version-file }}
+        build-targets: StandaloneLinux64
+
+    - name: Activate Unity Personal license
+      if: steps.analyzed-project.outputs.platform == 'unity'
+      uses: buildalon/activate-unity-license@v2
+      with:
+        license: Personal
+        username: ${{ inputs['unity-email'] }}
+        password: ${{ inputs['unity-password'] }}
+
+    - name: Start Unity virtual display
+      if: steps.analyzed-project.outputs.platform == 'unity'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --yes xvfb
+        Xvfb :99 -screen 0 1920x1080x24 > "$APVG_RUN_DIR/xvfb.log" 2>&1 &
+        echo "DISPLAY=:99" >> "$GITHUB_ENV"
 
     - name: Generate recording scenario
       shell: bash

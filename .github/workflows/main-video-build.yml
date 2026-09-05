@@ -97,6 +97,44 @@ jobs:
       - name: Analyze current repository
         run: pnpm apvg project analyze
 
+      - name: Read analyzed project type
+        id: analyzed-project
+        run: node .github/automation/export-analyzed-project.mjs
+
+      - name: Validate Unity license credentials
+        if: steps.analyzed-project.outputs.platform == 'unity'
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          [[ -n "$UNITY_EMAIL" && -n "$UNITY_PASSWORD" ]] || {
+            echo "::error::UNITY_EMAIL and UNITY_PASSWORD secrets are required for Unity recording"
+            exit 1
+          }
+
+      - name: Set up Unity Editor
+        if: steps.analyzed-project.outputs.platform == 'unity'
+        uses: RageAgainstThePixel/unity-setup@v2
+        with:
+          version-file: ${{ steps.analyzed-project.outputs.unity-version-file }}
+          build-targets: StandaloneLinux64
+
+      - name: Activate Unity Personal license
+        if: steps.analyzed-project.outputs.platform == 'unity'
+        uses: buildalon/activate-unity-license@v2
+        with:
+          license: Personal
+          username: ${{ secrets.UNITY_EMAIL }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+
+      - name: Start Unity virtual display
+        if: steps.analyzed-project.outputs.platform == 'unity'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes xvfb
+          Xvfb :99 -screen 0 1920x1080x24 > .apvg-main-build/xvfb.log 2>&1 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+
       - name: Generate scenario
         run: pnpm apvg video scenario generate
 

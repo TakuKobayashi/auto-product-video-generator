@@ -37,6 +37,10 @@ Marketplace Actionでは、編集可能なRemotionプロジェクトも既定で
 `remotion-project-path`から取得できます。不要な場合は
 `export-remotion: 'false'`を指定してください。
 
+解析結果がUnityプロジェクトの場合は、対応するUnity Editorの導入、Personalライセンス認証、
+Unity Recorder用の仮想ディスプレイ起動を自動的に行います。リポジトリSecretsを
+`unity-email`と`unity-password`へ渡してください。これらはUnityプロジェクトの場合だけ必須です。
+
 既定では、workflowが実行されているリポジトリ自身をcheckoutして解析します。別の公開リポジトリを対象にする場合だけ、`repository`へGit URLを指定してください。生成されたMP4は`video-path`、中間ファイルを含む出力ディレクトリは`artifacts-path`から取得できます。
 
 Marketplace Actionはnpmパッケージの薄いラッパーです。既定では`auto-product-video-generator@latest`をインストールします。再現性を優先する場合は、`apvg-version: 0.3.0`のようにnpmバージョンを固定できます。
@@ -49,14 +53,14 @@ Playwrightで録画します。
 
 ## 対応プラットフォーム
 
-| 対象                   | 録画方法                                   | 対応状況 |
-| ---------------------- | ------------------------------------------ | -------- |
-| Webアプリ              | Playwright Chromium                        | 対応     |
-| CLIアプリ              | Docker内のブラウザターミナル               | 対応     |
-| Android                | adbによる端末・エミュレーター録画          | 対応     |
-| Flutter / React Native | Android APKをビルドしてadb録画             | 対応     |
+| 対象                   | 録画方法                                    | 対応状況 |
+| ---------------------- | ------------------------------------------- | -------- |
+| Webアプリ              | Playwright Chromium                         | 対応     |
+| CLIアプリ              | Docker内のブラウザターミナル                | 対応     |
+| Android                | adbによる端末・エミュレーター録画           | 対応     |
+| Flutter / React Native | Android APKをビルドしてadb録画              | 対応     |
 | Unity                  | Unity RecorderでBuild SettingsのSceneを録画 | 対応     |
-| iOS                    |                                            | 未対応   |
+| iOS                    |                                             | 未対応   |
 
 ---
 
