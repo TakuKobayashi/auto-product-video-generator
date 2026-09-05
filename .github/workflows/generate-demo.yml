@@ -5,6 +5,27 @@ on:
     branches:
       - generate-video
   workflow_dispatch:
+    inputs:
+      repository:
+        description: Git repository URL to analyze; empty uses this repository
+        required: false
+        type: string
+        default: ''
+      ref:
+        description: Branch, tag, or commit of the target repository
+        required: false
+        type: string
+        default: ''
+      project-path:
+        description: Unity/application path inside a monorepo; normally auto-detected
+        required: false
+        type: string
+        default: ''
+      apvg-version:
+        description: Published APVG npm version used by the Marketplace action
+        required: false
+        type: string
+        default: latest
 
 permissions:
   contents: read
@@ -23,15 +44,22 @@ jobs:
       - name: Check out action repository
         uses: actions/checkout@v6
 
+      # Unity-specific installation, licensing, Xvfb, and WebM-to-MP4
+      # conversion run conditionally inside action.yml after project analysis.
       - name: Generate promotional video
         id: apvg
         uses: ./
         with:
-          apvg-version: latest
+          apvg-version: ${{ inputs.apvg-version || 'latest' }}
+          repository: ${{ inputs.repository || '' }}
+          ref: ${{ inputs.ref || '' }}
+          project-path: ${{ inputs.project-path || '' }}
           video-type: demo
           ollama-model: qwen2.5:7b-instruct
           output-directory: apvg-output
           export-remotion: 'true'
+          unity-email: ${{ secrets.UNITY_EMAIL }}
+          unity-password: ${{ secrets.UNITY_PASSWORD }}
 
       - name: Upload final video, Remotion project, and intermediate artifacts
         uses: actions/upload-artifact@v7
