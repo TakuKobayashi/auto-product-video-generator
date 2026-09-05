@@ -64,7 +64,9 @@ export async function exportRemotionProject(
     throw new Error(`Timeline not found: ${timelinePath}\nRun 'apvg video render' first.`);
   }
   if (existsSync(outputDir) && (await readdir(outputDir)).length > 0 && !force) {
-    throw new Error(`Output directory is not empty: ${outputDir}\nUse --force to overwrite generated files.`);
+    throw new Error(
+      `Output directory is not empty: ${outputDir}\nUse --force to overwrite generated files.`
+    );
   }
 
   const timeline = TimelineSchema.parse(await readJson<unknown>(timelinePath));
@@ -96,26 +98,37 @@ export async function exportRemotionProject(
   }
 
   const packageJson = { ...PACKAGE_JSON, name: `${sanitizeName(config.project.name)}-remotion` };
-  await writeText(join(outputDir, 'package.json'), JSON.stringify(packageJson, null, 2) + '\n');
-  await writeText(join(outputDir, 'tsconfig.json'), TS_CONFIG);
-  await writeText(join(outputDir, '.gitignore'), GITIGNORE);
-  await writeText(join(outputDir, 'README.md'), projectReadme(config.project.name));
-  await writeText(join(outputDir, 'src', 'index.ts'), INDEX_SOURCE);
-  await writeText(join(outputDir, 'src', 'Root.tsx'), ROOT_SOURCE);
-  await writeText(join(outputDir, 'src', 'ProductVideo.tsx'), PRODUCT_VIDEO_SOURCE);
-  await writeText(join(outputDir, 'src', 'types.ts'), TYPES_SOURCE);
-  await writeText(
-    join(outputDir, 'src', 'data', 'project.json'),
-    JSON.stringify({ name: config.project.name, showSubtitles: config.video.subtitles }, null, 2) + '\n'
-  );
-  await writeText(
-    join(outputDir, 'src', 'data', 'timeline.json'),
-    JSON.stringify(exportedTimeline, null, 2) + '\n'
-  );
+  await Promise.all([
+    writeText(join(outputDir, 'package.json'), JSON.stringify(packageJson, null, 2) + '\n'),
+    writeText(join(outputDir, 'tsconfig.json'), TS_CONFIG),
+    writeText(join(outputDir, '.gitignore'), GITIGNORE),
+    writeText(join(outputDir, 'README.md'), projectReadme(config.project.name)),
+    writeText(join(outputDir, 'src', 'index.ts'), INDEX_SOURCE),
+    writeText(join(outputDir, 'src', 'Root.tsx'), ROOT_SOURCE),
+    writeText(join(outputDir, 'src', 'ProductVideo.tsx'), PRODUCT_VIDEO_SOURCE),
+    writeText(join(outputDir, 'src', 'types.ts'), TYPES_SOURCE),
+    writeText(
+      join(outputDir, 'src', 'data', 'project.json'),
+      JSON.stringify(
+        { name: config.project.name, showSubtitles: config.video.subtitles },
+        null,
+        2
+      ) + '\n'
+    ),
+    writeText(
+      join(outputDir, 'src', 'data', 'timeline.json'),
+      JSON.stringify(exportedTimeline, null, 2) + '\n'
+    ),
+  ]);
 }
 
 function sanitizeName(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'video';
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'video'
+  );
 }
 
 async function writeText(path: string, content: string): Promise<void> {

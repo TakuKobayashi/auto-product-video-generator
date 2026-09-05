@@ -211,16 +211,18 @@ export async function runBuild(options: BuildOptions): Promise<void> {
     script = result.script;
 
     if (!dryRun) {
-      await writeYaml(scenarioPath, scenario);
-      await writeYaml(scriptPath, script);
       const subtitleGen = new SubtitleGenerator();
-      await writeFile(
-        srtPath,
-        subtitleGen.generateSrt(script, {
-          singleLine: config.video.singleLineSubtitles,
-        }),
-        'utf-8'
-      );
+      await Promise.all([
+        writeYaml(scenarioPath, scenario),
+        writeYaml(scriptPath, script),
+        writeFile(
+          srtPath,
+          subtitleGen.generateSrt(script, {
+            singleLine: config.video.singleLineSubtitles,
+          }),
+          'utf-8'
+        ),
+      ]);
       logger.success(`Saved scenario, script, subtitles`);
     } else {
       logger.dryRun(`Would write: ${scenarioPath}, ${scriptPath}, ${srtPath}`);
@@ -236,8 +238,12 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         process.exit(1);
       }
     }
-    scenario = ScenarioSchema.parse(await readYaml(scenarioPath));
-    script = ScriptSchema.parse(await readYaml(scriptPath));
+    const [scenarioData, scriptData] = await Promise.all([
+      readYaml(scenarioPath),
+      readYaml(scriptPath),
+    ]);
+    scenario = ScenarioSchema.parse(scenarioData);
+    script = ScriptSchema.parse(scriptData);
   }
 
   // ── Step 3: Voice ────────────────────────────────────────────────────────
@@ -259,14 +265,16 @@ export async function runBuild(options: BuildOptions): Promise<void> {
           voiceDir,
           config.video.sceneGapSeconds
         );
-        await writeYaml(scriptPath, script);
-        await writeFile(
-          srtPath,
-          new SubtitleGenerator().generateSrt(script, {
-            singleLine: config.video.singleLineSubtitles,
-          }),
-          'utf-8'
-        );
+        await Promise.all([
+          writeYaml(scriptPath, script),
+          writeFile(
+            srtPath,
+            new SubtitleGenerator().generateSrt(script, {
+              singleLine: config.video.singleLineSubtitles,
+            }),
+            'utf-8'
+          ),
+        ]);
         logger.success('Updated script and subtitles from actual audio durations.');
       }
     } else {
@@ -282,14 +290,16 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         }
       }
       script = await recomputeScriptTimingFromAudio(script, voiceDir, config.video.sceneGapSeconds);
-      await writeYaml(scriptPath, script);
-      await writeFile(
-        srtPath,
-        new SubtitleGenerator().generateSrt(script, {
-          singleLine: config.video.singleLineSubtitles,
-        }),
-        'utf-8'
-      );
+      await Promise.all([
+        writeYaml(scriptPath, script),
+        writeFile(
+          srtPath,
+          new SubtitleGenerator().generateSrt(script, {
+            singleLine: config.video.singleLineSubtitles,
+          }),
+          'utf-8'
+        ),
+      ]);
     }
   }
 

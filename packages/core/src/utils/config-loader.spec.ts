@@ -18,14 +18,16 @@ describe('config environment placeholders', () => {
     const directory = await mkdtemp(join(tmpdir(), 'apvg-config-'));
     temporaryDirectories.push(directory);
     const configPath = join(directory, 'apvg.config.yml');
-    await writeFile(
-      join(directory, '.env'),
-      'APVG_TEST_NAME=dotenv-project\nAPVG_TEST_AITALK_USER=user-value\nAPVG_TEST_AITALK_PASSWORD=secret-value\n'
-    );
-    await writeFile(
-      configPath,
-      `project:\n  name: \${APVG_TEST_NAME}\nsource:\n  localPath: .\ntarget:\n  url: http://localhost:3000\nvoice:\n  profiles:\n    - type: aitalk\n      speakerName: nozomi\n      username: \${APVG_TEST_AITALK_USER}\n      password: \${APVG_TEST_AITALK_PASSWORD}\n      options:\n        style:\n          j: 0.5\n          s: 0.2\n          a: 0.3\n`
-    );
+    await Promise.all([
+      writeFile(
+        join(directory, '.env'),
+        'APVG_TEST_NAME=dotenv-project\nAPVG_TEST_AITALK_USER=user-value\nAPVG_TEST_AITALK_PASSWORD=secret-value\n'
+      ),
+      writeFile(
+        configPath,
+        `project:\n  name: \${APVG_TEST_NAME}\nsource:\n  localPath: .\ntarget:\n  url: http://localhost:3000\nvoice:\n  profiles:\n    - type: aitalk\n      speakerName: nozomi\n      username: \${APVG_TEST_AITALK_USER}\n      password: \${APVG_TEST_AITALK_PASSWORD}\n      options:\n        style:\n          j: 0.5\n          s: 0.2\n          a: 0.3\n`
+      ),
+    ]);
 
     const config = await loadConfig(configPath);
     expect(config.project.name).toBe('dotenv-project');

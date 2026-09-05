@@ -5,8 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
 const packageRoot = fileURLToPath(new URL('.', import.meta.url));
-const source = (name: string) =>
-  fileURLToPath(new URL(`../${name}/src/index.ts`, import.meta.url));
+const source = (name: string) => fileURLToPath(new URL(`../${name}/src/index.ts`, import.meta.url));
 
 await rm(new URL('./dist', import.meta.url), { recursive: true, force: true });
 
@@ -35,10 +34,12 @@ const unityScript = new URL(
   '../recorder/unity/Assets/APVG/Editor/ApvgRecorder.cs',
   import.meta.url
 );
-for (const destination of [
-  new URL('./dist/unity/Assets/APVG/Editor/ApvgRecorder.cs', import.meta.url),
-  new URL('../recorder/dist/unity/Assets/APVG/Editor/ApvgRecorder.cs', import.meta.url),
-]) {
-  await mkdir(new URL('.', destination), { recursive: true });
-  await copyFile(unityScript, destination);
-}
+await Promise.all(
+  [
+    new URL('./dist/unity/Assets/APVG/Editor/ApvgRecorder.cs', import.meta.url),
+    new URL('../recorder/dist/unity/Assets/APVG/Editor/ApvgRecorder.cs', import.meta.url),
+  ].map(async (destination) => {
+    await mkdir(new URL('.', destination), { recursive: true });
+    await copyFile(unityScript, destination);
+  })
+);

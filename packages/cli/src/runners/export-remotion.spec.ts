@@ -28,9 +28,30 @@ describe('exportRemotionProject', () => {
       JSON.stringify({
         meta: { totalDuration: 2, resolution: '1920x1080', fps: 30 },
         tracks: [
-          { type: 'video', id: 'video-1', sceneId: 'one', src: 'recordings/scene.mp4', startTime: 0, endTime: 2 },
-          { type: 'audio', id: 'audio-1', sceneId: 'one', src: 'voice/scene.wav', startTime: 0, endTime: 2 },
-          { type: 'subtitle', id: 'sub-1', sceneId: 'one', text: 'こんにちは', startTime: 0, endTime: 2 },
+          {
+            type: 'video',
+            id: 'video-1',
+            sceneId: 'one',
+            src: 'recordings/scene.mp4',
+            startTime: 0,
+            endTime: 2,
+          },
+          {
+            type: 'audio',
+            id: 'audio-1',
+            sceneId: 'one',
+            src: 'voice/scene.wav',
+            startTime: 0,
+            endTime: 2,
+          },
+          {
+            type: 'subtitle',
+            id: 'sub-1',
+            sceneId: 'one',
+            text: 'こんにちは',
+            startTime: 0,
+            endTime: 2,
+          },
         ],
       })
     );
@@ -44,10 +65,12 @@ describe('exportRemotionProject', () => {
 
     await exportRemotionProject(config, timelinePath, outputDir);
 
-    const packageJson = JSON.parse(await readFile(join(outputDir, 'package.json'), 'utf8'));
-    const exportedTimeline = JSON.parse(
-      await readFile(join(outputDir, 'src', 'data', 'timeline.json'), 'utf8')
-    );
+    const [packageJsonText, exportedTimelineText] = await Promise.all([
+      readFile(join(outputDir, 'package.json'), 'utf8'),
+      readFile(join(outputDir, 'src', 'data', 'timeline.json'), 'utf8'),
+    ]);
+    const packageJson = JSON.parse(packageJsonText);
+    const exportedTimeline = JSON.parse(exportedTimelineText);
     expect(packageJson.scripts.dev).toBe('remotion studio src/index.ts');
     expect(packageJson.name).toBe('example-app-remotion');
     expect(exportedTimeline.tracks[0].src).toBe('assets/video/video-1.mp4');

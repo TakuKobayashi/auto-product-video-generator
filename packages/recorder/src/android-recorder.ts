@@ -43,8 +43,10 @@ export class AndroidRecorder implements PlatformRecorder {
       return outputPath;
     }
 
-    await mkdir(options.outputDir, { recursive: true });
-    await mkdir(options.screenshotDir, { recursive: true });
+    await Promise.all([
+      mkdir(options.outputDir, { recursive: true }),
+      mkdir(options.screenshotDir, { recursive: true }),
+    ]);
     await this.prepare();
     await this.assertDeviceReady();
 

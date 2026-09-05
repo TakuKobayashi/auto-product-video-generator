@@ -23,14 +23,17 @@ describe('prepareAndroidProject', () => {
       const sdk = join(temp, 'sdk');
       const project = join(temp, 'project');
       const workDir = join(temp, 'work');
-      await mkdir(join(sdk, 'platform-tools'), { recursive: true });
-      await mkdir(join(sdk, 'build-tools', '35.0.0'), { recursive: true });
-      await mkdir(project, { recursive: true });
+      await Promise.all([
+        mkdir(join(sdk, 'platform-tools'), { recursive: true }),
+        mkdir(join(sdk, 'build-tools', '35.0.0'), { recursive: true }),
+        mkdir(project, { recursive: true }),
+      ]);
 
       const adb = join(sdk, 'platform-tools', 'adb');
-      await executable(
-        adb,
-        `#!/bin/sh
+      await Promise.all([
+        executable(
+          adb,
+          `#!/bin/sh
 case "$*" in
   "devices") printf 'List of devices attached\\nemulator-5554\\tdevice\\n' ;;
   *"getprop sys.boot_completed"*) echo 1 ;;
@@ -38,19 +41,19 @@ case "$*" in
   *) exit 0 ;;
 esac
 `
-      );
-      const aapt = join(sdk, 'build-tools', '35.0.0', 'aapt');
-      await executable(
-        aapt,
-        "#!/bin/sh\necho \"package: name='com.example.demo' versionCode='1'\"\n"
-      );
-      await executable(
-        join(project, 'gradlew'),
-        `#!/bin/sh
+        ),
+        executable(
+          join(sdk, 'build-tools', '35.0.0', 'aapt'),
+          "#!/bin/sh\necho \"package: name='com.example.demo' versionCode='1'\"\n"
+        ),
+        executable(
+          join(project, 'gradlew'),
+          `#!/bin/sh
 mkdir -p app/build/outputs/apk/debug
 printf apk > app/build/outputs/apk/debug/app-debug.apk
 `
-      );
+        ),
+      ]);
       const result = await prepareAndroidProject({ sdkPath: sdk }, { rootDir: project, workDir });
 
       expect(result.package).toBe('com.example.demo');

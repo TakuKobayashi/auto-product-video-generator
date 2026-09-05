@@ -34,15 +34,7 @@ interface UnityRecordingPlan {
   jobs: Array<Omit<QueuedRecording, 'id' | 'finalOutput'> & { output: string }>;
 }
 
-const COPY_EXCLUDES = new Set([
-  '.git',
-  '.apvg',
-  '.vs',
-  'Logs',
-  'obj',
-  'Temp',
-  'UserSettings',
-]);
+const COPY_EXCLUDES = new Set(['.git', '.apvg', '.vs', 'Logs', 'obj', 'Temp', 'UserSettings']);
 
 export class UnityRecorder implements PlatformRecorder {
   private readonly jobs: QueuedRecording[] = [];
@@ -122,12 +114,17 @@ export class UnityRecorder implements PlatformRecorder {
     const stagedOutputDir = join(this.temporaryProject, 'APVGRecordings');
     const logPath = resolve(this.context.workDir, 'unity-recorder.log');
 
-    logger.step('record:unity', `Preparing isolated Unity project for ${this.jobs.length} scene(s)...`);
+    logger.step(
+      'record:unity',
+      `Preparing isolated Unity project for ${this.jobs.length} scene(s)...`
+    );
     await copyUnityProject(sourceRoot, this.temporaryProject);
     const scriptPath = join(this.temporaryProject, 'Assets', 'APVG', 'Editor', 'ApvgRecorder.cs');
-    await mkdir(dirname(scriptPath), { recursive: true });
-    await mkdir(stagedOutputDir, { recursive: true });
-    await mkdir(dirname(logPath), { recursive: true });
+    await Promise.all([
+      mkdir(dirname(scriptPath), { recursive: true }),
+      mkdir(stagedOutputDir, { recursive: true }),
+      mkdir(dirname(logPath), { recursive: true }),
+    ]);
     await copyFile(resolveUnityEditorAsset(), scriptPath);
 
     const plan: UnityRecordingPlan = {
@@ -159,16 +156,18 @@ export class UnityRecorder implements PlatformRecorder {
       logPath
     );
 
-    for (const job of this.jobs) {
-      const staged = join(stagedOutputDir, basename(job.finalOutput));
-      const stagedSize = existsSync(staged) ? (await stat(staged)).size : 0;
-      if (stagedSize === 0) {
-        throw new Error(`Unity Recorder did not create ${staged}. See ${logPath}.`);
-      }
-      await mkdir(dirname(job.finalOutput), { recursive: true });
-      await copyFile(staged, job.finalOutput);
-      logger.success(`Saved: ${job.finalOutput}`);
-    }
+    await Promise.all(
+      this.jobs.map(async (job) => {
+        const staged = join(stagedOutputDir, basename(job.finalOutput));
+        const stagedSize = existsSync(staged) ? (await stat(staged)).size : 0;
+        if (stagedSize === 0) {
+          throw new Error(`Unity Recorder did not create ${staged}. See ${logPath}.`);
+        }
+        await mkdir(dirname(job.finalOutput), { recursive: true });
+        await copyFile(staged, job.finalOutput);
+        logger.success(`Saved: ${job.finalOutput}`);
+      })
+    );
   }
 
   async dispose(): Promise<void> {
@@ -193,7 +192,10 @@ export class UnityRecorder implements PlatformRecorder {
 async function copyUnityProject(sourceRoot: string, destination: string): Promise<void> {
   const resolvedSource = resolve(sourceRoot);
   const resolvedDestination = resolve(destination);
-  if (resolvedDestination === resolvedSource || resolvedDestination.startsWith(`${resolvedSource}${sep}`)) {
+  if (
+    resolvedDestination === resolvedSource ||
+    resolvedDestination.startsWith(`${resolvedSource}${sep}`)
+  ) {
     // The destination itself is excluded below, but placing a recursive copy
     // inside the source is unnecessarily risky and expensive.
     throw new Error(
@@ -264,7 +266,12 @@ function assertUnityProject(root: string): void {
   }
 }
 
-function runUnity(command: string, args: string[], timeoutMs: number, logPath: string): Promise<void> {
+function runUnity(
+  command: string,
+  args: string[],
+  timeoutMs: number,
+  logPath: string
+): Promise<void> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, { stdio: ['ignore', 'ignore', 'pipe'] });
     let stderr = '';
@@ -280,7 +287,10 @@ function runUnity(command: string, args: string[], timeoutMs: number, logPath: s
     child.on('close', (code) => {
       clearTimeout(timer);
       if (code === 0) resolvePromise();
-      else reject(new Error(`Unity Recorder exited with code ${code}: ${stderr.trim()}\nSee ${logPath}.`));
+      else
+        reject(
+          new Error(`Unity Recorder exited with code ${code}: ${stderr.trim()}\nSee ${logPath}.`)
+        );
     });
   });
 }
