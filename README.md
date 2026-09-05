@@ -183,6 +183,8 @@ installed elsewhere. Each APVG scenario scene is paired, in order, with an enabl
 scene. To use an explicit order, set `target.unity.scenes` to Unity asset paths. The temporary
 APVG Editor script is removed after recording. Do not keep the same project open in another Unity
 Editor instance while batch recording.
+Unity Recorder always writes a portable WebM intermediate; APVG then normalizes each scene to
+H.264/AAC MP4 with FFmpeg on every operating system, including GitHub-hosted Ubuntu runners.
 
 ```yaml
 target:

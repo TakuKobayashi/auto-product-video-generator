@@ -180,6 +180,8 @@ apvg video render
 `target.unity.editorPath`で指定できます。APVGのシナリオSceneとBuild Settingsの有効Sceneは
 先頭から順に対応します。明示的な順番にしたい場合は`target.unity.scenes`へSceneのAssetパスを
 記述してください。録画中、同じUnityプロジェクトを別のEditorで開かないでください。
+Unity Recorderは全OSで共通のWebM中間ファイルを出力し、その後APVGがFFmpegで各Sceneを
+H.264/AACのMP4へ変換します。GitHub-hosted Ubuntu runnerでも同じ処理経路を使用します。
 
 ```yaml
 target:

@@ -16,7 +16,7 @@ namespace APVG.Editor.Tests
         [UnitySetUp]
         public IEnumerator SetUp()
         {
-            output = Path.Combine(Application.temporaryCachePath, "apvg-recorder-playmode-test.mp4");
+            output = Path.Combine(Application.temporaryCachePath, "apvg-recorder-playmode-test.webm");
             if (File.Exists(output)) File.Delete(output);
             cameraObject = new GameObject("APVG Test Camera");
             cameraObject.tag = "MainCamera";
@@ -34,7 +34,7 @@ namespace APVG.Editor.Tests
         }
 
         [UnityTest]
-        public IEnumerator RecordsAndFinalizesANonEmptyMp4()
+        public IEnumerator RecordsAndFinalizesANonEmptyWebM()
         {
             var editorAssembly = System.AppDomain.CurrentDomain.GetAssemblies()
                 .Single(assembly => assembly.GetName().Name == "APVG.Recorder.Editor");

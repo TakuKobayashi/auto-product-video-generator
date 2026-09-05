@@ -5,10 +5,12 @@ import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   logger,
+  resolveFfmpegPath,
   type Scene,
   type UnityConfig,
   type VideoConfig,
 } from '@auto-product-video-generator/core';
+import { convertVideo } from '@auto-product-video-generator/renderer';
 import type { PlatformRecorder, PlatformRecordOptions } from './types.js';
 
 interface UnityRecorderContext {
@@ -131,7 +133,7 @@ export class UnityRecorder implements PlatformRecorder {
       timeoutSeconds: this.target.timeoutSeconds,
       jobs: this.jobs.map(({ id, finalOutput, ...job }) => ({
         ...job,
-        output: join(stagedOutputDir, basename(finalOutput)),
+        output: join(stagedOutputDir, `${basename(finalOutput, '.mp4')}.webm`),
       })),
     };
     const planPath = join(this.temporaryProject, 'apvg-recording-plan.json');
@@ -156,18 +158,22 @@ export class UnityRecorder implements PlatformRecorder {
       logPath
     );
 
-    await Promise.all(
-      this.jobs.map(async (job) => {
-        const staged = join(stagedOutputDir, basename(job.finalOutput));
-        const stagedSize = existsSync(staged) ? (await stat(staged)).size : 0;
-        if (stagedSize === 0) {
-          throw new Error(`Unity Recorder did not create ${staged}. See ${logPath}.`);
-        }
-        await mkdir(dirname(job.finalOutput), { recursive: true });
-        await copyFile(staged, job.finalOutput);
-        logger.success(`Saved: ${job.finalOutput}`);
-      })
-    );
+    // Encode one scene at a time to avoid several CPU-heavy FFmpeg processes
+    // competing for the same GitHub Actions runner.
+    for (const job of this.jobs) {
+      const staged = join(stagedOutputDir, `${basename(job.finalOutput, '.mp4')}.webm`);
+      const stagedSize = existsSync(staged) ? (await stat(staged)).size : 0;
+      if (stagedSize === 0) {
+        throw new Error(`Unity Recorder did not create ${staged}. See ${logPath}.`);
+      }
+      logger.step('record:unity', `Converting ${basename(staged)} -> ${basename(job.finalOutput)}`);
+      await convertVideo(staged, job.finalOutput, {
+        ffmpegPath: resolveFfmpegPath(),
+        format: 'mp4',
+        overwrite: true,
+      });
+      logger.success(`Saved: ${job.finalOutput}`);
+    }
   }
 
   async dispose(): Promise<void> {

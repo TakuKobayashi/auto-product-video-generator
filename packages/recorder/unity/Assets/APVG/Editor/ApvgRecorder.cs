@@ -192,7 +192,9 @@ namespace APVG.Editor
             var movie = ScriptableObject.CreateInstance<MovieRecorderSettings>();
             movie.name = "APVG Movie Recorder";
             movie.Enabled = true;
-            movie.OutputFormat = MovieRecorderSettings.VideoRecorderOutputFormat.MP4;
+            // WebM is the portable intermediate shared by local and Linux CI runs.
+            // APVG converts it to its standard H.264/AAC MP4 after Unity exits.
+            movie.OutputFormat = MovieRecorderSettings.VideoRecorderOutputFormat.WebM;
             movie.OutputFile = Path.ChangeExtension(job.output, null);
             movie.ImageInputSettings = new RenderTextureInputSettings
             {

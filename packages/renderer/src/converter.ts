@@ -15,6 +15,25 @@ export interface ConvertVideosOptions {
   dryRun: boolean;
 }
 
+export interface ConvertVideoOptions {
+  ffmpegPath: string;
+  format: 'mp4' | 'webm';
+  overwrite: boolean;
+}
+
+/** Normalize one video file. Used by recorders that emit an intermediate format. */
+export async function convertVideo(
+  input: string,
+  output: string,
+  options: ConvertVideoOptions
+): Promise<void> {
+  await mkdir(dirname(output), { recursive: true });
+  await runFfmpeg(
+    options.ffmpegPath,
+    buildConvertArguments(input, output, options.format, options.overwrite)
+  );
+}
+
 export async function convertVideos(options: ConvertVideosOptions): Promise<string[]> {
   const inputDir = resolve(options.inputDir);
   const outputDir = resolve(options.outputDir);
@@ -23,7 +42,11 @@ export async function convertVideos(options: ConvertVideosOptions): Promise<stri
 
   for (const input of files) {
     const rel = relative(inputDir, input);
-    const output = resolve(outputDir, dirname(rel), `${basename(rel, extname(rel))}.${options.format}`);
+    const output = resolve(
+      outputDir,
+      dirname(rel),
+      `${basename(rel, extname(rel))}.${options.format}`
+    );
     if (resolve(input) === output) {
       logger.dim(`Already ${options.format}: ${input}`);
       continue;
@@ -37,9 +60,8 @@ export async function convertVideos(options: ConvertVideosOptions): Promise<stri
     if (options.dryRun) {
       logger.dryRun([options.ffmpegPath, ...args].join(' '));
     } else {
-      await mkdir(dirname(output), { recursive: true });
       logger.step('convert', `${input} -> ${output}`);
-      await runFfmpeg(options.ffmpegPath, args);
+      await convertVideo(input, output, options);
       logger.success(`Converted: ${output}`);
     }
     outputs.push(output);
@@ -74,7 +96,8 @@ async function collectVideoFiles(root: string, recursive: boolean): Promise<stri
   for (const entry of entries) {
     const path = join(root, entry.name);
     if (entry.isDirectory() && recursive) files.push(...(await collectVideoFiles(path, true)));
-    else if (entry.isFile() && VIDEO_EXTENSIONS.has(extname(entry.name).toLowerCase())) files.push(path);
+    else if (entry.isFile() && VIDEO_EXTENSIONS.has(extname(entry.name).toLowerCase()))
+      files.push(path);
   }
   return files.sort();
 }
