@@ -263,6 +263,8 @@ jobs:
           # Unityの場合だけ必要
           unity-email: ${{ secrets.UNITY_EMAIL }}
           unity-password: ${{ secrets.UNITY_PASSWORD }}
+          # 省略時は現在サポートするUnity Hubの既定バージョンを使用します
+          unity-hub-version: '3.21.1'
       - uses: actions/upload-artifact@v7
         with:
           name: promotional-video

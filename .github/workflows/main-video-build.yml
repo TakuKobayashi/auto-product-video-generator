@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      unity-hub-version:
+        description: Unity Hub version used to install the Unity Editor
+        required: false
+        type: string
+        default: '3.21.1'
 
 permissions:
   contents: read
@@ -26,6 +32,7 @@ jobs:
       FFMPEG_PATH: /usr/bin/ffmpeg
       FFPROBE_PATH: /usr/bin/ffprobe
       APVG_WORK_DIR: ./.apvg-main-build
+      UNITY_HUB_VERSION: ${{ inputs['unity-hub-version'] }}
 
     steps:
       - name: Check out main branch source
@@ -115,10 +122,11 @@ jobs:
 
       - name: Set up Unity Editor
         if: steps.analyzed-project.outputs.platform == 'unity'
-        uses: RageAgainstThePixel/unity-setup@v2
+        uses: buildalon/unity-setup@v2
         with:
           version-file: ${{ steps.analyzed-project.outputs.unity-version-file }}
           build-targets: StandaloneLinux64
+          hub-version: ${{ env.UNITY_HUB_VERSION }}
 
       - name: Activate Unity Personal license
         if: steps.analyzed-project.outputs.platform == 'unity'

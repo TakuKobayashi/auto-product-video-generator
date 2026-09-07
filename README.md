@@ -272,6 +272,8 @@ jobs:
           # Required only when analysis detects Unity:
           unity-email: ${{ secrets.UNITY_EMAIL }}
           unity-password: ${{ secrets.UNITY_PASSWORD }}
+          # Optional; defaults to the current supported Unity Hub version.
+          unity-hub-version: '3.21.1'
       - uses: actions/upload-artifact@v7
         with:
           name: promotional-video

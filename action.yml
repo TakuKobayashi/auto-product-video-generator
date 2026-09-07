@@ -63,6 +63,10 @@ inputs:
     description: Unity ID password used to activate a Personal license when analysis detects Unity
     required: false
     default: ''
+  unity-hub-version:
+    description: Unity Hub version used to install the Unity Editor
+    required: false
+    default: '3.21.1'
 
 outputs:
   video-path:
@@ -230,10 +234,11 @@ runs:
 
     - name: Set up Unity Editor
       if: steps.analyzed-project.outputs.platform == 'unity'
-      uses: RageAgainstThePixel/unity-setup@v2
+      uses: buildalon/unity-setup@v2
       with:
         version-file: ${{ steps.analyzed-project.outputs.unity-version-file }}
         build-targets: StandaloneLinux64
+        hub-version: ${{ inputs['unity-hub-version'] }}
 
     - name: Activate Unity Personal license
       if: steps.analyzed-project.outputs.platform == 'unity'
