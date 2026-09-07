@@ -244,14 +244,12 @@ runs:
         echo "deb [signed-by=/usr/share/keyrings/Unity_Technologies_ApS.gpg] https://hub.unity3d.com/linux/repos/deb stable main" |
           sudo tee /etc/apt/sources.list.d/unityhub.list >/dev/null
         sudo apt-get update
-        sudo apt-get install --yes "unityhub=$UNITY_HUB_VERSION"
-        sudo mkdir -p /opt/unityhub
-        printf '%s\n' '#!/bin/sh' 'exec /usr/bin/unityhub "$@"' |
-          sudo tee /opt/unityhub/unityhub >/dev/null
-        sudo chmod +x /opt/unityhub/unityhub
-        printf '%s\n' '#!/bin/sh' 'exec /usr/bin/unityhub "$@"' |
-          sudo tee /usr/local/bin/unity-hub >/dev/null
-        sudo chmod +x /usr/local/bin/unity-hub
+        sudo apt-get install --yes "unityhub=$UNITY_HUB_VERSION" xvfb
+        printf '%s\n' '#!/bin/bash' 'exec xvfb-run --auto-servernum /opt/unityhub/unityhub "$@"' |
+          sudo tee /usr/bin/unity-hub >/dev/null
+        sudo chmod +x /usr/bin/unity-hub
+        test -x /opt/unityhub/unityhub
+        test -r /opt/unityhub/resources/app.asar
 
     - name: Set up Unity Editor
       if: steps.analyzed-project.outputs.platform == 'unity'
