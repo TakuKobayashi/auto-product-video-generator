@@ -130,9 +130,10 @@ jobs:
             sudo tee /etc/apt/sources.list.d/unityhub.list >/dev/null
           sudo apt-get update
           sudo apt-get install --yes "unityhub=$UNITY_HUB_VERSION"
-          UNITY_HUB_PATH="$(readlink -f "$(command -v unityhub)")"
           sudo mkdir -p /opt/unityhub
-          sudo ln -sfn "$UNITY_HUB_PATH" /opt/unityhub/unityhub
+          printf '%s\n' '#!/bin/sh' 'exec /usr/bin/unityhub "$@"' |
+            sudo tee /opt/unityhub/unityhub >/dev/null
+          sudo chmod +x /opt/unityhub/unityhub
 
       - name: Set up Unity Editor
         if: steps.analyzed-project.outputs.platform == 'unity'
