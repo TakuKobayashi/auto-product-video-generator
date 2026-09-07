@@ -245,11 +245,14 @@ runs:
           sudo tee /etc/apt/sources.list.d/unityhub.list >/dev/null
         sudo apt-get update
         sudo apt-get install --yes "unityhub=$UNITY_HUB_VERSION" xvfb
-        printf '%s\n' '#!/bin/bash' 'exec xvfb-run --auto-servernum /opt/unityhub/unityhub "$@"' |
+        hub_path="$(readlink -f "$(command -v unityhub)")"
+        hub_root="$(dirname "$hub_path")"
+        printf '#!/bin/bash\nexec xvfb-run --auto-servernum "%s" "$@"\n' "$hub_path" |
           sudo tee /usr/bin/unity-hub >/dev/null
         sudo chmod +x /usr/bin/unity-hub
-        test -x /opt/unityhub/unityhub
-        test -r /opt/unityhub/resources/app.asar
+        test -x "$hub_path"
+        test -r "$hub_root/resources/app.asar"
+        echo "UNITY_HUB_PATH=$hub_path" >> "$GITHUB_ENV"
 
     - name: Set up Unity Editor
       if: steps.analyzed-project.outputs.platform == 'unity'
