@@ -232,6 +232,23 @@ runs:
           exit 1
         }
 
+    - name: Install Unity Hub
+      if: steps.analyzed-project.outputs.platform == 'unity'
+      shell: bash
+      env:
+        UNITY_HUB_VERSION: ${{ inputs['unity-hub-version'] }}
+      run: |
+        wget -qO - https://hub.unity3d.com/linux/keys/public |
+          gpg --dearmor |
+          sudo tee /usr/share/keyrings/Unity_Technologies_ApS.gpg >/dev/null
+        echo "deb [signed-by=/usr/share/keyrings/Unity_Technologies_ApS.gpg] https://hub.unity3d.com/linux/repos/deb stable main" |
+          sudo tee /etc/apt/sources.list.d/unityhub.list >/dev/null
+        sudo apt-get update
+        sudo apt-get install --yes "unityhub=$UNITY_HUB_VERSION"
+        UNITY_HUB_PATH="$(readlink -f "$(command -v unityhub)")"
+        sudo mkdir -p /opt/unityhub
+        sudo ln -sfn "$UNITY_HUB_PATH" /opt/unityhub/unityhub
+
     - name: Set up Unity Editor
       if: steps.analyzed-project.outputs.platform == 'unity'
       uses: buildalon/unity-setup@v2
