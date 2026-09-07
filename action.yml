@@ -276,11 +276,11 @@ runs:
       run: |
         sudo apt-get update
         sudo apt-get install --yes xvfb x11-utils libgl1-mesa-dri libglu1-mesa
-        Xvfb :99 -screen 0 1920x1080x24 > "$APVG_RUN_DIR/xvfb.log" 2>&1 &
-        echo "DISPLAY=:99" >> "$GITHUB_ENV"
+        Xvfb :100 -screen 0 1920x1080x24 > "$APVG_RUN_DIR/xvfb.log" 2>&1 &
+        echo "DISPLAY=:100" >> "$GITHUB_ENV"
         echo "LIBGL_ALWAYS_SOFTWARE=1" >> "$GITHUB_ENV"
         for attempt in $(seq 1 30); do
-          DISPLAY=:99 xdpyinfo >/dev/null 2>&1 && exit 0
+          DISPLAY=:100 xdpyinfo >/dev/null 2>&1 && exit 0
           [[ "$attempt" -lt 30 ]] || {
             cat "$APVG_RUN_DIR/xvfb.log" >&2
             echo "::error::Unity virtual display did not become ready"
