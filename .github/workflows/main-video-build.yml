@@ -134,6 +134,9 @@ jobs:
           printf '%s\n' '#!/bin/sh' 'exec /usr/bin/unityhub "$@"' |
             sudo tee /opt/unityhub/unityhub >/dev/null
           sudo chmod +x /opt/unityhub/unityhub
+          printf '%s\n' '#!/bin/sh' 'exec /usr/bin/unityhub "$@"' |
+            sudo tee /usr/local/bin/unity-hub >/dev/null
+          sudo chmod +x /usr/local/bin/unity-hub
 
       - name: Set up Unity Editor
         if: steps.analyzed-project.outputs.platform == 'unity'
