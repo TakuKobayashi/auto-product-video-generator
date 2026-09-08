@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { createWriteStream, existsSync, readFileSync } from 'node:fs';
 import { copyFile, cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -152,7 +152,7 @@ export class UnityRecorder implements PlatformRecorder {
         '-apvgPlan',
         planPath,
         '-logFile',
-        logPath,
+        '-',
       ],
       this.target.timeoutSeconds * 1000 * Math.max(1, this.jobs.length),
       logPath
@@ -279,9 +279,33 @@ function runUnity(
   logPath: string
 ): Promise<void> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const logStream = createWriteStream(logPath, { flags: 'a' });
     let stderr = '';
-    child.stderr.on('data', (chunk) => (stderr += chunk));
+    let recentOutput = '';
+    let recordingsCompleted = false;
+    let forcedExitTimer: NodeJS.Timeout | undefined;
+    child.stdout.on('data', (chunk: Buffer) => {
+      const text = chunk.toString();
+      logStream.write(text);
+      process.stdout.write(text);
+      const combinedOutput = recentOutput + text;
+      recentOutput = combinedOutput.slice(-512);
+      if (!recordingsCompleted && combinedOutput.includes('APVG_RECORDINGS_COMPLETE')) {
+        recordingsCompleted = true;
+        // All output files have been finalized. Do not let an Editor process
+        // that ignores EditorApplication.Exit keep CI blocked indefinitely.
+        forcedExitTimer = setTimeout(() => {
+          if (child.exitCode === null) child.kill();
+        }, 5000);
+      }
+    });
+    child.stderr.on('data', (chunk: Buffer) => {
+      const text = chunk.toString();
+      stderr += text;
+      logStream.write(text);
+      process.stderr.write(text);
+    });
     const timer = setTimeout(() => {
       child.kill();
       reject(new Error(`Unity Recorder timed out after ${timeoutMs / 1000}s. See ${logPath}.`));
@@ -292,7 +316,9 @@ function runUnity(
     });
     child.on('close', (code) => {
       clearTimeout(timer);
-      if (code === 0) resolvePromise();
+      if (forcedExitTimer) clearTimeout(forcedExitTimer);
+      logStream.end();
+      if (code === 0 || recordingsCompleted) resolvePromise();
       else
         reject(
           new Error(`Unity Recorder exited with code ${code}: ${stderr.trim()}\nSee ${logPath}.`)
