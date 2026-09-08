@@ -145,6 +145,7 @@ export class UnityRecorder implements PlatformRecorder {
     await runUnity(
       editorPath,
       [
+        '-batchmode',
         '-projectPath',
         this.temporaryProject,
         '-executeMethod',
@@ -283,14 +284,32 @@ function runUnity(
     const logStream = createWriteStream(logPath, { flags: 'a' });
     let stderr = '';
     let recentOutput = '';
+    let recorderInitialized = false;
     let recordingsCompleted = false;
     let forcedExitTimer: NodeJS.Timeout | undefined;
+    const startupTimer = setTimeout(
+      () => {
+        if (recorderInitialized) return;
+        child.kill();
+        reject(
+          new Error(
+            `Unity Editor did not invoke APVG.Editor.ApvgRecorder.Run within 900s. ` +
+              `Check compiler, Package Manager, licensing, or startup errors above and in ${logPath}.`
+          )
+        );
+      },
+      Math.min(timeoutMs, 900_000)
+    );
     child.stdout.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
       logStream.write(text);
       process.stdout.write(text);
       const combinedOutput = recentOutput + text;
       recentOutput = combinedOutput.slice(-512);
+      if (!recorderInitialized && combinedOutput.includes('APVG_RECORDER_INITIALIZED')) {
+        recorderInitialized = true;
+        clearTimeout(startupTimer);
+      }
       if (!recordingsCompleted && combinedOutput.includes('APVG_RECORDINGS_COMPLETE')) {
         recordingsCompleted = true;
         // All output files have been finalized. Do not let an Editor process
@@ -312,10 +331,12 @@ function runUnity(
     }, timeoutMs);
     child.on('error', (error) => {
       clearTimeout(timer);
+      clearTimeout(startupTimer);
       reject(new Error(`Could not start Unity Editor '${command}': ${error.message}`));
     });
     child.on('close', (code) => {
       clearTimeout(timer);
+      clearTimeout(startupTimer);
       if (forcedExitTimer) clearTimeout(forcedExitTimer);
       logStream.end();
       if (code === 0 || recordingsCompleted) resolvePromise();

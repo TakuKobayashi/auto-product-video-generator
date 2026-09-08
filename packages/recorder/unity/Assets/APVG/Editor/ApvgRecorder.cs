@@ -64,6 +64,7 @@ namespace APVG.Editor
                 EditorApplication.update -= Tick;
                 EditorApplication.update += Tick;
                 Debug.Log("APVG recorder initialized with " + plan.jobs.Length + " scene(s).");
+                Debug.Log("APVG_RECORDER_INITIALIZED");
                 BeginCurrentScene(plan);
             }
             catch (Exception error) { Fail(error); }
@@ -180,7 +181,10 @@ namespace APVG.Editor
             var path = string.IsNullOrEmpty(job.scenePath) ? BuildScene(job.sceneIndex) : job.scenePath;
             Debug.Log("APVG opening scene " + (index + 1) + "/" + plan.jobs.Length + ": " + path);
             EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
-            EnsureGameView(job);
+            // CI runs in batch mode on an Xvfb display. The recorder captures
+            // the camera's RenderTexture directly, so no Game View window is
+            // required there (and creating one can block batch-mode startup).
+            if (!Application.isBatchMode) EnsureGameView(job);
             SessionState.SetString(PhaseKey, WaitingForPlay);
             SetDeadline(Math.Min(Math.Max(plan.timeoutSeconds, 30), 120));
             SessionState.SetString(HeartbeatKey, "0");
