@@ -72,7 +72,7 @@ inputs:
     required: false
     default: '3.21.1'
   unity-version:
-    description: Unity Editor version override; empty uses the version declared by the project
+    description: Unity Editor version override; empty uses the project version, with versions before 2022.2 upgraded to the latest stable release
     required: false
     default: ''
 
@@ -240,6 +240,8 @@ runs:
     - name: Read analyzed project type
       id: analyzed-project
       shell: bash
+      env:
+        UNITY_VERSION_OVERRIDE: ${{ inputs['unity-version'] }}
       run: node "${{ github.action_path }}/.github/automation/export-analyzed-project.mjs"
 
     - name: Validate Unity license credentials
@@ -311,7 +313,7 @@ runs:
       uses: buildalon/unity-setup@v2
       with:
         version-file: ${{ steps.analyzed-project.outputs.unity-version-file }}
-        unity-version: ${{ inputs['unity-version'] }}
+        unity-version: ${{ steps.analyzed-project.outputs.unity-version }}
         build-targets: StandaloneLinux64
         hub-version: ${{ inputs['unity-hub-version'] }}
         cache-installation: ${{ inputs['cache-enabled'] }}
