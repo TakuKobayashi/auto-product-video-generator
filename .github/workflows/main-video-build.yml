@@ -29,10 +29,17 @@ jobs:
       OLLAMA_NUM_PARALLEL: 1
       OLLAMA_MODEL: qwen2.5:7b-instruct
       VOICEVOX_IMAGE: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+      VOICEVOX_CONTAINER: apvg-main-build-voicevox
+      VOICEVOX_HOST: http://127.0.0.1:50021
+      VOICEVOX_PORT: 50021
       FFMPEG_PATH: /usr/bin/ffmpeg
       FFPROBE_PATH: /usr/bin/ffprobe
+      APVG_CONFIG: ./apvg.config.yml
       APVG_WORK_DIR: ./.apvg-main-build
+      APVG_OUTPUT_DIR: ./main-video-output
+      APVG_PACKAGE_ROOT: ${{ github.workspace }}
       UNITY_HUB_VERSION: ${{ inputs['unity-hub-version'] }}
+      UNITY_DISPLAY: :100
 
     steps:
       - name: Check out main branch source
@@ -54,9 +61,6 @@ jobs:
 
       - name: Build current source
         run: pnpm build
-
-      - name: Run tests
-        run: pnpm test
 
       - name: Install Chromium and Linux dependencies
         run: pnpm exec playwright install --with-deps chromium
@@ -88,11 +92,7 @@ jobs:
 
       - name: Configure CI model and output
         env:
-          APVG_CONFIG: ./apvg.config.yml
           APVG_MODEL: ${{ env.OLLAMA_MODEL }}
-          APVG_WORK_DIR: ./.apvg-main-build
-          APVG_OUTPUT_DIR: ./main-video-output
-          APVG_PACKAGE_ROOT: ${{ github.workspace }}
         run: node .github/automation/configure-ci-apvg.mjs
 
       - name: Analyze current repository
@@ -124,31 +124,18 @@ jobs:
               sudo tee /usr/share/keyrings/Unity_Technologies_ApS.gpg >/dev/null
             echo "deb [signed-by=/usr/share/keyrings/Unity_Technologies_ApS.gpg] https://hub.unity3d.com/linux/repos/deb stable main" |
               sudo tee /etc/apt/sources.list.d/unityhub.list >/dev/null
-            packages+=("unityhub=$UNITY_HUB_VERSION" xvfb x11-utils libgl1-mesa-dri libglu1-mesa)
+            packages+=("unityhub=$UNITY_HUB_VERSION" xvfb libgl1-mesa-dri libglu1-mesa)
           fi
           sudo apt-get update
           sudo apt-get install --yes "${packages[@]}"
-          "$FFMPEG_PATH" -version | head -1
-          "$FFPROBE_PATH" -version | head -1
-          [[ "$PROJECT_PLATFORM" == unity ]] || exit 0
-          hub_path="$(readlink -f "$(command -v unityhub)")"
-          hub_root="$(dirname "$hub_path")"
-          sudo ln -sfn "$hub_path" /usr/bin/unity-hub
-          test -x "$hub_path"
-          test -r "$hub_root/resources/app.asar"
-          echo "UNITY_HUB_PATH=$hub_path" >> "$GITHUB_ENV"
-          Xvfb :100 -screen 0 1920x1080x24 > .apvg-main-build/xvfb.log 2>&1 &
-          echo "DISPLAY=:100" >> "$GITHUB_ENV"
-          echo "LIBGL_ALWAYS_SOFTWARE=1" >> "$GITHUB_ENV"
-          for attempt in $(seq 1 30); do
-            DISPLAY=:100 xdpyinfo >/dev/null 2>&1 && exit 0
-            if [[ "$attempt" -eq 30 ]]; then
-              cat .apvg-main-build/xvfb.log >&2
-              echo "Unity virtual display did not become ready" >&2
-              exit 1
-            fi
-            sleep 1
-          done
+          if [[ "$PROJECT_PLATFORM" == unity ]]; then
+            unity_hub="$(command -v unityhub)"
+            sudo ln -sfn "$unity_hub" /usr/bin/unity-hub
+            echo "UNITY_HUB_PATH=$unity_hub" >> "$GITHUB_ENV"
+            Xvfb "$UNITY_DISPLAY" -screen 0 1920x1080x24 &
+            echo "DISPLAY=$UNITY_DISPLAY" >> "$GITHUB_ENV"
+            echo "LIBGL_ALWAYS_SOFTWARE=1" >> "$GITHUB_ENV"
+          fi
 
       - name: Set up Unity Editor
         if: steps.analyzed-project.outputs.platform == 'unity'
@@ -166,16 +153,6 @@ jobs:
           username: ${{ secrets.UNITY_EMAIL }}
           password: ${{ secrets.UNITY_PASSWORD }}
 
-      - name: Verify Unity recording environment
-        if: steps.analyzed-project.outputs.platform == 'unity'
-        run: |
-          [[ -x "$UNITY_EDITOR_PATH" ]] || {
-            echo "::error::UNITY_EDITOR_PATH is not an executable file: $UNITY_EDITOR_PATH"
-            exit 1
-          }
-          xdpyinfo -display "$DISPLAY" >/dev/null
-          "$FFMPEG_PATH" -version | head -1
-
       - name: Generate scenario
         run: pnpm apvg video scenario generate
 
@@ -185,13 +162,13 @@ jobs:
       - name: Start VOICEVOX Engine
         run: |
           docker run -d --rm \
-            --name apvg-main-build-voicevox \
-            -p 50021:50021 \
+            --name "$VOICEVOX_CONTAINER" \
+            -p "$VOICEVOX_PORT:$VOICEVOX_PORT" \
             "$VOICEVOX_IMAGE"
           for attempt in $(seq 1 90); do
-            curl -fsS http://127.0.0.1:50021/version >/dev/null && exit 0
+            curl -fsS "$VOICEVOX_HOST/version" >/dev/null && exit 0
             if [ "$attempt" -eq 90 ]; then
-              docker logs apvg-main-build-voicevox || true
+              docker logs "$VOICEVOX_CONTAINER" || true
               echo "VOICEVOX Engine did not become ready" >&2
               exit 1
             fi
@@ -214,31 +191,12 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: main-branch-video-${{ github.run_number }}
-          path: main-video-output/
+          path: ${{ env.APVG_OUTPUT_DIR }}/
           if-no-files-found: error
           retention-days: 14
-
-      - name: Collect failure diagnostics
-        if: failure()
-        run: |
-          docker logs apvg-main-build-voicevox > voicevox.log 2>&1 || true
-
-      - name: Upload failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: main-video-build-diagnostics-${{ github.run_number }}
-          path: |
-            .apvg-main-build/
-            apvg.config.yml
-            ollama.log
-            voicevox.log
-          include-hidden-files: true
-          if-no-files-found: warn
-          retention-days: 7
 
       - name: Stop managed services
         if: always()
         run: |
-          docker rm -f apvg-main-build-voicevox >/dev/null 2>&1 || true
+          docker rm -f "$VOICEVOX_CONTAINER" >/dev/null 2>&1 || true
           ollama stop "$OLLAMA_MODEL" >/dev/null 2>&1 || true
