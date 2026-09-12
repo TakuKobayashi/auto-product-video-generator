@@ -263,9 +263,9 @@ runs:
         sudo apt-get update
         if [[ "$PROJECT_PLATFORM" == unity ]]; then
           hub_cache="$RUNNER_TEMP/apvg-unity-hub"
-          hub_deb="$(find "$hub_cache" -maxdepth 1 -name 'unityhub_*.deb' -print -quit 2>/dev/null)"
+          mkdir -p "$hub_cache"
+          hub_deb="$(find "$hub_cache" -maxdepth 1 -name 'unityhub_*.deb' -print -quit)"
           if [[ -z "$hub_deb" ]]; then
-            mkdir -p "$hub_cache"
             (cd "$hub_cache" && apt-get download "unityhub=$UNITY_HUB_VERSION")
             hub_deb="$(find "$hub_cache" -maxdepth 1 -name 'unityhub_*.deb' -print -quit)"
           fi
