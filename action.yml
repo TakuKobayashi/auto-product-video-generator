@@ -153,16 +153,6 @@ runs:
         ')
         node "$playwright_cli" install --with-deps chromium
 
-    - name: Install FFmpeg
-      shell: bash
-      run: |
-        if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
-          sudo apt-get update
-          sudo apt-get install --yes ffmpeg
-        fi
-        echo "FFMPEG_PATH=$(command -v ffmpeg)" >> "$GITHUB_ENV"
-        echo "FFPROBE_PATH=$(command -v ffprobe)" >> "$GITHUB_ENV"
-
     - name: Install Ollama
       shell: bash
       run: |
@@ -238,24 +228,40 @@ runs:
           exit 1
         }
 
-    - name: Install Unity Hub
-      if: steps.analyzed-project.outputs.platform == 'unity'
+    - name: Install system dependencies
       shell: bash
       env:
         UNITY_HUB_VERSION: ${{ inputs['unity-hub-version'] }}
+        PROJECT_PLATFORM: ${{ steps.analyzed-project.outputs.platform }}
       run: |
-        wget -qO - https://hub.unity3d.com/linux/keys/public |
-          gpg --dearmor |
-          sudo tee /usr/share/keyrings/Unity_Technologies_ApS.gpg >/dev/null
-        echo "deb [signed-by=/usr/share/keyrings/Unity_Technologies_ApS.gpg] https://hub.unity3d.com/linux/repos/deb stable main" |
-          sudo tee /etc/apt/sources.list.d/unityhub.list >/dev/null
+        packages=(ffmpeg)
+        if [[ "$PROJECT_PLATFORM" == unity ]]; then
+          wget -qO - https://hub.unity3d.com/linux/keys/public |
+            gpg --dearmor |
+            sudo tee /usr/share/keyrings/Unity_Technologies_ApS.gpg >/dev/null
+          echo "deb [signed-by=/usr/share/keyrings/Unity_Technologies_ApS.gpg] https://hub.unity3d.com/linux/repos/deb stable main" |
+            sudo tee /etc/apt/sources.list.d/unityhub.list >/dev/null
+          packages+=("unityhub=$UNITY_HUB_VERSION" xvfb x11-utils libgl1-mesa-dri libglu1-mesa)
+        fi
         sudo apt-get update
-        sudo apt-get install --yes "unityhub=$UNITY_HUB_VERSION" xvfb
-        hub_path="$(readlink -f "$(command -v unityhub)")"
-        printf '#!/bin/bash\nexec xvfb-run --auto-servernum "%s" "$@"\n' "$hub_path" |
-          sudo tee /usr/bin/unity-hub >/dev/null
-        sudo chmod +x /usr/bin/unity-hub
-        echo "UNITY_HUB_PATH=$hub_path" >> "$GITHUB_ENV"
+        sudo apt-get install --yes "${packages[@]}"
+        echo "FFMPEG_PATH=$(command -v ffmpeg)" >> "$GITHUB_ENV"
+        echo "FFPROBE_PATH=$(command -v ffprobe)" >> "$GITHUB_ENV"
+        if [[ "$PROJECT_PLATFORM" == unity ]]; then
+          hub_path="$(readlink -f "$(command -v unityhub)")"
+          printf '#!/bin/bash\nexec xvfb-run --auto-servernum "%s" "$@"\n' "$hub_path" |
+            sudo tee /usr/bin/unity-hub >/dev/null
+          sudo chmod +x /usr/bin/unity-hub
+          echo "UNITY_HUB_PATH=$hub_path" >> "$GITHUB_ENV"
+          Xvfb :100 -screen 0 1920x1080x24 > "$APVG_RUN_DIR/xvfb.log" 2>&1 &
+          echo "DISPLAY=:100" >> "$GITHUB_ENV"
+          echo "LIBGL_ALWAYS_SOFTWARE=1" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 30); do
+            DISPLAY=:100 xdpyinfo >/dev/null 2>&1 && break
+            [[ "$attempt" -lt 30 ]] || exit 1
+            sleep 1
+          done
+        fi
 
     - name: Set up Unity Editor
       if: steps.analyzed-project.outputs.platform == 'unity'
@@ -272,36 +278,6 @@ runs:
         license: Personal
         username: ${{ inputs['unity-email'] }}
         password: ${{ inputs['unity-password'] }}
-
-    - name: Start Unity virtual display
-      if: steps.analyzed-project.outputs.platform == 'unity'
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install --yes xvfb x11-utils libgl1-mesa-dri libglu1-mesa
-        Xvfb :100 -screen 0 1920x1080x24 > "$APVG_RUN_DIR/xvfb.log" 2>&1 &
-        echo "DISPLAY=:100" >> "$GITHUB_ENV"
-        echo "LIBGL_ALWAYS_SOFTWARE=1" >> "$GITHUB_ENV"
-        for attempt in $(seq 1 30); do
-          DISPLAY=:100 xdpyinfo >/dev/null 2>&1 && exit 0
-          [[ "$attempt" -lt 30 ]] || {
-            cat "$APVG_RUN_DIR/xvfb.log" >&2
-            echo "::error::Unity virtual display did not become ready"
-            exit 1
-          }
-          sleep 1
-        done
-
-    - name: Verify Unity recording environment
-      if: steps.analyzed-project.outputs.platform == 'unity'
-      shell: bash
-      run: |
-        [[ -x "$UNITY_EDITOR_PATH" ]] || {
-          echo "::error::UNITY_EDITOR_PATH is not an executable file: $UNITY_EDITOR_PATH"
-          exit 1
-        }
-        xdpyinfo -display "$DISPLAY" >/dev/null
-        "$FFMPEG_PATH" -version | head -1
 
     - name: Generate recording scenario
       shell: bash
