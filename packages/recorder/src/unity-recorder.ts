@@ -121,6 +121,10 @@ export class UnityRecorder implements PlatformRecorder {
       `Preparing isolated Unity project for ${this.jobs.length} scene(s)...`
     );
     await copyUnityProject(sourceRoot, this.temporaryProject);
+    await ensureUnityRecorderPackage(
+      this.temporaryProject,
+      resolveUnityVersion(editorPath, sourceRoot)
+    );
     const scriptPath = join(this.temporaryProject, 'Assets', 'APVG', 'Editor', 'ApvgRecorder.cs');
     await Promise.all([
       mkdir(dirname(scriptPath), { recursive: true }),
@@ -263,14 +267,61 @@ function assertUnityProject(root: string): void {
       throw new Error(`Not a Unity project (missing ${required}): ${root}`);
     }
   }
-  const manifest = join(root, 'Packages', 'manifest.json');
-  const text = existsSync(manifest) ? readFileSync(manifest, 'utf8') : '';
-  if (!text.includes('com.unity.recorder')) {
+}
+
+export async function ensureUnityRecorderPackage(
+  projectRoot: string,
+  unityVersion: string
+): Promise<void> {
+  const manifestPath = join(projectRoot, 'Packages', 'manifest.json');
+  let manifest: { dependencies?: Record<string, string> };
+  try {
+    manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+      dependencies?: Record<string, string>;
+    };
+  } catch (error) {
     throw new Error(
-      `Unity Recorder is not installed in ${manifest}. ` +
-        'Install com.unity.recorder with Unity Package Manager first.'
+      `Could not read Unity package manifest ${manifestPath}: ${(error as Error).message}`
     );
   }
+  manifest.dependencies ??= {};
+  if (manifest.dependencies['com.unity.recorder']) return;
+
+  const recorderVersion = unityRecorderPackageVersion(unityVersion);
+  manifest.dependencies['com.unity.recorder'] = recorderVersion;
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  logger.info(
+    `Added com.unity.recorder ${recorderVersion} to the isolated recording project for Unity ${unityVersion}.`
+  );
+}
+
+export function unityRecorderPackageVersion(unityVersion: string): string {
+  const major = Number.parseInt(unityVersion.split('.')[0], 10);
+  if (!Number.isFinite(major)) {
+    throw new Error(
+      `Could not determine a compatible Unity Recorder version for Unity ${unityVersion}.`
+    );
+  }
+  if (major >= 6000) return '5.1.3';
+  if (major >= 2023) return '5.0.0';
+  if (major >= 2022) return '4.0.1';
+  if (major >= 2021) return '3.0.3';
+  if (major >= 2020) return '2.5.7';
+  return '2.0.3-preview.1';
+}
+
+function resolveUnityVersion(editorPath: string, projectRoot: string): string {
+  const installedVersion = editorPath
+    .replaceAll('\\', '/')
+    .match(/\/Hub\/Editor\/([^/]+)\//)?.[1];
+  if (installedVersion) return installedVersion;
+  const versionText = readFileSync(
+    join(projectRoot, 'ProjectSettings', 'ProjectVersion.txt'),
+    'utf8'
+  );
+  const projectVersion = versionText.match(/^m_EditorVersion:\s*(\S+)/m)?.[1];
+  if (!projectVersion) throw new Error('Could not determine the Unity Editor version.');
+  return projectVersion;
 }
 
 function runUnity(
