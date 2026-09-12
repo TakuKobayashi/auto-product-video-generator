@@ -124,7 +124,8 @@ export type WebAuthConfig = z.infer<typeof WebAuthConfigSchema>;
 export const UnityConfigSchema = z.object({
   // Uses UNITY_EDITOR_PATH or the matching Unity Hub editor when omitted.
   editorPath: z.string().min(1).optional(),
-  // Explicit scene paths; otherwise enabled Build Settings scenes are used.
+  // Explicit scene paths; otherwise enabled Build Settings scenes or safe
+  // first-party scene candidates are used.
   scenes: z.array(z.string().min(1)).min(1).optional(),
   sceneStartIndex: z.number().int().nonnegative().default(0),
   sceneLoadWaitSeconds: z.number().nonnegative().default(2),

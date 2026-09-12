@@ -150,8 +150,8 @@ export class ProjectAnalyzer {
         );
         break;
       case 'unity':
-        // Unity Recorder opens enabled Build Settings scenes directly. Unity
-        // projects do not need Node/server setup commands.
+        // Unity Recorder opens configured, enabled, or safely discovered scenes
+        // directly. Unity projects do not need Node/server setup commands.
         summary.setupSteps = [];
         const unityScenes = context.unity?.enabledScenes || [];
         const useGeneratedUnityFeatures =
@@ -354,7 +354,7 @@ function buildPrompt(context: ProjectSourceContext, targetUrl?: string): string 
   const unitySection = context.unity
     ? `Unity scene-first evidence (authoritative for product analysis):
 Editor version: ${context.unity.editorVersion || '(unknown)'}
-Enabled Build Settings scenes, in recording order:
+Recording scenes, in order (${context.unity.sceneSource || 'build-settings'}):
 ${context.unity.enabledScenes
   .map(
     (scene, index) =>
@@ -383,7 +383,7 @@ ${context.unity.packages.join(', ') || '(none)'}`
     ? `${unitySection}
 
 Unity rules:
-- Create one demoable feature for each enabled Build Settings scene, in exactly the listed order.
+- Create one demoable feature for each listed recording scene, in exactly the listed order.
 - Set each feature id to the exact scene path. Do not set route or command.
 - Infer the game/product experience primarily from scene GameObjects and project script excerpts.
 - Asset Store libraries, plugins, packages, frameworks, and technical systems are supporting dependencies, never product features.

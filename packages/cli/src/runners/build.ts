@@ -11,6 +11,7 @@ import {
   logger,
   describeTaskLlm,
   resolveFfmpegPath,
+  UnityConfigSchema,
   ProjectSummary,
   ScenarioSchema,
   ScriptSchema,
@@ -118,7 +119,11 @@ export async function runBuild(options: BuildOptions): Promise<void> {
   if (!options.skipAnalyze) {
     logger.step('1/5', 'Analyzing project source...');
     if (!dryRun) {
-      const sourceContext = await inspectProject(rootDir!, config.source.exclude);
+      const sourceContext = await inspectProject(
+        rootDir!,
+        config.source.exclude,
+        config.target.unity?.scenes
+      );
       await writeJson(contextPath, sourceContext);
 
       if (!config.source.startCommand) {
@@ -150,7 +155,16 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         case 'unity':
           summary.setupSteps = [];
           config.target.type = 'unity';
-          logger.info(`Enabled Unity Recorder Build Settings scene capture.`);
+          config.target.unity = UnityConfigSchema.parse(config.target.unity || {});
+          if (
+            sourceContext.unity?.sceneSource === 'discovered' &&
+            !config.target.unity.scenes?.length
+          ) {
+            config.target.unity.scenes = sourceContext.unity.enabledScenes.map(
+              (scene) => scene.path
+            );
+          }
+          logger.info(`Enabled Unity Recorder scene capture (${sourceContext.unity?.sceneSource}).`);
           break;
         case 'cli':
           config.target.type = 'cli';

@@ -1,5 +1,11 @@
 import { join } from 'node:path';
-import { loadConfig, writeJson, logger, describeTaskLlm } from '@auto-product-video-generator/core';
+import {
+  loadConfig,
+  writeJson,
+  logger,
+  describeTaskLlm,
+  UnityConfigSchema,
+} from '@auto-product-video-generator/core';
 import { createLlmProviderForTask, ProjectAnalyzer } from '@auto-product-video-generator/ai';
 import {
   resolveProjectSource,
@@ -49,7 +55,11 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   // Deterministic: resolve (clone or verify local) + inspect the actual source.
   logger.step('source', 'Resolving project source (this may take a moment for a fresh clone)...');
   const rootDir = await resolveProjectSource({ source: config.source, cloneDir });
-  const sourceContext = await inspectProject(rootDir, config.source.exclude);
+  const sourceContext = await inspectProject(
+    rootDir,
+    config.source.exclude,
+    config.target.unity?.scenes
+  );
 
   await writeJson(contextPath, sourceContext);
   logger.success(`Saved: ${contextPath}`);
@@ -95,7 +105,14 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
     case 'unity':
       summary.setupSteps = [];
       config.target.type = 'unity';
-      logger.info(`Enabled Unity Recorder Build Settings scene capture.`);
+      config.target.unity = UnityConfigSchema.parse(config.target.unity || {});
+      if (
+        sourceContext.unity?.sceneSource === 'discovered' &&
+        !config.target.unity.scenes?.length
+      ) {
+        config.target.unity.scenes = sourceContext.unity.enabledScenes.map((scene) => scene.path);
+      }
+      logger.info(`Enabled Unity Recorder scene capture (${sourceContext.unity?.sceneSource}).`);
       break;
     case 'cli':
       config.target.type = 'cli';

@@ -48,7 +48,7 @@ export function initCommand(): Command {
     .option('--unity-editor <path>', 'path to the Unity Editor executable')
     .option(
       '--unity-scenes <paths>',
-      'comma-separated Unity scene paths (default: enabled Build Settings scenes)'
+      'comma-separated Unity scene paths (default: Build Settings or auto-discovered scenes)'
     )
     .option('--force', 'overwrite an existing apvg.config.yml')
     .option('--dry-run', 'preview config without writing files')

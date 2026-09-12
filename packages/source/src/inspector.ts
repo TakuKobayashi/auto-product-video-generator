@@ -73,6 +73,7 @@ export interface UnitySceneContext {
 
 export interface UnitySourceContext {
   editorVersion?: string;
+  sceneSource?: 'configured' | 'build-settings' | 'discovered';
   enabledScenes: UnitySceneContext[];
   projectScripts: Array<{ path: string; excerpt: string }>;
   packages: string[];
@@ -174,7 +175,8 @@ const PROMOTIONAL_ASSET_EXTENSIONS = new Set([
 
 export async function inspectProject(
   rootDir: string,
-  configuredExcludes: string[] = []
+  configuredExcludes: string[] = [],
+  configuredUnityScenes?: string[]
 ): Promise<ProjectSourceContext> {
   logger.step('source', `Inspecting project at ${rootDir}...`);
 
@@ -238,7 +240,7 @@ export async function inspectProject(
   const assetFiles = fileIndex.assetFiles;
   const platformHints = await detectPlatformHints(rootDir, packageJson, deps);
   const unity = platformHints.some((hint) => hint.includes('(Unity)'))
-    ? await inspectUnityProject(rootDir)
+    ? await inspectUnityProject(rootDir, configuredUnityScenes)
     : undefined;
   const cliSourceExcerpt = packageJson?.bin
     ? await readCliSourceExcerpt(rootDir, fileIndex.sourceFiles)
@@ -275,15 +277,28 @@ export async function inspectProject(
   };
 }
 
-async function inspectUnityProject(rootDir: string): Promise<UnitySourceContext> {
+async function inspectUnityProject(
+  rootDir: string,
+  configuredScenePaths?: string[]
+): Promise<UnitySourceContext> {
   const settingsPath = join(rootDir, 'ProjectSettings', 'EditorBuildSettings.asset');
   const settings = await readTextIfPresent(settingsPath);
-  const scenePaths = [...settings.matchAll(/- enabled:\s*1\s*[\s\S]*?path:\s*([^\r\n]+)/g)]
-    .map((match) => match[1].trim())
-    .filter((path) => path.startsWith('Assets/'));
+  let scenePaths = configuredScenePaths?.length
+    ? validateConfiguredUnityScenePaths(rootDir, configuredScenePaths)
+    : [...settings.matchAll(/- enabled:\s*1\s*[\s\S]*?path:\s*([^\r\n]+)/g)]
+        .map((match) => match[1].trim())
+        .filter((path) => path.startsWith('Assets/'));
 
   const guidPaths = new Map<string, string>();
   await walkUnityMetaFiles(join(rootDir, 'Assets'), rootDir, guidPaths);
+  const sceneSource = configuredScenePaths?.length
+    ? 'configured'
+    : scenePaths.length > 0
+      ? 'build-settings'
+      : 'discovered';
+  if (sceneSource === 'discovered') {
+    scenePaths = discoverUnityScenePaths([...guidPaths.values()]);
+  }
   const enabledScenes: UnitySceneContext[] = [];
   const referencedScriptPaths = new Set<string>();
 
@@ -330,10 +345,56 @@ async function inspectUnityProject(rootDir: string): Promise<UnitySourceContext>
   const version = await readTextIfPresent(join(rootDir, 'ProjectSettings', 'ProjectVersion.txt'));
   return {
     editorVersion: version.match(/^m_EditorVersion:\s*(\S+)/m)?.[1],
+    sceneSource,
     enabledScenes,
     projectScripts,
     packages,
   };
+}
+
+function validateConfiguredUnityScenePaths(rootDir: string, paths: string[]): string[] {
+  return paths.map((path) => {
+    const normalized = path.trim().replace(/\\/g, '/');
+    const segments = normalized.split('/');
+    if (
+      !normalized.startsWith('Assets/') ||
+      !normalized.endsWith('.unity') ||
+      segments.some((segment) => segment === '.' || segment === '..') ||
+      !existsSync(join(rootDir, ...segments))
+    ) {
+      throw new Error(`Configured Unity scene does not exist under Assets: ${path}`);
+    }
+    return normalized;
+  });
+}
+
+function discoverUnityScenePaths(assetPaths: string[]): string[] {
+  return assetPaths
+    .filter((path) => path.endsWith('.unity') && !isExcludedUnityScene(path))
+    .sort((left, right) => unitySceneScore(right) - unitySceneScore(left) || left.localeCompare(right))
+    .slice(0, 40);
+}
+
+function isExcludedUnityScene(path: string): boolean {
+  if (isLikelyThirdPartyUnityAsset(path)) return true;
+  const segments = path.toLowerCase().split('/');
+  const filename = segments.at(-1)?.replace(/\.unity$/, '') || '';
+  return (
+    segments.some((segment) =>
+      /^(?:editor|tests?|samples?|examples?|tutorials?|demos?)$/.test(segment)
+    ) || /(?:^|[-_. ])(?:test|sample|example|tutorial)(?:$|[-_. ])/i.test(filename)
+  );
+}
+
+function unitySceneScore(path: string): number {
+  const segments = path.toLowerCase().split('/');
+  const filename = segments.at(-1)?.replace(/\.unity$/, '') || '';
+  let score = 0;
+  if (segments.includes('scenes')) score += 100;
+  else if (segments.includes('scene')) score += 90;
+  if (/^(?:main|title|menu|game|start|bootstrap|intro)$/.test(filename)) score += 50;
+  score -= segments.length;
+  return score;
 }
 
 async function walkUnityMetaFiles(
