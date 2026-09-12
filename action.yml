@@ -142,16 +142,20 @@ runs:
         npm install --global "auto-product-video-generator@$APVG_VERSION"
         echo "APVG_PACKAGE_ROOT=$(npm root --global)/auto-product-video-generator" >> "$GITHUB_ENV"
 
+    - name: Get Playwright version
+      id: playwright
+      shell: bash
+      run: echo "version=$(npm exec --prefix "$APVG_PACKAGE_ROOT" -- playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Playwright Chromium
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}
+
     - name: Install Playwright Chromium
       shell: bash
-      run: |
-        playwright_cli=$(node --input-type=module -e '
-          import { createRequire } from "node:module";
-          import { dirname, join } from "node:path";
-          const require = createRequire(`${process.env.APVG_PACKAGE_ROOT}/package.json`);
-          console.log(join(dirname(require.resolve("playwright/package.json")), "cli.js"));
-        ')
-        node "$playwright_cli" install --with-deps chromium
+      run: npm exec --prefix "$APVG_PACKAGE_ROOT" -- playwright install --with-deps chromium
 
     - name: Install Ollama
       shell: bash
@@ -159,6 +163,12 @@ runs:
         if ! command -v ollama >/dev/null 2>&1; then
           curl -fsSL https://ollama.com/install.sh | sh
         fi
+
+    - name: Cache Ollama model
+      uses: actions/cache@v6
+      with:
+        path: ~/.ollama/models
+        key: ollama-${{ runner.os }}-${{ runner.arch }}-${{ inputs['ollama-model'] }}
 
     - name: Start Ollama
       shell: bash
@@ -228,6 +238,13 @@ runs:
           exit 1
         }
 
+    - name: Cache Unity Hub package
+      if: steps.analyzed-project.outputs.platform == 'unity'
+      uses: actions/cache@v6
+      with:
+        path: ${{ runner.temp }}/apvg-unity-hub
+        key: unity-hub-${{ runner.os }}-${{ runner.arch }}-${{ inputs['unity-hub-version'] }}
+
     - name: Install system dependencies
       shell: bash
       env:
@@ -241,9 +258,19 @@ runs:
             sudo tee /usr/share/keyrings/Unity_Technologies_ApS.gpg >/dev/null
           echo "deb [signed-by=/usr/share/keyrings/Unity_Technologies_ApS.gpg] https://hub.unity3d.com/linux/repos/deb stable main" |
             sudo tee /etc/apt/sources.list.d/unityhub.list >/dev/null
-          packages+=("unityhub=$UNITY_HUB_VERSION" xvfb x11-utils libgl1-mesa-dri libglu1-mesa)
+          packages+=(xvfb x11-utils libgl1-mesa-dri libglu1-mesa)
         fi
         sudo apt-get update
+        if [[ "$PROJECT_PLATFORM" == unity ]]; then
+          hub_cache="$RUNNER_TEMP/apvg-unity-hub"
+          hub_deb="$(find "$hub_cache" -maxdepth 1 -name 'unityhub_*.deb' -print -quit 2>/dev/null)"
+          if [[ -z "$hub_deb" ]]; then
+            mkdir -p "$hub_cache"
+            (cd "$hub_cache" && apt-get download "unityhub=$UNITY_HUB_VERSION")
+            hub_deb="$(find "$hub_cache" -maxdepth 1 -name 'unityhub_*.deb' -print -quit)"
+          fi
+          packages+=("$hub_deb")
+        fi
         sudo apt-get install --yes "${packages[@]}"
         echo "FFMPEG_PATH=$(command -v ffmpeg)" >> "$GITHUB_ENV"
         echo "FFPROBE_PATH=$(command -v ffprobe)" >> "$GITHUB_ENV"
@@ -270,6 +297,7 @@ runs:
         version-file: ${{ steps.analyzed-project.outputs.unity-version-file }}
         build-targets: StandaloneLinux64
         hub-version: ${{ inputs['unity-hub-version'] }}
+        cache-installation: true
 
     - name: Activate Unity Personal license
       if: steps.analyzed-project.outputs.platform == 'unity'
