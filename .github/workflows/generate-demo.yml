@@ -31,6 +31,16 @@ on:
         required: false
         type: string
         default: '3.21.1'
+      unity-version:
+        description: Unity Editor version override; empty uses the project version
+        required: false
+        type: string
+        default: ''
+      cache-enabled:
+        description: Cache Unity Editor, Unity Hub, Ollama models, and Playwright Chromium
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -82,6 +92,8 @@ jobs:
           unity-email: ${{ secrets.UNITY_EMAIL }}
           unity-password: ${{ secrets.UNITY_PASSWORD }}
           unity-hub-version: ${{ inputs['unity-hub-version'] }}
+          unity-version: ${{ inputs['unity-version'] }}
+          cache-enabled: ${{ github.event_name != 'workflow_dispatch' || inputs['cache-enabled'] }}
 
       - name: Upload final video, Remotion project, and intermediate artifacts
         uses: actions/upload-artifact@v7
