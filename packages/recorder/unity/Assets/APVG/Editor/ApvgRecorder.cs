@@ -33,7 +33,6 @@ namespace APVG.Editor
         const string IndexKey = "APVG.Recorder.Index";
         const string PhaseKey = "APVG.Recorder.Phase";
         const string DeadlineKey = "APVG.Recorder.Deadline";
-        const string HeartbeatKey = "APVG.Recorder.Heartbeat";
         const string WaitingForPlay = "waiting-for-play";
         const string WarmingUp = "warming-up";
         const string Recording = "recording";
@@ -63,7 +62,6 @@ namespace APVG.Editor
                 SessionState.SetInt(IndexKey, 0);
                 EditorApplication.update -= Tick;
                 EditorApplication.update += Tick;
-                Debug.Log("APVG recorder initialized with " + plan.jobs.Length + " scene(s).");
                 Debug.Log("APVG_RECORDER_INITIALIZED");
                 BeginCurrentScene(plan);
             }
@@ -79,7 +77,6 @@ namespace APVG.Editor
                 var phase = SessionState.GetString(PhaseKey, "");
                 if (phase == WaitingForPlay && EditorApplication.isPlaying)
                 {
-                    Debug.Log("APVG entered Play Mode for scene " + (index + 1) + "/" + plan.jobs.Length + ".");
                     Application.runInBackground = true;
                     EditorApplication.isPaused = false;
                     SessionState.SetString(PhaseKey, WarmingUp);
@@ -88,7 +85,6 @@ namespace APVG.Editor
                 }
                 if (phase == WaitingForPlay)
                 {
-                    LogWaiting(phase, index, plan.jobs.Length);
                     if (DeadlineReached())
                         throw new Exception("Timed out waiting to enter Play Mode for scene " +
                             (index + 1) + "/" + plan.jobs.Length + ".");
@@ -125,10 +121,8 @@ namespace APVG.Editor
                     var job = plan.jobs[index];
                     if (IsFileReady(job.output))
                     {
-                        Debug.Log("APVG recording finished for scene " + (index + 1) + "/" + plan.jobs.Length + ".");
                         SessionState.SetString(PhaseKey, WaitingForEdit);
                         SetDeadline(Math.Min(Math.Max(plan.timeoutSeconds, 30), 120));
-                        Debug.Log("APVG requested Edit Mode for scene " + (index + 1) + "/" + plan.jobs.Length + ".");
                         EditorApplication.ExitPlaymode();
                     }
                     else if (DeadlineReached())
@@ -137,7 +131,6 @@ namespace APVG.Editor
                 }
                 if (phase == WaitingForEdit && !EditorApplication.isPlayingOrWillChangePlaymode)
                 {
-                    Debug.Log("APVG entered Edit Mode for scene " + (index + 1) + "/" + plan.jobs.Length + ".");
                     var job = plan.jobs[index];
                     if (!File.Exists(job.output))
                         throw new Exception("Recorder output was not created: " + job.output);
@@ -145,7 +138,6 @@ namespace APVG.Editor
                     SessionState.SetInt(IndexKey, index);
                     if (index >= plan.jobs.Length)
                     {
-                        Debug.Log("APVG completed all Unity recordings; exiting Editor.");
                         Debug.Log("APVG_RECORDINGS_COMPLETE");
                         ClearState();
                         EditorApplication.Exit(0);
@@ -155,7 +147,6 @@ namespace APVG.Editor
                 }
                 if (phase == WaitingForEdit)
                 {
-                    LogWaiting(phase, index, plan.jobs.Length);
                     if (DeadlineReached())
                     {
                         if (index == plan.jobs.Length - 1 && IsFileReady(plan.jobs[index].output))
@@ -179,7 +170,6 @@ namespace APVG.Editor
             var index = SessionState.GetInt(IndexKey, 0);
             var job = plan.jobs[index];
             var path = string.IsNullOrEmpty(job.scenePath) ? BuildScene(job.sceneIndex) : job.scenePath;
-            Debug.Log("APVG opening scene " + (index + 1) + "/" + plan.jobs.Length + ": " + path);
             EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
             // CI runs in batch mode on an Xvfb display. The recorder captures
             // the camera's RenderTexture directly, so no Game View window is
@@ -187,21 +177,7 @@ namespace APVG.Editor
             if (!Application.isBatchMode) EnsureGameView(job);
             SessionState.SetString(PhaseKey, WaitingForPlay);
             SetDeadline(Math.Min(Math.Max(plan.timeoutSeconds, 30), 120));
-            SessionState.SetString(HeartbeatKey, "0");
             EditorApplication.EnterPlaymode();
-        }
-
-        static void LogWaiting(string phase, int index, int count)
-        {
-            long ticks;
-            long.TryParse(SessionState.GetString(HeartbeatKey, "0"), out ticks);
-            if (DateTime.UtcNow.Ticks - ticks < TimeSpan.FromSeconds(10).Ticks) return;
-            SessionState.SetString(HeartbeatKey, DateTime.UtcNow.Ticks.ToString());
-            Debug.Log("APVG waiting: phase=" + phase + ", scene=" + (index + 1) + "/" + count +
-                ", isPlaying=" + EditorApplication.isPlaying +
-                ", willChangePlaymode=" + EditorApplication.isPlayingOrWillChangePlaymode +
-                ", isCompiling=" + EditorApplication.isCompiling +
-                ", isUpdating=" + EditorApplication.isUpdating + ".");
         }
 
         static void EnsureGameView(RecordingJob job)
@@ -327,7 +303,6 @@ namespace APVG.Editor
             SessionState.EraseInt(IndexKey);
             SessionState.EraseString(PhaseKey);
             SessionState.EraseString(DeadlineKey);
-            SessionState.EraseString(HeartbeatKey);
         }
     }
 }
