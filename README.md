@@ -283,13 +283,17 @@ jobs:
 The composite action runs analysis, scenario generation, narration, recording,
 rendering, and optional Remotion export as separate steps. After analysis, Unity
 projects conditionally install and activate the matching Editor, start Xvfb, and
-verify FFmpeg and the display before recording. Other platforms skip all Unity
-setup. The action requires an Ubuntu/Linux runner with Docker and `sudo`.
+record its selected scenes. Other platforms skip all Unity setup. The action
+requires an Ubuntu/Linux runner with Docker and `sudo`.
 
 Key inputs are `repository`, `ref`, `project-path`, `target-url`, `video-type`,
 `ollama-model`, `voicevox-speaker`, `output-directory`, `preview`, and
 `export-remotion`. Outputs are `video-path`, `artifacts-path`, and
 `remotion-project-path`.
+
+The manual `generate-demo.yml` workflow supports private SSH repository URLs.
+Add the private deploy key as its `SSH_KEY` repository secret; the corresponding
+public key must have read access to the target repository.
 
 The repository workflows have different roles: `main-video-build.yml` directly
 builds and exercises the checked-out source, while `generate-demo.yml` verifies

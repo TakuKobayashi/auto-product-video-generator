@@ -49,6 +49,22 @@ jobs:
       - name: Check out action repository
         uses: actions/checkout@v6
 
+      - name: Configure repository SSH key
+        env:
+          REPOSITORY: ${{ inputs.repository || '' }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          [[ "$REPOSITORY" == ssh://* || "$REPOSITORY" =~ ^[^/@:]+@[^/:]+: ]] || exit 0
+          [[ -n "$SSH_KEY" ]] || {
+            echo "::error::SSH_KEY secret is required for an SSH repository URL"
+            exit 1
+          }
+          ssh_auth_sock="$RUNNER_TEMP/apvg-ssh-agent.sock"
+          ssh-agent -a "$ssh_auth_sock" >/dev/null
+          SSH_AUTH_SOCK="$ssh_auth_sock" ssh-add - <<< "$SSH_KEY"
+          echo "SSH_AUTH_SOCK=$ssh_auth_sock" >> "$GITHUB_ENV"
+          echo "GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=accept-new" >> "$GITHUB_ENV"
+
       # Unity-specific installation, licensing, Xvfb, and WebM-to-MP4
       # conversion run conditionally inside action.yml after project analysis.
       - name: Generate promotional video
