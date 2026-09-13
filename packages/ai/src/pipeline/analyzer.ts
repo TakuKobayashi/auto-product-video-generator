@@ -187,7 +187,7 @@ export class ProjectAnalyzer {
     // ground that particular step at the repository root so workspace:*
     // dependencies can be resolved. Do not invent an install step when the
     // analyzed CLI does not need one.
-    if (context.projectPath !== '.') {
+    if (context.projectPath !== '.' && (await isNodeWorkspaceRoot(context.repositoryRoot))) {
       const workspaceCwd = crossPlatformRelative(context.rootDir, context.repositoryRoot) || '.';
       const installCommand = `${context.packageManager} install`;
       summary.setupSteps = summary.setupSteps.map((step) =>
@@ -217,6 +217,18 @@ export class ProjectAnalyzer {
         );
     }
     return summary;
+  }
+}
+
+async function isNodeWorkspaceRoot(root: string): Promise<boolean> {
+  if (existsSync(resolve(root, 'pnpm-workspace.yaml'))) return true;
+  try {
+    const pkg = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8')) as {
+      workspaces?: unknown;
+    };
+    return Boolean(pkg.workspaces);
+  } catch {
+    return false;
   }
 }
 

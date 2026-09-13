@@ -33,6 +33,10 @@ export async function selectProjectRoot(
     logger.success(`Selected Unity project root: ${repositoryRoot}`);
     return repositoryRoot;
   }
+  if (isAndroidProjectRoot(repositoryRoot)) {
+    logger.success(`Selected Android project root: ${repositoryRoot}`);
+    return repositoryRoot;
+  }
 
   const excludePatterns = await loadSourceExcludePatterns(repositoryRoot, source.exclude);
   const candidates = await discoverCandidates(repositoryRoot, excludePatterns);
@@ -153,6 +157,15 @@ function isUnityProjectRoot(dir: string): boolean {
     existsSync(resolve(dir, 'ProjectSettings', 'ProjectVersion.txt')) &&
     existsSync(resolve(dir, 'Assets')) &&
     existsSync(resolve(dir, 'Packages'))
+  );
+}
+
+function isAndroidProjectRoot(dir: string): boolean {
+  return (
+    existsSync(resolve(dir, 'gradlew')) &&
+    (existsSync(resolve(dir, 'settings.gradle')) ||
+      existsSync(resolve(dir, 'settings.gradle.kts'))) &&
+    existsSync(resolve(dir, 'app', 'src', 'main', 'AndroidManifest.xml'))
   );
 }
 

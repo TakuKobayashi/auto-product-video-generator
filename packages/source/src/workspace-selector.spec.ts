@@ -39,6 +39,28 @@ describe('selectProjectRoot', () => {
     ).resolves.toBe(root);
   });
 
+  it('keeps a native Android repository root instead of selecting a nested web app', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'apvg-android-with-landing-page-'));
+    await Promise.all([
+      mkdir(join(root, 'app', 'src', 'main'), { recursive: true }),
+      writeFile(join(root, 'gradlew'), ''),
+      writeFile(join(root, 'settings.gradle'), "include ':app'\n"),
+      packageJson(root, 'landingpage', {
+        scripts: { dev: 'next dev' },
+        dependencies: { next: '^15.0.0', react: '^19.0.0' },
+      }),
+    ]);
+    await writeFile(join(root, 'app', 'src', 'main', 'AndroidManifest.xml'), '<manifest />');
+
+    await expect(
+      selectProjectRoot(root, {
+        localPath: root,
+        installDeps: false,
+        platformPriority: DEFAULT_PLATFORM_PRIORITY,
+      })
+    ).resolves.toBe(root);
+  });
+
   it('selects the runnable web application in a mixed monorepo', async () => {
     const root = await mkdtemp(join(tmpdir(), 'apvg-monorepo-'));
     await Promise.all([
