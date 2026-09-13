@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
-import { existsSync, openSync, readdirSync } from 'node:fs';
+import { existsSync, openSync, readdirSync, realpathSync } from 'node:fs';
 import { mkdir, readFile, readdir, stat } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { arch } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { logger } from '@auto-product-video-generator/core';
 
 export interface AndroidProjectOptions {
@@ -136,11 +137,16 @@ async function ensureAndroidDevice(
     );
   }
 
-  const emulatorPath = findSdkTool('emulator', options.sdkPath);
-  const avds = (await run(emulatorPath, ['-list-avds']))
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  let emulatorPath = findSdkTool('emulator', options.sdkPath, false);
+  if (!emulatorPath) {
+    await installEmulator(options.sdkPath);
+    emulatorPath = findSdkTool('emulator', options.sdkPath);
+  }
+  let avds = await listAvds(emulatorPath);
+  if (avds.length === 0 && !options.avd) {
+    await installStablePixelAvd(options.sdkPath);
+    avds = await listAvds(emulatorPath);
+  }
   const avd = options.avd || avds[0];
   if (!avd) {
     throw new Error(
@@ -182,6 +188,82 @@ async function ensureAndroidDevice(
   throw new Error(
     `Android emulator '${avd}' did not connect within 240 seconds. Check ${logPath}.`
   );
+}
+
+async function listAvds(emulatorPath: string): Promise<string[]> {
+  return (await run(emulatorPath, ['-list-avds']))
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+async function installEmulator(sdkPath?: string): Promise<void> {
+  const sdkmanager = findCommandLineTool('sdkmanager', sdkPath);
+  logger.step('android:sdk', 'Installing the stable Android Emulator package...');
+  await run(sdkmanager, ['--channel=0', 'emulator'], licenseAnswers());
+}
+
+async function installStablePixelAvd(sdkPath?: string): Promise<void> {
+  const sdkmanager = findCommandLineTool('sdkmanager', sdkPath);
+  const avdmanager = findCommandLineTool('avdmanager', sdkPath);
+  logger.step('android:sdk', 'Selecting the latest stable Android Pixel system image...');
+  const packages = await run(sdkmanager, ['--channel=0', '--list']);
+  const systemImage = selectLatestStableSystemImage(packages, arch());
+  if (!systemImage) {
+    throw new Error(
+      `No stable Android system image compatible with ${arch()} was found in sdkmanager channel 0.`
+    );
+  }
+  await run(sdkmanager, ['--channel=0', systemImage], licenseAnswers());
+
+  const devices = await run(avdmanager, ['list', 'device']);
+  const pixel = selectLatestPixelDevice(devices);
+  if (!pixel) {
+    throw new Error('No Pixel hardware profile was found in avdmanager.');
+  }
+  const api = systemImage.match(/android-(\d+)/)?.[1];
+  const name = `apvg-pixel-stable-api-${api}`;
+  logger.step('android:avd', `Creating '${name}' with device '${pixel}'...`);
+  await run(
+    avdmanager,
+    ['create', 'avd', '--force', '--name', name, '--package', systemImage, '--device', pixel],
+    'no\n'
+  );
+}
+
+export function selectLatestStableSystemImage(
+  output: string,
+  hostArch: string
+): string | undefined {
+  const preferredAbi = hostArch === 'arm64' ? 'arm64-v8a' : 'x86_64';
+  const pattern =
+    /system-images;android-(\d+);(google_apis_playstore|google_apis);(arm64-v8a|x86_64)/g;
+  const candidates = [...output.matchAll(pattern)]
+    .map((match) => ({
+      package: match[0],
+      api: Number(match[1]),
+      image: match[2],
+      abi: match[3],
+    }))
+    .filter((candidate) => candidate.abi === preferredAbi);
+  candidates.sort(
+    (left, right) =>
+      right.api - left.api ||
+      Number(right.image === 'google_apis_playstore') -
+        Number(left.image === 'google_apis_playstore')
+  );
+  return candidates[0]?.package;
+}
+
+export function selectLatestPixelDevice(output: string): string | undefined {
+  const devices = [
+    ...output.matchAll(/id:\s*\d+\s+or\s+"([^"]*pixel[_ -]?(\d+)[^"]*)"/gi),
+  ].map((match) => ({ id: match[1], generation: Number(match[2]) }));
+  devices.sort(
+    (left, right) =>
+      right.generation - left.generation || left.id.localeCompare(right.id)
+  );
+  return devices[0]?.id;
 }
 
 async function listConnectedDevices(adbPath: string): Promise<string[]> {
@@ -300,7 +382,17 @@ function findBuildTool(name: string, sdkPath?: string): string | undefined {
   return undefined;
 }
 
-function findSdkTool(name: 'adb' | 'emulator', sdkPath?: string): string {
+function findSdkTool(name: 'adb' | 'emulator', sdkPath?: string): string;
+function findSdkTool(
+  name: 'adb' | 'emulator',
+  sdkPath: string | undefined,
+  required: false
+): string | undefined;
+function findSdkTool(
+  name: 'adb' | 'emulator',
+  sdkPath?: string,
+  required = true
+): string | undefined {
   const relative =
     name === 'adb'
       ? join('platform-tools', executableName(name))
@@ -309,13 +401,60 @@ function findSdkTool(name: 'adb' | 'emulator', sdkPath?: string): string {
     const path = join(sdk, relative);
     if (existsSync(path)) return path;
   }
-  return executableName(name);
+  const executable = findExecutableOnPath(executableName(name));
+  if (executable) return executable;
+  if (!required) return undefined;
+  throw new Error(
+    `Android SDK tool '${name}' was not found. Install Android SDK Platform-Tools and add the ` +
+      `directory containing '${executableName(name)}' to PATH. Alternatively, set ` +
+      'target.android.sdkPath, ANDROID_SDK_ROOT, or ANDROID_HOME.'
+  );
 }
 
 function sdkRoots(configured?: string): string[] {
-  return [configured, process.env.ANDROID_SDK_ROOT, process.env.ANDROID_HOME].filter(
-    (value): value is string => Boolean(value)
+  const sdkmanager = findExecutableOnPath(executableName('sdkmanager'));
+  const inferred = sdkmanager ? inferSdkRoot(sdkmanager) : undefined;
+  return [
+    ...new Set([configured, process.env.ANDROID_SDK_ROOT, process.env.ANDROID_HOME, inferred]),
+  ].filter((value): value is string => Boolean(value));
+}
+
+function inferSdkRoot(sdkmanager: string): string | undefined {
+  const realPath = realpathSync(sdkmanager);
+  const binDir = dirname(realPath);
+  const versionDir = dirname(binDir);
+  if (dirname(versionDir).endsWith('cmdline-tools')) return dirname(dirname(versionDir));
+  if (versionDir.endsWith('tools')) return dirname(versionDir);
+  return undefined;
+}
+
+function findCommandLineTool(name: 'sdkmanager' | 'avdmanager', sdkPath?: string): string {
+  const executable = process.platform === 'win32' ? `${name}.bat` : name;
+  for (const sdk of sdkRoots(sdkPath)) {
+    for (const relative of [
+      join('cmdline-tools', 'latest', 'bin', executable),
+      join('cmdline-tools', 'bin', executable),
+      join('tools', 'bin', executable),
+    ]) {
+      const path = join(sdk, relative);
+      if (existsSync(path)) return path;
+    }
+  }
+  const path = findExecutableOnPath(executable);
+  if (path) return path;
+  throw new Error(
+    `Android command-line tool '${name}' was not found. Install the official Android SDK Command-line Tools ` +
+      'and add its bin directory to PATH, or set target.android.sdkPath, ANDROID_SDK_ROOT, or ANDROID_HOME.'
   );
+}
+
+function findExecutableOnPath(name: string): string | undefined {
+  for (const directory of (process.env.PATH || '').split(process.platform === 'win32' ? ';' : ':')) {
+    if (!directory) continue;
+    const path = join(directory, name);
+    if (existsSync(path)) return path;
+  }
+  return undefined;
 }
 function executableName(name: string): string {
   return process.platform === 'win32' ? `${name}.exe` : name;
@@ -333,17 +472,21 @@ function runShell(command: string, cwd: string): Promise<void> {
   });
 }
 
-function run(command: string, args: string[]): Promise<string> {
+function run(command: string, args: string[], input?: string): Promise<string> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(command, args, {
+      shell: process.platform === 'win32' && command.endsWith('.bat'),
+      stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
+    });
     let stdout = '';
     let stderr = '';
-    child.stdout.on('data', (chunk) => {
+    child.stdout!.on('data', (chunk) => {
       stdout += chunk;
     });
-    child.stderr.on('data', (chunk) => {
+    child.stderr!.on('data', (chunk) => {
       stderr += chunk;
     });
+    if (input !== undefined) child.stdin!.end(input);
     child.on('error', (error) => reject(new Error(`Could not start ${command}: ${error.message}`)));
     child.on('close', (code) =>
       code === 0
@@ -351,6 +494,9 @@ function run(command: string, args: string[]): Promise<string> {
         : reject(new Error(`${command} ${args.join(' ')} failed (${code}): ${stderr.trim()}`))
     );
   });
+}
+function licenseAnswers(): string {
+  return 'y\n'.repeat(20);
 }
 function wait(ms: number): Promise<void> {
   return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));

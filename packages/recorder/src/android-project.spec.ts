@@ -3,13 +3,44 @@ import { chmod, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { prepareAndroidProject } from './android-project.js';
+import {
+  prepareAndroidProject,
+  selectLatestPixelDevice,
+  selectLatestStableSystemImage,
+} from './android-project.js';
 
 const temporaryPaths: string[] = [];
 afterEach(async () => {
   await Promise.all(
     temporaryPaths.splice(0).map((path) => rm(path, { recursive: true, force: true }))
   );
+});
+
+describe('Android emulator selection', () => {
+  it('selects the newest stable Google Play image for the host architecture', () => {
+    const packages = `
+system-images;android-35;google_apis_playstore;x86_64
+system-images;android-36;google_apis;x86_64
+system-images;android-36;google_apis_playstore;x86_64
+system-images;android-37;google_apis_playstore;arm64-v8a
+system-images;android-Baklava;google_apis_playstore;x86_64
+`;
+    expect(selectLatestStableSystemImage(packages, 'x64')).toBe(
+      'system-images;android-36;google_apis_playstore;x86_64'
+    );
+    expect(selectLatestStableSystemImage(packages, 'arm64')).toBe(
+      'system-images;android-37;google_apis_playstore;arm64-v8a'
+    );
+  });
+
+  it('selects the newest Pixel hardware profile', () => {
+    const devices = `
+id: 17 or "pixel_8"
+id: 18 or "pixel_9_pro"
+id: 19 or "Nexus 7"
+`;
+    expect(selectLatestPixelDevice(devices)).toBe('pixel_9_pro');
+  });
 });
 
 describe('prepareAndroidProject', () => {

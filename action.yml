@@ -244,6 +244,10 @@ runs:
         UNITY_VERSION_OVERRIDE: ${{ inputs['unity-version'] }}
       run: node "${{ github.action_path }}/.github/automation/export-analyzed-project.mjs"
 
+    - name: Set up Android SDK
+      if: steps.analyzed-project.outputs.platform == 'android'
+      uses: android-actions/setup-android@v3
+
     - name: Validate Unity license credentials
       if: steps.analyzed-project.outputs.platform == 'unity'
       shell: bash
