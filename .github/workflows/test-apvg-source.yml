@@ -68,6 +68,7 @@ jobs:
       APVG_WORK_DIR: ./.apvg-main-build
       APVG_OUTPUT_DIR: ./main-video-output
       APVG_PACKAGE_ROOT: ${{ github.workspace }}
+      ANDROID_AVD_HOME: ${{ runner.temp }}/apvg-android-avd
       UNITY_HUB_VERSION: ${{ inputs['unity-hub-version'] }}
       UNITY_DISPLAY: :100
 
@@ -199,8 +200,8 @@ jobs:
             ${{ steps.android-cache.outputs.sdk-root }}/platform-tools
             ${{ steps.android-cache.outputs.sdk-root }}/emulator
             ${{ steps.android-cache.outputs.sdk-root }}/system-images
-            ~/.android/avd
-          key: android-emulator-${{ runner.os }}-${{ runner.arch }}-${{ steps.android-cache.outputs.generation }}
+            ${{ runner.temp }}/apvg-android-avd
+          key: android-emulator-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.android-cache.outputs.generation }}
 
       - name: Validate Unity license credentials
         if: steps.analyzed-project.outputs.platform == 'unity'
@@ -245,8 +246,9 @@ jobs:
             packages+=("$hub_deb")
           fi
           sudo apt-get install --yes "${packages[@]}"
-          if [[ "$PROJECT_PLATFORM" == android && -e /dev/kvm ]]; then
-            sudo chmod a+rw /dev/kvm
+          if [[ "$PROJECT_PLATFORM" == android ]]; then
+            mkdir -p "$ANDROID_AVD_HOME"
+            [[ ! -e /dev/kvm ]] || sudo chmod a+rw /dev/kvm
           fi
           if [[ "$PROJECT_PLATFORM" == unity ]]; then
             unity_hub="$(command -v unityhub)"

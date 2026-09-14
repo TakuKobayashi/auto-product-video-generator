@@ -146,6 +146,7 @@ runs:
         echo "VOICEVOX_CONTAINER=apvg-voicevox-action" >> "$GITHUB_ENV"
         echo "VOICEVOX_HOST=http://127.0.0.1:50021" >> "$GITHUB_ENV"
         echo "VOICEVOX_PORT=50021" >> "$GITHUB_ENV"
+        echo "ANDROID_AVD_HOME=$RUNNER_TEMP/apvg-android-avd" >> "$GITHUB_ENV"
 
     - name: Install APVG from npm
       shell: bash
@@ -266,8 +267,8 @@ runs:
           ${{ steps.android-cache.outputs.sdk-root }}/platform-tools
           ${{ steps.android-cache.outputs.sdk-root }}/emulator
           ${{ steps.android-cache.outputs.sdk-root }}/system-images
-          ~/.android/avd
-        key: android-emulator-${{ runner.os }}-${{ runner.arch }}-${{ steps.android-cache.outputs.generation }}
+          ${{ runner.temp }}/apvg-android-avd
+        key: android-emulator-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.android-cache.outputs.generation }}
 
     - name: Validate Unity license credentials
       if: steps.analyzed-project.outputs.platform == 'unity'
@@ -317,8 +318,9 @@ runs:
         sudo apt-get install --yes "${packages[@]}"
         echo "FFMPEG_PATH=$(command -v ffmpeg)" >> "$GITHUB_ENV"
         echo "FFPROBE_PATH=$(command -v ffprobe)" >> "$GITHUB_ENV"
-        if [[ "$PROJECT_PLATFORM" == android && -e /dev/kvm ]]; then
-          sudo chmod a+rw /dev/kvm
+        if [[ "$PROJECT_PLATFORM" == android ]]; then
+          mkdir -p "$ANDROID_AVD_HOME"
+          [[ ! -e /dev/kvm ]] || sudo chmod a+rw /dev/kvm
         fi
         if [[ "$PROJECT_PLATFORM" == unity ]]; then
           hub_path="$(readlink -f "$(command -v unityhub)")"
