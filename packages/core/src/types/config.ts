@@ -192,6 +192,8 @@ export const VideoConfigSchema = z.object({
   resolution: z.enum(['1920x1080', '1280x720', '1080x1920']).default('1920x1080'),
   fps: z.union([z.literal(30), z.literal(60)]).default(30),
   language: z.string().default('ja'),
+  // Create one store-ready PNG from the final displayed frame of each scene.
+  screenshots: z.boolean().default(true),
   // Optional creative direction appended to the scenario-generation prompt.
   scenarioPrompt: z.string().min(1).optional(),
   // Overlay generated subtitles during final rendering.

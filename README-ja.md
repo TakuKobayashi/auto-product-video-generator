@@ -87,7 +87,7 @@ apvg video render
 | `apvg project analyze`         | `.apvg/source-context.json`、`project-summary.json`、`resolved-config.json` |
 | `apvg video scenario generate` | `.apvg/scenario.yml`、`script.yml`、`subtitles.srt`                         |
 | `apvg video voice`             | `.apvg/voice/*.wav`と実音声に基づく時間情報                                 |
-| `apvg video record`            | `.apvg/recordings/*.mp4`                                                    |
+| `apvg video record`            | `.apvg/recordings/*.mp4`、`.apvg/screenshots/scene-*.png`                  |
 | `apvg video render`            | `output/final.mp4`と`output/artifacts/`                                     |
 
 `apvg.config.yml`は利用者が管理する設定ファイルです。解析処理はconfigを書き換えません。
@@ -95,7 +95,8 @@ apvg video render
 後続処理がメモリ上でconfigと統合します。
 
 再実行には`video generate`の`--skip-analyze`、`--skip-scenario`、
-`--skip-voice`、`--skip-record`を使用できます。`video voice`と`video record`は
+`--skip-voice`、`--skip-record`、`--no-screenshots`を使用できます。
+`video record`でも`--no-screenshots`を指定できます。`video voice`と`video record`は
 `--scene <id>`による個別実行にも対応します。
 
 ## 設定
@@ -117,6 +118,7 @@ source:
 video:
   type: demo
   # duration: 90 # 省略するとシナリオの長さを制限しない
+  screenshots: true # 各シーンの最終表示画面を1枚ずつPNG保存する
   scenarioPrompt: |
     親しみやすい口語的な説明にしてください。
     キャラクターの話し方を一貫させてください。

@@ -91,7 +91,7 @@ apvg video render
 | `apvg project analyze`         | `.apvg/source-context.json`, `project-summary.json`, `resolved-config.json` |
 | `apvg video scenario generate` | `.apvg/scenario.yml`, `script.yml`, `subtitles.srt`                         |
 | `apvg video voice`             | `.apvg/voice/*.wav` and audio-derived timing                                |
-| `apvg video record`            | `.apvg/recordings/*.mp4`                                                    |
+| `apvg video record`            | `.apvg/recordings/*.mp4`, `.apvg/screenshots/scene-*.png`                   |
 | `apvg video render`            | `output/final.mp4` and `output/artifacts/`                                  |
 
 `apvg.config.yml` remains user-owned. Analysis never writes detected values back
@@ -99,8 +99,8 @@ to it; inferred platform, URL, and start command are stored in
 `.apvg/resolved-config.json` and merged in memory by later stages.
 
 Useful rerun options include `--skip-analyze`, `--skip-scenario`, `--skip-voice`,
-and `--skip-record` on `video generate`, plus `--scene <id>` on `video voice` and
-`video record`.
+`--skip-record`, and `--no-screenshots` on `video generate`, plus `--scene <id>`
+and `--no-screenshots` on `video record`.
 
 ## Configuration
 

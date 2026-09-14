@@ -24,7 +24,10 @@ import {
   TimelineBuilder,
   recomputeScriptTimingFromAudio,
 } from '@auto-product-video-generator/ai';
-import { createPlatformRecorder } from '@auto-product-video-generator/recorder';
+import {
+  captureSceneScreenshot,
+  createPlatformRecorder,
+} from '@auto-product-video-generator/recorder';
 import { VoicevoxClient, resolveVoiceProfiles } from '@auto-product-video-generator/voicevox';
 import { FfmpegRenderer } from '@auto-product-video-generator/renderer';
 import {
@@ -52,6 +55,7 @@ interface BuildOptions {
   skipRecord?: boolean;
   skipVoice?: boolean;
   subtitles?: boolean;
+  screenshots?: boolean;
   preview?: boolean;
   headed?: boolean;
   dryRun?: boolean;
@@ -375,6 +379,14 @@ export async function runBuild(options: BuildOptions): Promise<void> {
         );
       }
       await recorder.finalize?.();
+      if (!dryRun && options.screenshots !== false && config.video.screenshots) {
+        for (const scene of scenario.scenes) {
+          await captureSceneScreenshot(
+            join(recordingsDir, `scene-${scene.id}.mp4`),
+            join(screenshotDir, `scene-${scene.id}.png`)
+          );
+        }
+      }
     } finally {
       await recorder.dispose?.();
       await startedApp?.stop();

@@ -13,6 +13,7 @@ export function buildCommand(name = 'build'): Command {
     .option('--skip-record', 'skip recording (use existing recordings)')
     .option('--skip-voice', 'skip voice generation (use existing wav files)')
     .option('--no-subtitles', 'skip subtitle overlay in final render')
+    .option('--no-screenshots', 'skip automatic per-scene screenshots')
     .option('--preview', 'render a fast low-quality preview')
     .option('--headed', 'show browser during recording')
     .option('--dry-run', 'dry-run all steps')

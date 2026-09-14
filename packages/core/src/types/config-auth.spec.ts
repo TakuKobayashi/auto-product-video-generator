@@ -38,6 +38,7 @@ describe('video subtitle config', () => {
     const config = ApvgConfigSchema.parse(configWithAuth({}));
 
     expect(config.video.subtitles).toBe(true);
+    expect(config.video.screenshots).toBe(true);
     expect(config.video.singleLineSubtitles).toBe(true);
   });
 

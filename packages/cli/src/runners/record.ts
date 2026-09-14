@@ -8,7 +8,10 @@ import {
   ScenarioSchema,
   ScriptSchema,
 } from '@auto-product-video-generator/core';
-import { createPlatformRecorder } from '@auto-product-video-generator/recorder';
+import {
+  captureSceneScreenshot,
+  createPlatformRecorder,
+} from '@auto-product-video-generator/recorder';
 import {
   resolveProjectSource,
   ensureAppRunning,
@@ -33,6 +36,7 @@ interface RecordOptions {
   headed?: boolean;
   slowMo?: string;
   dryRun?: boolean;
+  screenshots?: boolean;
 }
 
 export async function runRecord(options: RecordOptions): Promise<void> {
@@ -150,6 +154,14 @@ export async function runRecord(options: RecordOptions): Promise<void> {
       );
     }
     await recorder.finalize?.();
+    if (!options.dryRun && options.screenshots !== false && config.video.screenshots) {
+      for (const scene of scenesToRecord) {
+        await captureSceneScreenshot(
+          join(recordingsDir, `scene-${scene.id}.mp4`),
+          join(screenshotDir, `scene-${scene.id}.png`)
+        );
+      }
+    }
   } finally {
     await recorder.dispose?.();
     await startedApp?.stop();
