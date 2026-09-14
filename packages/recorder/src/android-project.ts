@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, openSync, readdirSync, realpathSync } from 'node:fs';
 import { mkdir, readFile, readdir, stat } from 'node:fs/promises';
 import { arch } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { logger } from '@auto-product-video-generator/core';
 
 export interface AndroidProjectOptions {
@@ -142,10 +142,14 @@ async function ensureAndroidDevice(
     await installEmulator(options.sdkPath);
     emulatorPath = findSdkTool('emulator', options.sdkPath);
   }
-  let avds = await listAvds(emulatorPath);
+  const sdkRoot = resolveSdkRoot(emulatorPath, options.sdkPath);
+  await ensurePlatformTools(sdkRoot, options.sdkPath);
+  const emulatorEnv = androidSdkEnvironment(sdkRoot);
+  const avdmanager = findCommandLineTool('avdmanager', options.sdkPath);
+  let avds = await listValidAvds(avdmanager, emulatorEnv);
   if (avds.length === 0 && !options.avd) {
-    await installStablePixelAvd(options.sdkPath);
-    avds = await listAvds(emulatorPath);
+    await installStablePixelAvd(sdkRoot, options.sdkPath);
+    avds = await listValidAvds(avdmanager, emulatorEnv);
   }
   const avd = options.avd || avds[0];
   if (!avd) {
@@ -167,12 +171,26 @@ async function ensureAndroidDevice(
   const child = spawn(
     emulatorPath,
     ['-avd', avd, '-no-boot-anim', '-no-snapshot-save', '-no-audio'],
-    { detached: true, stdio: ['ignore', logHandle, logHandle] }
+    {
+      detached: true,
+      env: emulatorEnv,
+      stdio: ['ignore', logHandle, logHandle],
+    }
   );
+  let emulatorExitCode: number | null = null;
+  child.once('close', (code) => {
+    emulatorExitCode = code;
+  });
   child.unref();
 
   const deadline = Date.now() + 240_000;
   while (Date.now() < deadline) {
+    if (emulatorExitCode !== null) {
+      throw new Error(
+        `Android emulator '${avd}' exited with code ${emulatorExitCode} before connecting. ` +
+          `Check ${logPath}.`
+      );
+    }
     const devices = await listConnectedDevices(adbPath);
     const selected =
       options.serial && devices.includes(options.serial)
@@ -190,27 +208,46 @@ async function ensureAndroidDevice(
   );
 }
 
-async function listAvds(emulatorPath: string): Promise<string[]> {
-  return (await run(emulatorPath, ['-list-avds']))
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+async function listValidAvds(
+  avdmanager: string,
+  env: NodeJS.ProcessEnv
+): Promise<string[]> {
+  return parseValidAvds(await run(avdmanager, ['list', 'avd'], { env }));
+}
+
+export function parseValidAvds(output: string): string[] {
+  const validSection = output.split('The following Android Virtual Devices could not be loaded:')[0];
+  return [...validSection.matchAll(/^\s*Name:\s*(.+)$/gm)].map((match) => match[1].trim());
 }
 
 async function installEmulator(sdkPath?: string): Promise<void> {
   const sdkmanager = findCommandLineTool('sdkmanager', sdkPath);
+  const sdkRoot = resolveSdkRoot(sdkmanager, sdkPath);
   logger.step('android:sdk', 'Installing the stable Android Emulator package...');
-  await run(sdkmanager, ['--channel=0', 'emulator'], {
+  await run(sdkmanager, [`--sdk_root=${sdkRoot}`, '--channel=0', 'emulator'], {
     input: licenseAnswers(),
     streamOutput: true,
   });
 }
 
-async function installStablePixelAvd(sdkPath?: string): Promise<void> {
+async function ensurePlatformTools(sdkRoot: string, sdkPath?: string): Promise<void> {
+  if (existsSync(join(sdkRoot, 'platform-tools', executableName('adb')))) return;
+  const sdkmanager = findCommandLineTool('sdkmanager', sdkPath);
+  logger.step('android:sdk', `Installing platform-tools into ${sdkRoot}...`);
+  await run(sdkmanager, [`--sdk_root=${sdkRoot}`, '--channel=0', 'platform-tools'], {
+    input: licenseAnswers(),
+    streamOutput: true,
+  });
+}
+
+async function installStablePixelAvd(sdkRoot: string, sdkPath?: string): Promise<void> {
   const sdkmanager = findCommandLineTool('sdkmanager', sdkPath);
   const avdmanager = findCommandLineTool('avdmanager', sdkPath);
+  const env = androidSdkEnvironment(sdkRoot);
   logger.step('android:sdk', 'Selecting the latest stable Android Pixel system image...');
-  const packages = await run(sdkmanager, ['--channel=0', '--list']);
+  const packages = await run(sdkmanager, [`--sdk_root=${sdkRoot}`, '--channel=0', '--list'], {
+    env,
+  });
   const systemImage = selectLatestStableSystemImage(packages, arch());
   if (!systemImage) {
     throw new Error(
@@ -218,12 +255,13 @@ async function installStablePixelAvd(sdkPath?: string): Promise<void> {
     );
   }
   logger.step('android:sdk', `Installing ${systemImage}...`);
-  await run(sdkmanager, ['--channel=0', systemImage], {
+  await run(sdkmanager, [`--sdk_root=${sdkRoot}`, '--channel=0', systemImage], {
     input: licenseAnswers(),
     streamOutput: true,
+    env,
   });
 
-  const devices = await run(avdmanager, ['list', 'device']);
+  const devices = await run(avdmanager, ['list', 'device'], { env });
   const pixel = selectLatestPixelDevice(devices);
   if (!pixel) {
     throw new Error('No Pixel hardware profile was found in avdmanager.');
@@ -234,7 +272,7 @@ async function installStablePixelAvd(sdkPath?: string): Promise<void> {
   await run(
     avdmanager,
     ['create', 'avd', '--force', '--name', name, '--package', systemImage, '--device', pixel],
-    { input: 'no\n' }
+    { input: 'no\n', env }
   );
 }
 
@@ -435,6 +473,27 @@ function inferSdkRoot(sdkmanager: string): string | undefined {
   return undefined;
 }
 
+function resolveSdkRoot(toolPath: string, configured?: string): string {
+  const realPath = realpathSync(toolPath);
+  const parent = dirname(realPath);
+  if (basename(parent) === 'emulator') return dirname(parent);
+  const inferred = inferSdkRoot(realPath);
+  if (inferred) return inferred;
+  const root = sdkRoots(configured)[0];
+  if (root) return root;
+  throw new Error(
+    'Could not resolve the Android SDK root. Set target.android.sdkPath, ANDROID_SDK_ROOT, or ANDROID_HOME.'
+  );
+}
+
+function androidSdkEnvironment(sdkRoot: string): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    ANDROID_HOME: sdkRoot,
+    ANDROID_SDK_ROOT: sdkRoot,
+  };
+}
+
 function findCommandLineTool(name: 'sdkmanager' | 'avdmanager', sdkPath?: string): string {
   const executable = process.platform === 'win32' ? `${name}.bat` : name;
   for (const sdk of sdkRoots(sdkPath)) {
@@ -482,11 +541,13 @@ function runShell(command: string, cwd: string): Promise<void> {
 interface RunOptions {
   input?: string;
   streamOutput?: boolean;
+  env?: NodeJS.ProcessEnv;
 }
 
 function run(command: string, args: string[], options: RunOptions = {}): Promise<string> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
+      env: options.env,
       shell: process.platform === 'win32' && command.endsWith('.bat'),
       stdio: [options.input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
     });

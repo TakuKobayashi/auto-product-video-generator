@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   prepareAndroidProject,
+  parseValidAvds,
   selectLatestPixelDevice,
   selectLatestStableSystemImage,
 } from './android-project.js';
@@ -17,6 +18,20 @@ afterEach(async () => {
 });
 
 describe('Android emulator selection', () => {
+  it('excludes AVDs whose system images cannot be loaded', () => {
+    const output = `
+Available Android Virtual Devices:
+    Name: apvg-pixel-stable-api-36
+    Path: /tmp/apvg-pixel-stable-api-36.avd
+
+The following Android Virtual Devices could not be loaded:
+    Name: Pixel_9
+    Path: /tmp/Pixel_9.avd
+   Error: Missing system image android-36/google_apis_playstore/arm64-v8a.
+`;
+    expect(parseValidAvds(output)).toEqual(['apvg-pixel-stable-api-36']);
+  });
+
   it('selects the newest stable Google Play image for the host architecture', () => {
     const packages = `
 system-images;android-35;google_apis_playstore;x86_64
