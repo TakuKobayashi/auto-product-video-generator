@@ -146,10 +146,15 @@ async function ensureAndroidDevice(
   await ensurePlatformTools(sdkRoot, options.sdkPath);
   const emulatorEnv = androidSdkEnvironment(sdkRoot);
   const avdmanager = findCommandLineTool('avdmanager', options.sdkPath);
-  let avds = await listValidAvds(avdmanager, emulatorEnv);
+  let avdState = await listAvds(avdmanager, emulatorEnv);
+  if (!options.avd) {
+    await deleteInvalidAvds(avdmanager, avdState.invalid, emulatorEnv);
+  }
+  let avds = avdState.valid;
   if (avds.length === 0 && !options.avd) {
     await installStablePixelAvd(sdkRoot, options.sdkPath);
-    avds = await listValidAvds(avdmanager, emulatorEnv);
+    avdState = await listAvds(avdmanager, emulatorEnv);
+    avds = avdState.valid;
   }
   const avd = options.avd || avds[0];
   if (!avd) {
@@ -208,16 +213,41 @@ async function ensureAndroidDevice(
   );
 }
 
-async function listValidAvds(
+async function listAvds(
   avdmanager: string,
   env: NodeJS.ProcessEnv
-): Promise<string[]> {
-  return parseValidAvds(await run(avdmanager, ['list', 'avd'], { env }));
+): Promise<{ valid: string[]; invalid: string[] }> {
+  const output = await run(avdmanager, ['list', 'avd'], { env });
+  return {
+    valid: parseValidAvds(output),
+    invalid: parseInvalidAvds(output),
+  };
 }
 
 export function parseValidAvds(output: string): string[] {
   const validSection = output.split('The following Android Virtual Devices could not be loaded:')[0];
   return [...validSection.matchAll(/^\s*Name:\s*(.+)$/gm)].map((match) => match[1].trim());
+}
+
+export function parseInvalidAvds(output: string): string[] {
+  const marker = 'The following Android Virtual Devices could not be loaded:';
+  const invalidSection = output.includes(marker) ? output.split(marker)[1] : '';
+  return [...invalidSection.matchAll(/^\s*Name:\s*(.+)$/gm)].map((match) => match[1].trim());
+}
+
+async function deleteInvalidAvds(
+  avdmanager: string,
+  invalidAvds: string[],
+  env: NodeJS.ProcessEnv
+): Promise<void> {
+  for (const avd of invalidAvds) {
+    logger.warn(`Removing unusable Android AVD '${avd}' and its data...`);
+    try {
+      await run(avdmanager, ['delete', 'avd', '--name', avd], { env });
+    } catch (error) {
+      logger.warn(`Could not remove unusable AVD '${avd}': ${(error as Error).message}`);
+    }
+  }
 }
 
 async function installEmulator(sdkPath?: string): Promise<void> {

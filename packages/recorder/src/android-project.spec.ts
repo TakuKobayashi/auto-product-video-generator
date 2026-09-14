@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   prepareAndroidProject,
+  parseInvalidAvds,
   parseValidAvds,
   selectLatestPixelDevice,
   selectLatestStableSystemImage,
@@ -30,6 +31,7 @@ The following Android Virtual Devices could not be loaded:
    Error: Missing system image android-36/google_apis_playstore/arm64-v8a.
 `;
     expect(parseValidAvds(output)).toEqual(['apvg-pixel-stable-api-36']);
+    expect(parseInvalidAvds(output)).toEqual(['Pixel_9']);
   });
 
   it('selects the newest stable Google Play image for the host architecture', () => {
