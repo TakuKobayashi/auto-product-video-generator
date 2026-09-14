@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   prepareAndroidProject,
+  detectAndroidHostArchitecture,
+  parseCompatibleAvds,
   parseInvalidAvds,
   parseValidAvds,
   selectLatestPixelDevice,
@@ -24,6 +26,8 @@ describe('Android emulator selection', () => {
 Available Android Virtual Devices:
     Name: apvg-pixel-stable-api-36
     Path: /tmp/apvg-pixel-stable-api-36.avd
+  Target: Google Play
+          Based on: Android 16.0 Tag/ABI: google_apis_playstore/x86_64
 
 The following Android Virtual Devices could not be loaded:
     Name: Pixel_9
@@ -32,6 +36,14 @@ The following Android Virtual Devices could not be loaded:
 `;
     expect(parseValidAvds(output)).toEqual(['apvg-pixel-stable-api-36']);
     expect(parseInvalidAvds(output)).toEqual(['Pixel_9']);
+    expect(parseCompatibleAvds(output, 'x86_64')).toEqual(['apvg-pixel-stable-api-36']);
+    expect(parseCompatibleAvds(output, 'arm64-v8a')).toEqual([]);
+  });
+
+  it('detects Apple Silicon when Node runs through Rosetta', () => {
+    expect(detectAndroidHostArchitecture('x64', 'darwin', ['Apple M4'])).toBe('arm64');
+    expect(detectAndroidHostArchitecture('x64', 'linux', ['Intel Xeon'])).toBe('x64');
+    expect(detectAndroidHostArchitecture('x64', 'win32', [], 'ARM64')).toBe('arm64');
   });
 
   it('selects the newest stable Google Play image for the host architecture', () => {

@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync, openSync, readdirSync, realpathSync } from 'node:fs';
 import { mkdir, readFile, readdir, stat } from 'node:fs/promises';
-import { arch } from 'node:os';
+import { arch, cpus } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { logger } from '@auto-product-video-generator/core';
 
@@ -146,15 +146,23 @@ async function ensureAndroidDevice(
   await ensurePlatformTools(sdkRoot, options.sdkPath);
   const emulatorEnv = androidSdkEnvironment(sdkRoot);
   const avdmanager = findCommandLineTool('avdmanager', options.sdkPath);
+  const hostArch = androidHostArchitecture();
+  const requiredAbi = hostArch === 'arm64' ? 'arm64-v8a' : 'x86_64';
   let avdState = await listAvds(avdmanager, emulatorEnv);
+  const compatibleAvds = parseCompatibleAvds(avdState.output, requiredAbi);
   if (!options.avd) {
-    await deleteInvalidAvds(avdmanager, avdState.invalid, emulatorEnv);
+    const incompatibleAvds = avdState.valid.filter((avd) => !compatibleAvds.includes(avd));
+    await deleteInvalidAvds(
+      avdmanager,
+      [...new Set([...avdState.invalid, ...incompatibleAvds])],
+      emulatorEnv
+    );
   }
-  let avds = avdState.valid;
+  let avds = options.avd ? avdState.valid : compatibleAvds;
   if (avds.length === 0 && !options.avd) {
-    await installStablePixelAvd(sdkRoot, options.sdkPath);
+    await installStablePixelAvd(sdkRoot, hostArch, options.sdkPath);
     avdState = await listAvds(avdmanager, emulatorEnv);
-    avds = avdState.valid;
+    avds = parseCompatibleAvds(avdState.output, requiredAbi);
   }
   const avd = options.avd || avds[0];
   if (!avd) {
@@ -216,9 +224,10 @@ async function ensureAndroidDevice(
 async function listAvds(
   avdmanager: string,
   env: NodeJS.ProcessEnv
-): Promise<{ valid: string[]; invalid: string[] }> {
+): Promise<{ output: string; valid: string[]; invalid: string[] }> {
   const output = await run(avdmanager, ['list', 'avd'], { env });
   return {
+    output,
     valid: parseValidAvds(output),
     invalid: parseInvalidAvds(output),
   };
@@ -233,6 +242,32 @@ export function parseInvalidAvds(output: string): string[] {
   const marker = 'The following Android Virtual Devices could not be loaded:';
   const invalidSection = output.includes(marker) ? output.split(marker)[1] : '';
   return [...invalidSection.matchAll(/^\s*Name:\s*(.+)$/gm)].map((match) => match[1].trim());
+}
+
+export function parseCompatibleAvds(output: string, requiredAbi: string): string[] {
+  const marker = 'The following Android Virtual Devices could not be loaded:';
+  const validSection = output.split(marker)[0];
+  return validSection
+    .split(/^\s*Name:\s*/m)
+    .slice(1)
+    .filter((block) => new RegExp(`Tag/ABI:.*\\/${requiredAbi}(?:\\s|$)`).test(block))
+    .map((block) => block.split(/\r?\n/, 1)[0].trim());
+}
+
+export function detectAndroidHostArchitecture(
+  nodeArch = arch(),
+  platform = process.platform,
+  cpuModels = cpus().map((cpu) => cpu.model),
+  windowsNativeArch = process.env.PROCESSOR_ARCHITEW6432 || process.env.PROCESSOR_ARCHITECTURE
+): string {
+  if (nodeArch === 'arm64') return 'arm64';
+  if (platform === 'darwin' && cpuModels.some((model) => /^Apple\s/i.test(model))) return 'arm64';
+  if (platform === 'win32' && windowsNativeArch?.toUpperCase().includes('ARM64')) return 'arm64';
+  return nodeArch;
+}
+
+function androidHostArchitecture(): string {
+  return detectAndroidHostArchitecture();
 }
 
 async function deleteInvalidAvds(
@@ -270,7 +305,11 @@ async function ensurePlatformTools(sdkRoot: string, sdkPath?: string): Promise<v
   });
 }
 
-async function installStablePixelAvd(sdkRoot: string, sdkPath?: string): Promise<void> {
+async function installStablePixelAvd(
+  sdkRoot: string,
+  hostArch: string,
+  sdkPath?: string
+): Promise<void> {
   const sdkmanager = findCommandLineTool('sdkmanager', sdkPath);
   const avdmanager = findCommandLineTool('avdmanager', sdkPath);
   const env = androidSdkEnvironment(sdkRoot);
@@ -278,10 +317,10 @@ async function installStablePixelAvd(sdkRoot: string, sdkPath?: string): Promise
   const packages = await run(sdkmanager, [`--sdk_root=${sdkRoot}`, '--channel=0', '--list'], {
     env,
   });
-  const systemImage = selectLatestStableSystemImage(packages, arch());
+  const systemImage = selectLatestStableSystemImage(packages, hostArch);
   if (!systemImage) {
     throw new Error(
-      `No stable Android system image compatible with ${arch()} was found in sdkmanager channel 0.`
+      `No stable Android system image compatible with ${hostArch} was found in sdkmanager channel 0.`
     );
   }
   logger.step('android:sdk', `Installing ${systemImage}...`);
