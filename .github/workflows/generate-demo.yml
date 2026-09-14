@@ -37,7 +37,7 @@ on:
         type: string
         default: ''
       cache-enabled:
-        description: Cache Unity Editor, Unity Hub, Ollama models, and Playwright Chromium
+        description: Cache Android SDK/emulator, Unity Editor, Unity Hub, Ollama models, and Playwright Chromium
         required: false
         type: boolean
         default: true

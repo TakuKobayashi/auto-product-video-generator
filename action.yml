@@ -56,7 +56,7 @@ inputs:
     required: false
     default: 'true'
   cache-enabled:
-    description: Cache Unity Editor, Unity Hub, Ollama models, and Playwright Chromium
+    description: Cache Android SDK/emulator, Unity Editor, Unity Hub, Ollama models, and Playwright Chromium
     required: false
     default: 'true'
   unity-email:
@@ -247,6 +247,27 @@ runs:
     - name: Set up Android SDK
       if: steps.analyzed-project.outputs.platform == 'android'
       uses: android-actions/setup-android@v3
+
+    - name: Select Android cache generation
+      if: steps.analyzed-project.outputs.platform == 'android' && inputs['cache-enabled'] == 'true'
+      id: android-cache
+      shell: bash
+      run: |
+        echo "generation=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+        echo "sdk-root=$ANDROID_SDK_ROOT" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Android SDK and emulator
+      if: steps.analyzed-project.outputs.platform == 'android' && inputs['cache-enabled'] == 'true'
+      uses: actions/cache@v6
+      with:
+        path: |
+          ${{ steps.android-cache.outputs.sdk-root }}/cmdline-tools
+          ${{ steps.android-cache.outputs.sdk-root }}/licenses
+          ${{ steps.android-cache.outputs.sdk-root }}/platform-tools
+          ${{ steps.android-cache.outputs.sdk-root }}/emulator
+          ${{ steps.android-cache.outputs.sdk-root }}/system-images
+          ~/.android/avd
+        key: android-emulator-${{ runner.os }}-${{ runner.arch }}-${{ steps.android-cache.outputs.generation }}
 
     - name: Validate Unity license credentials
       if: steps.analyzed-project.outputs.platform == 'unity'
