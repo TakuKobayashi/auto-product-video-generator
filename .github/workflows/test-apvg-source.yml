@@ -180,7 +180,7 @@ jobs:
 
       - name: Set up Android SDK
         if: steps.analyzed-project.outputs.platform == 'android'
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Select Android cache generation
         if: steps.analyzed-project.outputs.platform == 'android' && (github.event_name != 'workflow_dispatch' || inputs['cache-enabled'])
@@ -245,6 +245,9 @@ jobs:
             packages+=("$hub_deb")
           fi
           sudo apt-get install --yes "${packages[@]}"
+          if [[ "$PROJECT_PLATFORM" == android && -e /dev/kvm ]]; then
+            sudo chmod a+rw /dev/kvm
+          fi
           if [[ "$PROJECT_PLATFORM" == unity ]]; then
             unity_hub="$(command -v unityhub)"
             sudo ln -sfn "$unity_hub" /usr/bin/unity-hub

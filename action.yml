@@ -246,7 +246,7 @@ runs:
 
     - name: Set up Android SDK
       if: steps.analyzed-project.outputs.platform == 'android'
-      uses: android-actions/setup-android@v3
+      uses: android-actions/setup-android@v4
 
     - name: Select Android cache generation
       if: steps.analyzed-project.outputs.platform == 'android' && inputs['cache-enabled'] == 'true'
@@ -317,6 +317,9 @@ runs:
         sudo apt-get install --yes "${packages[@]}"
         echo "FFMPEG_PATH=$(command -v ffmpeg)" >> "$GITHUB_ENV"
         echo "FFPROBE_PATH=$(command -v ffprobe)" >> "$GITHUB_ENV"
+        if [[ "$PROJECT_PLATFORM" == android && -e /dev/kvm ]]; then
+          sudo chmod a+rw /dev/kvm
+        fi
         if [[ "$PROJECT_PLATFORM" == unity ]]; then
           hub_path="$(readlink -f "$(command -v unityhub)")"
           printf '#!/bin/bash\nexec xvfb-run --auto-servernum "%s" "$@"\n' "$hub_path" |

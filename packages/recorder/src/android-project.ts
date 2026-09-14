@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, openSync, readdirSync, realpathSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readdirSync, realpathSync } from 'node:fs';
 import { mkdir, readFile, readdir, stat } from 'node:fs/promises';
 import { arch, cpus } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -256,13 +256,14 @@ async function ensureAndroidDevice(
   const logHandle = openSync(logPath, 'a');
   const child = spawn(
     emulatorPath,
-    ['-avd', avd, '-no-boot-anim', '-no-snapshot-save', '-no-audio'],
+    ['-avd', avd, '-no-window', '-no-boot-anim', '-no-snapshot-save', '-no-audio'],
     {
       detached: true,
       env: emulatorEnv,
       stdio: ['ignore', logHandle, logHandle],
     }
   );
+  closeSync(logHandle);
   let emulatorExitCode: number | null = null;
   child.once('close', (code) => {
     emulatorExitCode = code;
@@ -272,9 +273,10 @@ async function ensureAndroidDevice(
   const deadline = Date.now() + 240_000;
   while (Date.now() < deadline) {
     if (emulatorExitCode !== null) {
+      const logTail = await readEmulatorLogTail(logPath);
       throw new Error(
         `Android emulator '${avd}' exited with code ${emulatorExitCode} before connecting. ` +
-          `Check ${logPath}.`
+          `Check ${logPath}.${logTail}`
       );
     }
     const devices = await listConnectedDevices(adbPath);
@@ -289,9 +291,21 @@ async function ensureAndroidDevice(
     }
     await wait(1500);
   }
+  const logTail = await readEmulatorLogTail(logPath);
   throw new Error(
-    `Android emulator '${avd}' did not connect within 240 seconds. Check ${logPath}.`
+    `Android emulator '${avd}' did not connect within 240 seconds. Check ${logPath}.${logTail}`
   );
+}
+
+async function readEmulatorLogTail(logPath: string): Promise<string> {
+  try {
+    const lines = (await readFile(logPath, 'utf8')).trim().split(/\r?\n/).slice(-40);
+    return lines.length > 0 && lines[0]
+      ? `\n\nAndroid emulator log (last ${lines.length} lines):\n${lines.join('\n')}`
+      : '';
+  } catch {
+    return '';
+  }
 }
 
 async function listAvds(
