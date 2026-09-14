@@ -200,7 +200,10 @@ async function listAvds(emulatorPath: string): Promise<string[]> {
 async function installEmulator(sdkPath?: string): Promise<void> {
   const sdkmanager = findCommandLineTool('sdkmanager', sdkPath);
   logger.step('android:sdk', 'Installing the stable Android Emulator package...');
-  await run(sdkmanager, ['--channel=0', 'emulator'], licenseAnswers());
+  await run(sdkmanager, ['--channel=0', 'emulator'], {
+    input: licenseAnswers(),
+    streamOutput: true,
+  });
 }
 
 async function installStablePixelAvd(sdkPath?: string): Promise<void> {
@@ -214,7 +217,11 @@ async function installStablePixelAvd(sdkPath?: string): Promise<void> {
       `No stable Android system image compatible with ${arch()} was found in sdkmanager channel 0.`
     );
   }
-  await run(sdkmanager, ['--channel=0', systemImage], licenseAnswers());
+  logger.step('android:sdk', `Installing ${systemImage}...`);
+  await run(sdkmanager, ['--channel=0', systemImage], {
+    input: licenseAnswers(),
+    streamOutput: true,
+  });
 
   const devices = await run(avdmanager, ['list', 'device']);
   const pixel = selectLatestPixelDevice(devices);
@@ -227,7 +234,7 @@ async function installStablePixelAvd(sdkPath?: string): Promise<void> {
   await run(
     avdmanager,
     ['create', 'avd', '--force', '--name', name, '--package', systemImage, '--device', pixel],
-    'no\n'
+    { input: 'no\n' }
   );
 }
 
@@ -472,21 +479,28 @@ function runShell(command: string, cwd: string): Promise<void> {
   });
 }
 
-function run(command: string, args: string[], input?: string): Promise<string> {
+interface RunOptions {
+  input?: string;
+  streamOutput?: boolean;
+}
+
+function run(command: string, args: string[], options: RunOptions = {}): Promise<string> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       shell: process.platform === 'win32' && command.endsWith('.bat'),
-      stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
+      stdio: [options.input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
     });
     let stdout = '';
     let stderr = '';
     child.stdout!.on('data', (chunk) => {
       stdout += chunk;
+      if (options.streamOutput) process.stdout.write(chunk);
     });
     child.stderr!.on('data', (chunk) => {
       stderr += chunk;
+      if (options.streamOutput) process.stderr.write(chunk);
     });
-    if (input !== undefined) child.stdin!.end(input);
+    if (options.input !== undefined) child.stdin!.end(options.input);
     child.on('error', (error) => reject(new Error(`Could not start ${command}: ${error.message}`)));
     child.on('close', (code) =>
       code === 0
