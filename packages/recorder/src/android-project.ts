@@ -27,6 +27,12 @@ export interface PreparedAndroidTarget {
   activity?: string;
   serial: string;
   adbPath: string;
+  emulatorStartedByApvg: boolean;
+}
+
+interface AndroidDevice {
+  serial: string;
+  startedByApvg: boolean;
 }
 
 /** Prepares the same basic runtime Android Studio uses for Run: device, APK, install. */
@@ -35,8 +41,21 @@ export async function prepareAndroidProject(
   context: AndroidProjectContext
 ): Promise<PreparedAndroidTarget> {
   const adbPath = findSdkTool('adb', options.sdkPath);
-  const serial = await ensureAndroidDevice(adbPath, options, context.workDir);
-  const sourceRoot = context.rootDir;
+  const device = await ensureAndroidDevice(adbPath, options, context.workDir);
+  try {
+    return await prepareAndroidApp(options, context.rootDir, adbPath, device);
+  } catch (error) {
+    if (device.startedByApvg) await stopAndroidEmulator(adbPath, device.serial);
+    throw error;
+  }
+}
+
+async function prepareAndroidApp(
+  options: AndroidProjectOptions,
+  sourceRoot: string,
+  adbPath: string,
+  device: AndroidDevice
+): Promise<PreparedAndroidTarget> {
   const configuredApk = options.apkPath ? resolve(sourceRoot, options.apkPath) : undefined;
   if (configuredApk && !existsSync(configuredApk)) {
     throw new Error(`Configured Android APK does not exist: ${configuredApk}`);
@@ -76,15 +95,69 @@ export async function prepareAndroidProject(
   }
 
   if (options.autoInstall !== false) {
-    logger.step('android:install', `Installing ${packageName} on ${serial}...`);
-    await run(adbPath, ['-s', serial, 'install', '-r', '-t', apkPath]);
+    logger.step('android:install', `Installing ${packageName} on ${device.serial}...`);
+    await run(adbPath, ['-s', device.serial, 'install', '-r', '-t', apkPath]);
   }
-  const installed = await run(adbPath, ['-s', serial, 'shell', 'pm', 'path', packageName]);
+  const installed = await run(adbPath, [
+    '-s',
+    device.serial,
+    'shell',
+    'pm',
+    'path',
+    packageName,
+  ]);
   if (!installed.trim().startsWith('package:')) {
-    throw new Error(`Android package '${packageName}' is not installed on ${serial}.`);
+    throw new Error(`Android package '${packageName}' is not installed on ${device.serial}.`);
   }
-  logger.success(`Android app ready: ${packageName} on ${serial}`);
-  return { package: packageName, activity: options.activity, serial, adbPath };
+  const activity =
+    options.activity || (await resolveLauncherActivity(adbPath, device.serial, packageName));
+  logger.success(`Android app ready: ${packageName} on ${device.serial}`);
+  return {
+    package: packageName,
+    activity,
+    serial: device.serial,
+    adbPath,
+    emulatorStartedByApvg: device.startedByApvg,
+  };
+}
+
+async function resolveLauncherActivity(
+  adbPath: string,
+  serial: string,
+  packageName: string
+): Promise<string | undefined> {
+  const output = await run(adbPath, [
+    '-s',
+    serial,
+    'shell',
+    'cmd',
+    'package',
+    'resolve-activity',
+    '--brief',
+    '-c',
+    'android.intent.category.LAUNCHER',
+    packageName,
+  ]).catch(() => '');
+  const component = output
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.includes('/'));
+  return component?.slice(component.indexOf('/') + 1);
+}
+
+export async function stopPreparedAndroidTarget(target: PreparedAndroidTarget): Promise<void> {
+  if (!target.emulatorStartedByApvg) return;
+  await stopAndroidEmulator(target.adbPath, target.serial);
+}
+
+async function stopAndroidEmulator(adbPath: string, serial: string): Promise<void> {
+  logger.step('android:emulator', `Stopping ${serial}...`);
+  try {
+    await run(adbPath, ['-s', serial, 'emu', 'kill']);
+    logger.success(`Android emulator stopped: ${serial}`);
+  } catch (error) {
+    logger.warn(`Could not stop Android emulator '${serial}': ${(error as Error).message}`);
+  }
 }
 
 interface BuildPlan {
@@ -117,19 +190,19 @@ async function ensureAndroidDevice(
   adbPath: string,
   options: AndroidProjectOptions,
   workDir: string
-): Promise<string> {
+): Promise<AndroidDevice> {
   await run(adbPath, ['start-server']);
   const connected = await listConnectedDevices(adbPath);
   if (options.serial && connected.includes(options.serial)) {
     await waitForBoot(adbPath, options.serial);
-    return options.serial;
+    return { serial: options.serial, startedByApvg: false };
   }
   if (!options.serial && connected.length > 0) {
     const emulator = connected.find((serial) => serial.startsWith('emulator-'));
     const selected = emulator || connected[0];
     logger.success(`Using connected Android device: ${selected}`);
     await waitForBoot(adbPath, selected);
-    return selected;
+    return { serial: selected, startedByApvg: false };
   }
   if (options.autoStartEmulator === false) {
     throw new Error(
@@ -212,7 +285,7 @@ async function ensureAndroidDevice(
     if (selected) {
       await waitForBoot(adbPath, selected, Math.max(1, deadline - Date.now()));
       logger.success(`Android emulator ready: ${selected}`);
-      return selected;
+      return { serial: selected, startedByApvg: true };
     }
     await wait(1500);
   }

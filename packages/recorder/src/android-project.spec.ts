@@ -98,6 +98,7 @@ case "$*" in
   "devices") printf 'List of devices attached\\nemulator-5554\\tdevice\\n' ;;
   *"getprop sys.boot_completed"*) echo 1 ;;
   *"pm path com.example.demo"*) echo package:/data/app/com.example.demo/base.apk ;;
+  *"resolve-activity"*) echo com.example.demo/.MainActivity ;;
   *) exit 0 ;;
 esac
 `
@@ -117,7 +118,9 @@ printf apk > app/build/outputs/apk/debug/app-debug.apk
       const result = await prepareAndroidProject({ sdkPath: sdk }, { rootDir: project, workDir });
 
       expect(result.package).toBe('com.example.demo');
+      expect(result.activity).toBe('.MainActivity');
       expect(result.serial).toBe('emulator-5554');
+      expect(result.emulatorStartedByApvg).toBe(false);
       expect(existsSync(join(project, 'app/build/outputs/apk/debug/app-debug.apk'))).toBe(true);
     }
   );
