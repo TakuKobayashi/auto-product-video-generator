@@ -10,7 +10,7 @@ if (!githubOutput) throw new Error('GITHUB_OUTPUT is required');
 const resolved = JSON.parse(await readFile(join(workDir, 'resolved-config.json'), 'utf8'));
 const source = JSON.parse(await readFile(join(workDir, 'source-context.json'), 'utf8'));
 const platform = resolved.platform;
-const lines = [`platform=${platform}`];
+const lines = [`platform=${platform}`, `package_manager=${source.packageManager}`];
 
 if (platform === 'unity') {
   if (!source.rootDir) throw new Error('Unity project root was not recorded by project analyze');

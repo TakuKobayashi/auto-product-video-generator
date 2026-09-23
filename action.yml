@@ -244,6 +244,17 @@ runs:
         UNITY_VERSION_OVERRIDE: ${{ inputs['unity-version'] }}
       run: node "${{ github.action_path }}/.github/automation/export-analyzed-project.mjs"
 
+    - name: Set up pnpm
+      if: steps.analyzed-project.outputs.package_manager == 'pnpm'
+      uses: pnpm/action-setup@v6
+      with:
+        version: latest
+
+    - name: Enable Yarn
+      if: steps.analyzed-project.outputs.package_manager == 'yarn'
+      shell: bash
+      run: corepack enable
+
     - name: Set up Android SDK
       if: steps.analyzed-project.outputs.platform == 'android'
       uses: android-actions/setup-android@v4
@@ -427,6 +438,16 @@ runs:
         echo "### Auto Product Video Generator" >> "$GITHUB_STEP_SUMMARY"
         echo "Generated: \`$video_path\`" >> "$GITHUB_STEP_SUMMARY"
         [[ -z "$remotion_path" ]] || echo "Remotion project: \`$remotion_path\`" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Show application setup error
+      if: failure()
+      shell: bash
+      run: |
+        if [[ -n "${APVG_WORK_DIR:-}" && -f "$APVG_WORK_DIR/dev-server.log" ]]; then
+          echo "::group::Application setup log (last 80 lines)"
+          tail -n 80 "$APVG_WORK_DIR/dev-server.log"
+          echo "::endgroup::"
+        fi
 
     - name: Stop managed services
       if: always()
