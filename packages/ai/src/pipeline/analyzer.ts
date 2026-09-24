@@ -410,8 +410,10 @@ Unity rules:
         ? `Only dynamic route templates were discovered. They cannot be opened directly. ` +
           `Use "/" for every feature route; never copy [slug], [...parts], :id, or * into a URL.`
         : `No routes could be auto-discovered for this framework (${context.framework}).\n` +
-          `Here is a partial file listing instead. Use "/" unless a concrete path is explicitly present; ` +
-          `never invent parameter values:\n` +
+          `Use the routing source excerpts below to propose concrete candidate URLs. ` +
+          `These are proposals that will be checked in a running browser before recording. ` +
+          `Use "/" when no concrete path is supported; never invent parameter values.\n` +
+          `Partial file listing:\n` +
           context.fileTree
             .slice(0, 150)
             .map((f) => `- ${f}`)
@@ -447,6 +449,9 @@ Statically discovered CLI command paths (exact hierarchy; prepend a declared bin
 ${context.cliCommands?.map((command) => `- ${command}`).join('\n') || '(none discovered)'}
 
 ${routesSection}
+
+Routing-related source excerpts (paths are candidates, not proof that a screen is recordable):
+${context.routeSourceExcerpt || '(none found)'}
 
 Representative promotional asset paths (names only; contents were not inspected):
 ${assetFiles.length > 0 ? assetFiles.map((file) => `- ${file}`).join('\n') : '(none found)'}

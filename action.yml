@@ -367,9 +367,17 @@ runs:
         username: ${{ inputs['unity-email'] }}
         password: ${{ inputs['unity-password'] }}
 
+    - name: Verify analyzed routes
+      shell: bash
+      run: bash "${{ github.action_path }}/.github/automation/guard-recording-routes.sh" --summary
+
     - name: Generate recording scenario
       shell: bash
       run: apvg video scenario generate --config "$APVG_CONFIG"
+
+    - name: Verify recording routes
+      shell: bash
+      run: bash "${{ github.action_path }}/.github/automation/guard-recording-routes.sh" --scenario
 
     - name: Release Ollama resources
       shell: bash
@@ -455,5 +463,6 @@ runs:
       env:
         OLLAMA_MODEL: ${{ inputs['ollama-model'] }}
       run: |
+        bash "${{ github.action_path }}/.github/automation/guard-recording-routes.sh" --stop || true
         docker rm -f "$VOICEVOX_CONTAINER" >/dev/null 2>&1 || true
         command -v ollama >/dev/null 2>&1 && ollama stop "$OLLAMA_MODEL" >/dev/null 2>&1 || true

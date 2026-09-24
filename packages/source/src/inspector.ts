@@ -56,6 +56,8 @@ export interface ProjectSourceContext {
   platformHints: string[];
   /** Capped source excerpts that define CLI commands/options, for grounded demo planning. */
   cliSourceExcerpt?: string;
+  /** Capped routing-related source excerpts for AI route proposals across frameworks. */
+  routeSourceExcerpt?: string;
   /** Command paths discovered from CLI composition source, without the executable name. */
   cliCommands?: string[];
   /** Discovered command paths that explicitly declare a --dry-run option. */
@@ -238,6 +240,7 @@ export async function inspectProject(
   const fileIndex = await buildProjectFileIndex(rootDir, excludePatterns);
   const fileTree = routes.length === 0 ? fileIndex.sourceFiles : [];
   const assetFiles = fileIndex.assetFiles;
+  const routeSourceExcerpt = await readRouteSourceExcerpt(rootDir, fileIndex.sourceFiles);
   const platformHints = await detectPlatformHints(rootDir, packageJson, deps);
   const unity = platformHints.some((hint) => hint.includes('(Unity)'))
     ? await inspectUnityProject(rootDir, configuredUnityScenes)
@@ -271,6 +274,7 @@ export async function inspectProject(
     assetFiles,
     platformHints,
     cliSourceExcerpt,
+    routeSourceExcerpt,
     cliCommands: cliCommandCatalog?.commands,
     cliDryRunCommands: cliCommandCatalog?.dryRunCommands,
     unity,
@@ -467,6 +471,25 @@ async function readTextIfPresent(path: string): Promise<string> {
   } catch {
     return '';
   }
+}
+
+async function readRouteSourceExcerpt(rootDir: string, files: string[]): Promise<string | undefined> {
+  const candidates = files
+    .filter((file) =>
+      /(?:^|\/)(?:routes?|router|routing|urls|pages?)(?:\/|\.|-)|(?:^|\/)config\/routes\.rb$|(?:^|\/)app\/[^/]+\/page\.[^.]+$/i.test(
+        file.replaceAll('\\', '/')
+      )
+    )
+    .filter((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|py|rb|vue)$/i.test(file))
+    .slice(0, 12);
+  if (candidates.length === 0) return undefined;
+  const excerpts = await Promise.all(
+    candidates.map(async (file) => {
+      const source = await readTextIfPresent(join(rootDir, file));
+      return source ? `--- ${file} ---\n${source.slice(0, 1800)}` : '';
+    })
+  );
+  return excerpts.filter(Boolean).join('\n\n') || undefined;
 }
 
 async function discoverCliCommandPaths(

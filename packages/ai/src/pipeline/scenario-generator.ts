@@ -69,7 +69,7 @@ Each scene: { "id": "string", "title": "string", "narration": "string", "actions
 
 ## Action types — use ONLY these, and copy the exact field names shown
 
-For web projects, the feature list provides verified URLs, but it does NOT
+For web projects, the feature list provides candidate URLs, but it does NOT
 provide verified UI text, labels, selectors, or form fields. Therefore use
 ONLY goto / wait / scroll / screenshot. For CLI projects, use ONLY
 run_command / wait / screenshot. NEVER generate click, type, hover, or
@@ -84,7 +84,7 @@ labels such as "Previous" will make the recording fail.
 - {"type":"run_command","command":"my-tool --help"}          (CLI projects only; command is REQUIRED)
 
 For "goto" actions, ONLY use the exact URLs given to you in the feature list
-below (already the real target URL + a real discovered route). Never invent
+below (the target URL plus a proposed route). Never invent
 or guess a URL.
 
 ## Full example (structure only — use the real project's own content)
@@ -132,7 +132,7 @@ Target audience: ${summary.targetAudience}
 Key value props:
 ${summary.keyValueProps.map((v) => `- ${v}`).join('\n')}
 
-Features to demonstrate${isCli || isUnity ? '' : ' (each with its verified URL — use only these URLs for goto actions)'}:
+Features to demonstrate${isCli || isUnity ? '' : ' (each with its supplied URL — use only these URLs for goto actions)'}:
 ${
   demoableFeatures ||
   (isCli
