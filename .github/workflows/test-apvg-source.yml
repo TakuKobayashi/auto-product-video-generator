@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: ''
+      target-env-base64:
+        description: Base64-encoded complete .env for this recording (leave empty if not needed)
+        required: false
+        type: string
+        default: ''
       apvg-version:
         description: Compatibility input; this workflow uses the selected branch source
         required: false
@@ -308,11 +313,34 @@ jobs:
       - name: Synthesize narration
         run: pnpm apvg video voice
 
+      - name: Prepare target environment file
+        if: github.event_name == 'workflow_dispatch'
+        id: target-env
+        run: |
+          TARGET_ENV_BASE64="$(jq -r '.inputs["target-env-base64"] // empty' "$GITHUB_EVENT_PATH")"
+          [[ -n "$TARGET_ENV_BASE64" ]] || exit 0
+          echo '::add-mask::'"$TARGET_ENV_BASE64"
+          umask 077
+          mkdir -p "$RUNNER_TEMP/apvg-target-env"
+          env_file="$RUNNER_TEMP/apvg-target-env/.env"
+          if ! printf '%s' "$TARGET_ENV_BASE64" | base64 --decode > "$env_file"; then
+            rm -f -- "$env_file"
+            echo '::error::The target environment input is not valid Base64'
+            exit 1
+          fi
+          echo "APVG_TARGET_ENV_FILE=$env_file" >> "$GITHUB_ENV"
+          echo "path=$env_file" >> "$GITHUB_OUTPUT"
+
       - name: Record interactions
-        run: pnpm apvg video record
+        env:
+          APVG_SUPPRESS_SERVER_LOG: ${{ steps.target-env.outputs.path != '' && 'true' || 'false' }}
+        run: |
+          args=(video record)
+          [[ -z "${APVG_TARGET_ENV_FILE:-}" ]] || args+=(--env-file "$APVG_TARGET_ENV_FILE")
+          pnpm apvg "${args[@]}"
 
       - name: Upload application startup log on failure
-        if: failure()
+        if: failure() && steps.target-env.outputs.path == ''
         uses: actions/upload-artifact@v7
         with:
           name: app-startup-log-${{ github.run_number }}
@@ -336,5 +364,8 @@ jobs:
       - name: Stop managed services
         if: always()
         run: |
+          bash .github/automation/cleanup-target-environment.sh
+          rm -f -- "$RUNNER_TEMP/apvg-target-env/.env"
+          rmdir -- "$RUNNER_TEMP/apvg-target-env" 2>/dev/null || true
           docker rm -f "$VOICEVOX_CONTAINER" >/dev/null 2>&1 || true
           ollama stop "$OLLAMA_MODEL" >/dev/null 2>&1 || true

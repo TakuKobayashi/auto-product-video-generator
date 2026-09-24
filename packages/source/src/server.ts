@@ -236,6 +236,10 @@ export async function ensureServerRunning(
 }
 
 async function reportServerLog(logPath: string): Promise<void> {
+  if (process.env.APVG_SUPPRESS_SERVER_LOG === 'true') {
+    logger.warn(`Application startup log was withheld because a target environment file was used: ${logPath}`);
+    return;
+  }
   try {
     const log = await readFile(logPath, 'utf8');
     const lines = log.trimEnd().split(/\r?\n/).slice(-80);
@@ -262,6 +266,7 @@ function spawnDetached(command: string, cwd: string, logPath: string): StartedAp
   const logFd = openSync(logPath, 'a');
   const proc = spawn(command, {
     cwd,
+    env: projectProcessEnv(),
     detached: true,
     stdio: ['ignore', logFd, logFd],
     shell: true,
@@ -295,7 +300,12 @@ function stopProcessTree(pid: number): Promise<void> {
 function runToCompletion(command: string, cwd: string, logPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const logFd = openSync(logPath, 'a');
-    const proc = spawn(command, { cwd, stdio: ['ignore', logFd, logFd], shell: true });
+    const proc = spawn(command, {
+      cwd,
+      env: projectProcessEnv(),
+      stdio: ['ignore', logFd, logFd],
+      shell: true,
+    });
     proc.on('error', reject);
     proc.on('close', (code) =>
       code === 0
@@ -303,4 +313,12 @@ function runToCompletion(command: string, cwd: string, logPath: string): Promise
         : reject(new Error(`${command} exited with code ${code} (see ${logPath})`))
     );
   });
+}
+
+function projectProcessEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  // `tsx --tsconfig` sets this for APVG itself. A target project's own tsx
+  // invocation must resolve its own tsconfig rather than APVG's relative path.
+  delete env.TSX_TSCONFIG_PATH;
+  return env;
 }

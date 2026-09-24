@@ -31,6 +31,10 @@ inputs:
     description: Local application URL; leave empty to detect it from the project
     required: false
     default: ''
+  environment-file:
+    description: Runner-local environment file for the target project
+    required: false
+    default: ''
   ollama-model:
     description: Ollama model used for project analysis and scenario generation
     required: false
@@ -369,6 +373,8 @@ runs:
 
     - name: Verify analyzed routes
       shell: bash
+      env:
+        APVG_TARGET_ENV_FILE: ${{ inputs['environment-file'] }}
       run: bash "${{ github.action_path }}/.github/automation/guard-recording-routes.sh" --summary
 
     - name: Generate recording scenario
@@ -407,7 +413,13 @@ runs:
 
     - name: Record application
       shell: bash
-      run: apvg video record --config "$APVG_CONFIG"
+      env:
+        APVG_TARGET_ENV_FILE: ${{ inputs['environment-file'] }}
+        APVG_SUPPRESS_SERVER_LOG: ${{ inputs['environment-file'] != '' && 'true' || 'false' }}
+      run: |
+        args=(video record --config "$APVG_CONFIG")
+        [[ -z "$APVG_TARGET_ENV_FILE" ]] || args+=(--env-file "$APVG_TARGET_ENV_FILE")
+        apvg "${args[@]}"
 
     - name: Render promotional video
       shell: bash
@@ -448,7 +460,7 @@ runs:
         [[ -z "$remotion_path" ]] || echo "Remotion project: \`$remotion_path\`" >> "$GITHUB_STEP_SUMMARY"
 
     - name: Show application setup error
-      if: failure()
+      if: failure() && inputs['environment-file'] == ''
       shell: bash
       run: |
         if [[ -n "${APVG_WORK_DIR:-}" && -f "$APVG_WORK_DIR/dev-server.log" ]]; then
@@ -462,7 +474,9 @@ runs:
       shell: bash
       env:
         OLLAMA_MODEL: ${{ inputs['ollama-model'] }}
+        APVG_TARGET_ENV_FILE: ${{ inputs['environment-file'] }}
       run: |
         bash "${{ github.action_path }}/.github/automation/guard-recording-routes.sh" --stop || true
+        bash "${{ github.action_path }}/.github/automation/cleanup-target-environment.sh"
         docker rm -f "$VOICEVOX_CONTAINER" >/dev/null 2>&1 || true
         command -v ollama >/dev/null 2>&1 && ollama stop "$OLLAMA_MODEL" >/dev/null 2>&1 || true

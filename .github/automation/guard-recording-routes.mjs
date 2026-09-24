@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
-import { openSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { existsSync, openSync } from 'node:fs';
+import { chmod, copyFile, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 
@@ -41,6 +41,14 @@ if (process.argv[2] === '--summary') {
 
   const context = JSON.parse(await readFile(join(workDir, 'source-context.json'), 'utf8'));
   const logPath = join(workDir, 'dev-server.log');
+  if (process.env.APVG_TARGET_ENV_FILE) {
+    const cloudflare = ['wrangler.toml', 'wrangler.json', 'wrangler.jsonc'].some((name) =>
+      existsSync(join(context.rootDir, name))
+    );
+    const destination = join(context.rootDir, cloudflare ? '.dev.vars' : '.env');
+    await copyFile(process.env.APVG_TARGET_ENV_FILE, destination);
+    await chmod(destination, 0o600);
+  }
   await startApp(summary.setupSteps || [], context.rootDir, logPath, baseUrl);
 
   const { chromium } = require('playwright');
