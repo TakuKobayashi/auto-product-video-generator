@@ -1,5 +1,6 @@
 import { execFile, spawn } from 'node:child_process';
 import { openSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { logger, SetupStep } from '@auto-product-video-generator/core';
 import { PackageJsonSummary } from './inspector.js';
@@ -144,6 +145,7 @@ export async function ensureAppRunning(
     });
     if (!(await httpReachable(options.url))) {
       await startedApp?.stop();
+      await reportServerLog(options.logPath);
       throw new Error(
         `Setup finished, but ${options.url} is still unreachable. Check ${options.logPath}.`
       );
@@ -160,6 +162,7 @@ export async function ensureAppRunning(
   });
   if (!(await httpReachable(options.url))) {
     await startedApp?.stop();
+    await reportServerLog(options.logPath);
     throw new Error(
       `Cannot record because ${options.url} is unreachable. Check ${options.logPath}.`
     );
@@ -225,10 +228,22 @@ export async function ensureServerRunning(
   }
 
   await startedApp.stop();
+  await reportServerLog(options.logPath);
   throw new Error(
     `${options.url} did not become reachable within ${Math.round(timeoutMs / 1000)}s. ` +
       `Check ${options.logPath} for errors.`
   );
+}
+
+async function reportServerLog(logPath: string): Promise<void> {
+  try {
+    const log = await readFile(logPath, 'utf8');
+    const lines = log.trimEnd().split(/\r?\n/).slice(-80);
+    logger.error(`Application startup log (${logPath}, last ${lines.length} lines):`);
+    for (const line of lines) logger.error(line);
+  } catch {
+    logger.warn(`Application startup log is unavailable: ${logPath}`);
+  }
 }
 
 function sleep(ms: number): Promise<void> {

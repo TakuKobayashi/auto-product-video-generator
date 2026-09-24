@@ -178,6 +178,12 @@ jobs:
           UNITY_VERSION_OVERRIDE: ${{ inputs['unity-version'] || '' }}
         run: node .github/automation/export-analyzed-project.mjs
 
+      - name: Set up target pnpm
+        if: steps.analyzed-project.outputs.package_manager == 'pnpm'
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.6.0
+
       - name: Set up Android SDK
         if: steps.analyzed-project.outputs.platform == 'android'
         uses: android-actions/setup-android@v4
@@ -304,6 +310,14 @@ jobs:
 
       - name: Record interactions
         run: pnpm apvg video record
+
+      - name: Upload application startup log on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-startup-log-${{ github.run_number }}
+          path: ${{ env.APVG_WORK_DIR }}/dev-server.log
+          if-no-files-found: warn
 
       - name: Render final video
         run: pnpm apvg video render --ffmpeg "$FFMPEG_PATH"
