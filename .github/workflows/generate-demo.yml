@@ -21,11 +21,6 @@ on:
         required: false
         type: string
         default: ''
-      target-env-base64:
-        description: Base64-encoded complete .env for this recording (leave empty if not needed)
-        required: false
-        type: string
-        default: ''
       apvg-version:
         description: Published APVG npm version used by the Marketplace action
         required: false
@@ -82,23 +77,6 @@ jobs:
 
       # Unity-specific installation, licensing, Xvfb, and WebM-to-MP4
       # conversion run conditionally inside action.yml after project analysis.
-      - name: Prepare target environment file
-        if: github.event_name == 'workflow_dispatch'
-        id: target-env
-        run: |
-          TARGET_ENV_BASE64="$(jq -r '.inputs["target-env-base64"] // empty' "$GITHUB_EVENT_PATH")"
-          [[ -n "$TARGET_ENV_BASE64" ]] || exit 0
-          echo '::add-mask::'"$TARGET_ENV_BASE64"
-          umask 077
-          mkdir -p "$RUNNER_TEMP/apvg-target-env"
-          env_file="$RUNNER_TEMP/apvg-target-env/.env"
-          if ! printf '%s' "$TARGET_ENV_BASE64" | base64 --decode > "$env_file"; then
-            rm -f -- "$env_file"
-            echo '::error::The target environment input is not valid Base64'
-            exit 1
-          fi
-          echo "path=$env_file" >> "$GITHUB_OUTPUT"
-
       - name: Generate promotional video
         id: apvg
         uses: ./
@@ -107,7 +85,6 @@ jobs:
           repository: ${{ inputs.repository || '' }}
           ref: ${{ inputs.ref || '' }}
           project-path: ${{ inputs.project-path || '' }}
-          environment-file: ${{ steps.target-env.outputs.path }}
           video-type: demo
           ollama-model: qwen2.5:7b-instruct
           output-directory: apvg-output
@@ -125,9 +102,3 @@ jobs:
           path: ${{ steps.apvg.outputs['artifacts-path'] }}
           if-no-files-found: error
           retention-days: 14
-
-      - name: Remove temporary target environment file
-        if: always()
-        run: |
-          rm -f -- "$RUNNER_TEMP/apvg-target-env/.env"
-          rmdir -- "$RUNNER_TEMP/apvg-target-env" 2>/dev/null || true

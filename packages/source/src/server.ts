@@ -236,10 +236,6 @@ export async function ensureServerRunning(
 }
 
 async function reportServerLog(logPath: string): Promise<void> {
-  if (process.env.APVG_SUPPRESS_SERVER_LOG === 'true') {
-    logger.warn(`Application startup log was withheld because a target environment file was used: ${logPath}`);
-    return;
-  }
   try {
     const log = await readFile(logPath, 'utf8');
     const lines = log.trimEnd().split(/\r?\n/).slice(-80);
