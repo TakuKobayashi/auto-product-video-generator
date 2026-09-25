@@ -9,12 +9,12 @@ import { tmpdir } from 'node:os';
 describe('ProjectAnalyzer setup grounding', () => {
   it('separates product identity from recording setup in the analysis prompt', async () => {
     let attempts = 0;
-    let receivedSystemPrompt = '';
+    let receivedPrompt = '';
     const llm: LlmProvider = {
       generate: async () => '',
-      generateJson: async <T>(_prompt, systemPrompt) => {
+      generateJson: async <T>(prompt) => {
         attempts++;
-        receivedSystemPrompt = systemPrompt ?? '';
+        receivedPrompt = prompt;
         return {
           name: 'Harbor Portal',
           description: 'Helps residents find community services.',
@@ -46,7 +46,7 @@ describe('ProjectAnalyzer setup grounding', () => {
     const summary = await new ProjectAnalyzer(llm).analyze(context);
 
     expect(attempts).toBe(1);
-    expect(receivedSystemPrompt).toContain('preparing or operating the recording environment');
+    expect(receivedPrompt).toContain('preparing or operating the recording environment');
     expect(summary.name).toBe('Harbor Portal');
     expect(summary.description).toBe('Helps residents find community services.');
     expect(summary.setupSteps[0].command).toBe('pnpm install');
