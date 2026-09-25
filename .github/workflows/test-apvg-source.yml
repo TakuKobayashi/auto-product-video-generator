@@ -283,8 +283,16 @@ jobs:
           username: ${{ secrets.UNITY_EMAIL }}
           password: ${{ secrets.UNITY_PASSWORD }}
 
+      - name: Verify analyzed routes
+        if: steps.analyzed-project.outputs.platform == 'web'
+        run: bash .github/automation/guard-recording-routes.sh --summary
+
       - name: Generate scenario
         run: pnpm apvg video scenario generate
+
+      - name: Verify recording routes
+        if: steps.analyzed-project.outputs.platform == 'web'
+        run: bash .github/automation/guard-recording-routes.sh --scenario
 
       - name: Release Ollama resources
         run: ollama stop "$OLLAMA_MODEL" || true
@@ -336,5 +344,6 @@ jobs:
       - name: Stop managed services
         if: always()
         run: |
+          bash .github/automation/guard-recording-routes.sh --stop || true
           docker rm -f "$VOICEVOX_CONTAINER" >/dev/null 2>&1 || true
           ollama stop "$OLLAMA_MODEL" >/dev/null 2>&1 || true

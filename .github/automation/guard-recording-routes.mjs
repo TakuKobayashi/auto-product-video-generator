@@ -156,6 +156,7 @@ async function startApp(steps, rootDir, logPath, url) {
     const cwd = step.cwd ? resolve(rootDir, step.cwd) : rootDir;
     const child = spawn(step.command, {
       cwd,
+      env: projectProcessEnv(),
       shell: true,
       detached: Boolean(step.background),
       stdio: ['ignore', logFd, logFd],
@@ -181,4 +182,12 @@ async function startApp(steps, rootDir, logPath, url) {
     await new Promise((done) => setTimeout(done, 1000));
   }
   throw new Error(`Application did not become ready at ${url}; see ${logPath}`);
+}
+
+function projectProcessEnv() {
+  const env = { ...process.env };
+  // APVG's development CLI may set this relative path for tsx. It does not
+  // belong to the target project and must not affect its setup commands.
+  delete env.TSX_TSCONFIG_PATH;
+  return env;
 }
