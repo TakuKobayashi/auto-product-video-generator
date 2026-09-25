@@ -7,6 +7,51 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 
 describe('ProjectAnalyzer setup grounding', () => {
+  it('separates product identity from recording setup in the analysis prompt', async () => {
+    let attempts = 0;
+    let receivedSystemPrompt = '';
+    const llm: LlmProvider = {
+      generate: async () => '',
+      generateJson: async <T>(_prompt, systemPrompt) => {
+        attempts++;
+        receivedSystemPrompt = systemPrompt ?? '';
+        return {
+          name: 'Harbor Portal',
+          description: 'Helps residents find community services.',
+          platform: 'web',
+          setupSteps: [
+            { name: 'Install dependencies', command: 'pnpm install', background: false },
+          ],
+          features: [],
+          targetAudience: 'Residents',
+          keyValueProps: [],
+          suggestedVideoTypes: ['demo'],
+        } as T;
+      },
+    };
+    const context = {
+      rootDir: '/repo/web',
+      repositoryRoot: '/repo',
+      projectPath: 'web',
+      packageManager: 'pnpm',
+      packageJson: { name: 'harbor-portal-web' },
+      readme: '# Harbor Portal\n\nA community service portal.',
+      framework: 'vite',
+      routes: [],
+      fileTree: [],
+      platformHints: [],
+      assetFiles: [],
+    } as ProjectSourceContext;
+
+    const summary = await new ProjectAnalyzer(llm).analyze(context);
+
+    expect(attempts).toBe(1);
+    expect(receivedSystemPrompt).toContain('preparing or operating the recording environment');
+    expect(summary.name).toBe('Harbor Portal');
+    expect(summary.description).toBe('Helps residents find community services.');
+    expect(summary.setupSteps[0].command).toBe('pnpm install');
+  });
+
   it('runs the selected workspace application command from its own directory', async () => {
     const repositoryRoot = await mkdtemp(join(tmpdir(), 'apvg-analyzer-workspace-'));
     const rootDir = join(repositoryRoot, 'apps', 'web');

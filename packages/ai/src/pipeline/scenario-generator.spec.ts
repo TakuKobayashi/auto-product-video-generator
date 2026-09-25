@@ -4,6 +4,68 @@ import type { LlmProvider } from '../llm/provider.js';
 import { ScenarioGenerator } from './scenario-generator.js';
 
 describe('ScenarioGenerator route grounding', () => {
+  it('uses a platform-neutral prompt for keeping recording setup out of narration', async () => {
+    let attempts = 0;
+    let receivedSystemPrompt = '';
+    const llm: LlmProvider = {
+      generate: async () => '',
+      generateJson: async <T>(_prompt, systemPrompt) => {
+        attempts++;
+        receivedSystemPrompt = systemPrompt ?? '';
+        return {
+          meta: {
+            title: 'Community Portal',
+            description: '地域の情報を探せます。',
+            type: 'demo',
+            duration: 30,
+            language: 'ja',
+          },
+          scenes: [
+            {
+              id: 'intro',
+              title: '地域の情報',
+              narration: '地域の施設情報を画面から確認できます。',
+              actions: [{ type: 'goto', url: 'http://localhost:3000/' }],
+            },
+          ],
+        } as T;
+      },
+    };
+    const summary: ProjectSummary = {
+      name: 'Community Portal',
+      description: '地域の情報を探せます。',
+      platform: 'web',
+      setupSteps: [{ name: 'Install dependencies', command: 'pnpm install', background: false }],
+      features: [],
+      targetAudience: '住民',
+      keyValueProps: [],
+      suggestedVideoTypes: ['demo'],
+      analyzedAt: new Date().toISOString(),
+    };
+    const config: VideoConfig = {
+      type: 'demo',
+      duration: 30,
+      resolution: '1280x720',
+      fps: 30,
+      language: 'ja',
+      singleLineSubtitles: true,
+      pageReadyWaitSeconds: 2,
+      sceneGapSeconds: 1,
+    };
+
+    const { scenario } = await new ScenarioGenerator(llm).generate(
+      summary,
+      config,
+      'http://localhost:3000'
+    );
+
+    expect(attempts).toBe(1);
+    expect(receivedSystemPrompt).toContain('regardless of project');
+    expect(scenario.meta.title).toBe('Community Portal');
+    expect(scenario.scenes[0].narration).toBe('地域の施設情報を画面から確認できます。');
+    expect(scenario.setup[0].command).toBe('pnpm install');
+  });
+
   it('replaces a dynamic route template with the concrete base URL', async () => {
     let receivedPrompt = '';
     const llm: LlmProvider = {

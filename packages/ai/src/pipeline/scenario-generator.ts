@@ -24,7 +24,7 @@ const DEFAULT_AUDIENCE =
 // example) reliably produced invalid JSON for them (missing
 // direction/amount, missing name).
 const SYSTEM_PROMPT = `You are a video director creating promotional demo videos.
-Generate a scenario (the recording plan) for a web application or command-line product demo.
+Generate a scenario (the recording plan) for the supplied software product demo.
 
 ## Audience and editorial goal
 
@@ -36,6 +36,11 @@ serverless, frontend/backend, runtime, deployment, static generation, databases,
 or architecture. Source-code details are evidence for understanding the product,
 not promotional content. Every narration sentence must describe a visible action,
 user outcome, use case, or benefit.
+The setup plan is backstage preparation for the recorder, regardless of project
+platform. Do not turn preparation instructions into the video title, description,
+scene titles, or narration. Show the actual product and its user-facing tasks.
+For a command-line product, a documented feature command can be the demo itself;
+distinguish it from commands used only to prepare the recording environment.
 
 Write narration as natural spoken language intended to be read aloud. Prefer
 friendly conversational phrasing, contractions and direct audience address over

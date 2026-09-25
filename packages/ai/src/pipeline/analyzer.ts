@@ -492,6 +492,10 @@ IMPORTANT: setupSteps may contain technical commands because they are only execu
 internally. All viewer-facing fields (description, features, targetAudience,
 keyValueProps) must use plain, benefit-focused language and must not advertise the
 framework, programming language, API, hosting provider, or architecture.
+Use the README and project metadata as evidence for product identity. Do not
+mistake instructions for preparing or operating the recording environment for
+the product's name, description, features, audience, or value. Such instructions
+belong only in setupSteps; viewer-facing fields must describe the actual product.
 
 Respond with JSON only.`;
 }
