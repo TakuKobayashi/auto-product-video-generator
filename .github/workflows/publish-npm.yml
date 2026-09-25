@@ -13,13 +13,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  classify_tag:
+    name: Classify release tag
+    runs-on: ubuntu-latest
+    outputs:
+      npm_release: ${{ steps.classify.outputs.npm_release }}
+    steps:
+      - name: Check whether tag is a package version
+        id: classify
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo 'npm_release=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'npm_release=false' >> "$GITHUB_OUTPUT"
+            echo "Tag $RELEASE_TAG is not a package version; skipping npm publish."
+          fi
+
   ci:
     name: Run test CI
     uses: ./.github/workflows/ci.yml
 
   publish:
     name: Build and publish CLI
-    needs: ci
+    needs: [ci, classify_tag]
+    if: needs.classify_tag.outputs.npm_release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -99,7 +119,11 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: publish
+    needs: [ci, classify_tag, publish]
+    if: >-
+      ${{ always() && needs.ci.result == 'success' &&
+      needs.classify_tag.result == 'success' &&
+      (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
