@@ -242,7 +242,8 @@ jobs:
 
       - name: Set up Unity Editor
         if: steps.analyzed-project.outputs.platform == 'unity'
-        uses: buildalon/unity-setup@v2
+        # Upstream fix for Unity Hub 3.20+ paths; replace with a release when available.
+        uses: buildalon/unity-setup@f1fadef4b33601303a90cde57d740a6d0b0906d9
         with:
           version-file: ${{ steps.analyzed-project.outputs.unity-version-file }}
           unity-version: ${{ steps.analyzed-project.outputs.unity-version }}
