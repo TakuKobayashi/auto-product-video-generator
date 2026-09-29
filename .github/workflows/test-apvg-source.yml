@@ -37,7 +37,7 @@ on:
         type: string
         default: ''
       cache-enabled:
-        description: Cache Android SDK/emulator, Unity Editor, Unity Hub, Ollama models, and Playwright Chromium
+        description: Cache Android SDK/emulator, Unity Editor, Ollama models, and Playwright Chromium
         required: false
         type: boolean
         default: true
@@ -220,46 +220,21 @@ jobs:
             exit 1
           }
 
-      - name: Cache Unity Hub package
-        if: steps.analyzed-project.outputs.platform == 'unity' && (github.event_name != 'workflow_dispatch' || inputs['cache-enabled'])
-        uses: actions/cache@v6
-        with:
-          path: ${{ runner.temp }}/apvg-unity-hub
-          key: unity-hub-${{ runner.os }}-${{ runner.arch }}-${{ env.UNITY_HUB_VERSION }}
-
       - name: Install system dependencies
         env:
           PROJECT_PLATFORM: ${{ steps.analyzed-project.outputs.platform }}
         run: |
           packages=(ffmpeg)
           if [[ "$PROJECT_PLATFORM" == unity ]]; then
-            wget -qO - https://hub.unity3d.com/linux/keys/public |
-              gpg --dearmor |
-              sudo tee /usr/share/keyrings/Unity_Technologies_ApS.gpg >/dev/null
-            echo "deb [signed-by=/usr/share/keyrings/Unity_Technologies_ApS.gpg] https://hub.unity3d.com/linux/repos/deb stable main" |
-              sudo tee /etc/apt/sources.list.d/unityhub.list >/dev/null
             packages+=(xvfb libgl1-mesa-dri libglu1-mesa)
           fi
           sudo apt-get update
-          if [[ "$PROJECT_PLATFORM" == unity ]]; then
-            hub_cache="$RUNNER_TEMP/apvg-unity-hub"
-            mkdir -p "$hub_cache"
-            hub_deb="$(find "$hub_cache" -maxdepth 1 -name 'unityhub_*.deb' -print -quit)"
-            if [[ -z "$hub_deb" ]]; then
-              (cd "$hub_cache" && apt-get download "unityhub=$UNITY_HUB_VERSION")
-              hub_deb="$(find "$hub_cache" -maxdepth 1 -name 'unityhub_*.deb' -print -quit)"
-            fi
-            packages+=("$hub_deb")
-          fi
           sudo apt-get install --yes "${packages[@]}"
           if [[ "$PROJECT_PLATFORM" == android ]]; then
             mkdir -p "$ANDROID_AVD_HOME"
             [[ ! -e /dev/kvm ]] || sudo chmod a+rw /dev/kvm
           fi
           if [[ "$PROJECT_PLATFORM" == unity ]]; then
-            unity_hub="$(command -v unityhub)"
-            sudo ln -sfn "$unity_hub" /usr/bin/unity-hub
-            echo "UNITY_HUB_PATH=$unity_hub" >> "$GITHUB_ENV"
             Xvfb "$UNITY_DISPLAY" -screen 0 1920x1080x24 &
             echo "DISPLAY=$UNITY_DISPLAY" >> "$GITHUB_ENV"
             echo "LIBGL_ALWAYS_SOFTWARE=1" >> "$GITHUB_ENV"

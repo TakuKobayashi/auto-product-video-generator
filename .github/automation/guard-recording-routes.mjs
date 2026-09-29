@@ -11,14 +11,6 @@ if (!workDir || !packageRoot || !configPath) {
   throw new Error('APVG_WORK_DIR, APVG_PACKAGE_ROOT and APVG_CONFIG are required');
 }
 
-const require = createRequire(join(packageRoot, 'package.json'));
-const yaml = require('js-yaml');
-const config = yaml.load(await readFile(configPath, 'utf8'));
-const resolved = await readFile(join(workDir, 'resolved-config.json'), 'utf8')
-  .then(JSON.parse)
-  .catch(() => ({}));
-const baseUrl = new URL(resolved.target?.url || config.target.url);
-const startCommand = config.source.startCommand || resolved.source?.startCommand;
 const validatedPath = join(workDir, 'validated-web-routes.json');
 const serverPidPath = join(workDir, 'validated-web-server.pid');
 
@@ -34,10 +26,31 @@ if (process.argv[2] === '--stop') {
   process.exit(0);
 }
 
+if (!['--summary', '--scenario'].includes(process.argv[2])) {
+  throw new Error('Expected --summary, --scenario or --stop');
+}
+
+const summary = process.argv[2] === '--summary'
+  ? JSON.parse(await readFile(join(workDir, 'project-summary.json'), 'utf8'))
+  : null;
+if (summary && summary.platform !== 'web') process.exit(0);
+
+const require = createRequire(join(packageRoot, 'package.json'));
+const yaml = require('js-yaml');
+const scenario = process.argv[2] === '--scenario'
+  ? yaml.load(await readFile(join(workDir, 'scenario.yml'), 'utf8'))
+  : null;
+if (scenario && scenario.meta?.platform !== 'web') process.exit(0);
+
+const config = yaml.load(await readFile(configPath, 'utf8'));
+const resolved = await readFile(join(workDir, 'resolved-config.json'), 'utf8')
+  .then(JSON.parse)
+  .catch(() => ({}));
+const baseUrl = new URL(resolved.target?.url || config.target.url);
+const startCommand = config.source?.startCommand || resolved.source?.startCommand;
+
 if (process.argv[2] === '--summary') {
   const summaryPath = join(workDir, 'project-summary.json');
-  const summary = JSON.parse(await readFile(summaryPath, 'utf8'));
-  if (summary.platform !== 'web') process.exit(0);
 
   const context = JSON.parse(await readFile(join(workDir, 'source-context.json'), 'utf8'));
   const logPath = join(workDir, 'dev-server.log');
@@ -86,10 +99,6 @@ if (process.argv[2] === '--summary') {
   process.exit(0);
 }
 
-if (process.argv[2] !== '--scenario') throw new Error('Expected --summary or --scenario');
-const scenarioPath = join(workDir, 'scenario.yml');
-const scenario = yaml.load(await readFile(scenarioPath, 'utf8'));
-if (scenario.meta?.platform !== 'web') process.exit(0);
 const verified = new Set(JSON.parse(await readFile(validatedPath, 'utf8')));
 for (const scene of scenario.scenes || []) {
   for (const action of scene.actions || []) {
