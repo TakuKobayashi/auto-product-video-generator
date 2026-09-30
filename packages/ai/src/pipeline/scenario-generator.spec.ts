@@ -202,17 +202,28 @@ describe('ScenarioGenerator CLI grounding', () => {
 describe('ScenarioGenerator Unity grounding', () => {
   it('asks for scene-ordered narration and retains only wait actions', async () => {
     let receivedPrompt = '';
+    let attempts = 0;
     const llm = {
       generate: async () => '',
       generateJson: async <T>(prompt: string) => {
+        attempts++;
         receivedPrompt = prompt;
         return {
-          meta: { title: 'Game', description: 'Demo', type: 'demo', duration: 10, language: 'ja' },
+          meta: {
+            title: attempts === 1 ? 'City Building Installation Demo' : 'Game',
+            description: 'Demo',
+            type: 'demo',
+            duration: 10,
+            language: 'ja',
+          },
           scenes: [
             {
               id: 'title',
               title: 'Title',
-              narration: 'ゲームを始めます。',
+              narration:
+                attempts === 1
+                  ? 'このビデオではUnityプロジェクトを紹介します。'
+                  : 'ゲームを始めます。',
               actions: [{ type: 'launch_app' }],
             },
           ],
@@ -254,7 +265,10 @@ describe('ScenarioGenerator Unity grounding', () => {
     expect(receivedPrompt).toContain(
       'Create exactly one scenario scene for each listed Unity Scene'
     );
+    expect(receivedPrompt).toContain('Lead with the strongest concrete detail');
+    expect(receivedPrompt).toContain('Avoid generic introductions, professional audience claims');
     expect(receivedPrompt).toContain('Assets/Scenes/Title.unity');
+    expect(attempts).toBe(2);
     expect(scenario.scenes[0].actions).toEqual([{ type: 'wait', ms: 1000 }]);
   });
 });

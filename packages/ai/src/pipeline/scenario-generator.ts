@@ -39,6 +39,12 @@ user outcome, use case, or benefit.
 The setup plan is backstage preparation for the recorder, regardless of project
 platform. Do not turn preparation instructions into the video title, description,
 scene titles, or narration. Show the actual product and its user-facing tasks.
+For Unity recordings, speak about the on-screen experience itself. Do not open
+with "this video introduces", call it a "Unity project", or describe who built
+it. Do not turn city scenery into a claim about city planning, architecture,
+building installation, or professional simulation unless the supplied scene
+feature explicitly supports that activity. Do not claim a gameplay action is
+shown merely because its controller exists in source code.
 For a command-line product, a documented feature command can be the demo itself;
 distinguish it from commands used only to prepare the recording environment.
 
@@ -185,7 +191,7 @@ ${
   isCli
     ? 'This is a CLI project. Create a separate scene for each useful command listed above and use only those exact commands. Show real safe workflows ending in --dry-run when provided; otherwise show the relevant subcommand --help. Do not repeat root --help in every scene. Never publish, authenticate, expose secrets/environment variables, modify files, or start a server/watcher. Do not use goto, click, type, scroll, hover, or mobile actions.'
     : isUnity
-      ? 'This is a Unity project recorded by opening Build Settings scenes in order. Create exactly one scenario scene for each listed Unity Scene, preserving that order. Narrate only the corresponding screen or gameplay evidence. Use only wait actions for pacing; do not use goto, launch_app, tap, click, type, scroll, screenshot, or run_command.'
+      ? `This is a Unity recording that opens the listed scenes in order. Create exactly one scenario scene for each listed Unity Scene, preserving that order. The scene feature description is evidence, not text to recite verbatim. Write a short narration in the requested language, as natural speech about the visual experience in that scene. Lead with the strongest concrete detail: viewpoint, setting, character, map, or visible task. Mention a capability only when the feature supports it; describe off-screen mechanics as possibilities only if the scene feature explicitly documents them. Avoid generic introductions, professional audience claims, "Unity project", "simulation tool", installation, implementation details, and scene filenames. The title and description must likewise describe the recorded experience. Use only wait actions for pacing; do not use goto, launch_app, tap, click, type, scroll, screenshot, or run_command.`
       : `The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
 demonstrate a specific feature should "goto" that feature's URL from the list above.`
 }
@@ -201,9 +207,44 @@ Respond with JSON only — just the scenario object, no "script" field, no other
       `  Calling ${describeProvider(this.llm)}... this can take a while, especially on local models.`
     );
 
+    const scenarioSchema = isUnity
+      ? PromotionalScenarioSchema.superRefine((candidate, ctx) => {
+          const supportedClaims = [
+            summary.description,
+            ...summary.features.map((feature) => feature.description),
+          ].join(' ');
+          const professionalClaimsSupported = UNITY_PROFESSIONAL_CLAIMS.test(supportedClaims);
+          const texts = [
+            { path: ['meta', 'title'], value: candidate.meta.title },
+            { path: ['meta', 'description'], value: candidate.meta.description },
+            ...candidate.scenes.flatMap((scene, index) => [
+              { path: ['scenes', index, 'title'], value: scene.title },
+              { path: ['scenes', index, 'narration'], value: scene.narration },
+            ]),
+          ];
+          for (const { path, value } of texts) {
+            if (UNITY_META_LANGUAGE.test(value)) {
+              ctx.addIssue({
+                code: 'custom',
+                path,
+                message: 'Describe the scene itself, not the video or Unity project.',
+              });
+            }
+            if (!professionalClaimsSupported && UNITY_PROFESSIONAL_CLAIMS.test(value)) {
+              ctx.addIssue({
+                code: 'custom',
+                path,
+                message:
+                  'Professional planning or installation is not supported by the recorded scene evidence.',
+              });
+            }
+          }
+        })
+      : PromotionalScenarioSchema;
+
     const scenario = await withHeartbeat(
       'scenario generation',
-      generateValidatedJson<Scenario>(this.llm, PromotionalScenarioSchema, prompt, SYSTEM_PROMPT, {
+      generateValidatedJson<Scenario>(this.llm, scenarioSchema, prompt, SYSTEM_PROMPT, {
         label: 'scenario',
         maxRetries: 3,
         jsonSchema: SCENARIO_OUTPUT_SCHEMA,
@@ -314,6 +355,11 @@ function groundDeviceScenarioActions(scenario: Scenario): void {
 
 const TECHNICAL_TERMS =
   /\b(?:Next\.js|App Router|TypeScript|JavaScript|React|Cloudflare|Workers?|Hono|API(?:s| routes?)?|serverless|front-?end|back-?end|runtime|framework|deployment|database|architecture|static generation)\b|技術仕様|実装|フレームワーク|プログラミング言語|サーバーレス|アーキテクチャ|静的生成/iu;
+
+const UNITY_META_LANGUAGE =
+  /Unity\s*(?:project|editor)|Unityプロジェクト|このビデオでは|本動画では/iu;
+const UNITY_PROFESSIONAL_CLAIMS =
+  /city.?plann|architect|urban develop|building install|都市計画|建築家|建物(?:の)?設置|シミュレーションツール/iu;
 
 const PromotionalScenarioSchema = ScenarioSchema.superRefine((scenario, ctx) => {
   scenario.scenes.forEach((scene, index) => {

@@ -100,7 +100,11 @@ describe('ProjectAnalyzer setup grounding', () => {
     const summary = await new ProjectAnalyzer(llm).analyze(context, 'http://localhost:3000');
 
     expect(summary.setupSteps).toEqual([
-      expect.objectContaining({ command: 'pnpm install', cwd: '../..', background: false }),
+      expect.objectContaining({
+        command: 'pnpm install',
+        cwd: join('..', '..'),
+        background: false,
+      }),
       expect.objectContaining({
         command: 'pnpm run dev',
         cwd: undefined,
@@ -118,9 +122,7 @@ describe('ProjectAnalyzer setup grounding', () => {
           name: 'Landing page',
           description: 'Example app',
           platform: 'web',
-          setupSteps: [
-            { name: 'Install dependencies', command: 'npm install', background: false },
-          ],
+          setupSteps: [{ name: 'Install dependencies', command: 'npm install', background: false }],
           features: [],
           targetAudience: 'Everyone',
           keyValueProps: [],
@@ -235,7 +237,11 @@ describe('ProjectAnalyzer setup grounding', () => {
     const summary = await new ProjectAnalyzer(llm).analyze(context);
 
     expect(summary.setupSteps).toEqual([
-      expect.objectContaining({ command: 'pnpm install', cwd: '../..', background: false }),
+      expect.objectContaining({
+        command: 'pnpm install',
+        cwd: join('..', '..'),
+        background: false,
+      }),
       expect.objectContaining({ command: 'npm run build', background: false }),
     ]);
     expect(summary.setupSteps.every((step) => !step.background)).toBe(true);
@@ -363,16 +369,16 @@ describe('ProjectAnalyzer setup grounding', () => {
   });
 
   it('uses parsed Unity evidence instead of an incorrect LLM CLI classification', async () => {
+    let receivedPrompt = '';
     const llm: LlmProvider = {
       generate: async () => '',
-      generateJson: async <T>() =>
-        ({
+      generateJson: async <T>(prompt) => {
+        receivedPrompt = prompt;
+        return {
           name: 'Mixed Unity project',
           description: 'Example game with server-side tooling',
           platform: 'cli',
-          setupSteps: [
-            { name: 'Install dependencies', command: 'npm install', background: false },
-          ],
+          setupSteps: [{ name: 'Install dependencies', command: 'npm install', background: false }],
           features: [
             {
               id: 'help',
@@ -383,10 +389,11 @@ describe('ProjectAnalyzer setup grounding', () => {
               priority: 'high',
             },
           ],
-          targetAudience: 'Players',
-          keyValueProps: [],
+          targetAudience: 'City planners',
+          keyValueProps: ['Building installation'],
           suggestedVideoTypes: ['demo'],
-        }) as T,
+        } as T;
+      },
     };
     const context = {
       rootDir: '/repo',
@@ -397,7 +404,12 @@ describe('ProjectAnalyzer setup grounding', () => {
       readme: '',
       framework: 'unknown',
       routes: [],
-      fileTree: ['Assets/Main.unity', 'ProjectSettings/ProjectVersion.txt', 'package.json'],
+      fileTree: [
+        'AltitudeZero.slnx',
+        'Assets/Main.unity',
+        'ProjectSettings/ProjectVersion.txt',
+        'package.json',
+      ],
       platformHints: ['ProjectSettings/ProjectVersion.txt found (Unity)'],
       assetFiles: [],
       unity: {
@@ -405,9 +417,17 @@ describe('ProjectAnalyzer setup grounding', () => {
         enabledScenes: [
           {
             path: 'Assets/Main.unity',
-            objectNames: ['Main Camera', 'Player'],
-            referencedAssets: ['Assets/Scripts/PlayerController.cs'],
-            referencedScripts: ['Assets/Scripts/PlayerController.cs'],
+            objectNames: ['Main Camera', 'City Map Canvas', 'you', 'boss'],
+            uiTexts: ['BOSS', 'LOCAL'],
+            referencedAssets: [
+              'Assets/Starter Assets/Runtime/FirstPersonController/Scripts/FirstPersonController.cs',
+              'Assets/Scripts/CityMinimap.cs',
+              'Assets/Models/BuildingInstallation.fbx',
+            ],
+            referencedScripts: [
+              'Assets/Scripts/CityMinimap.cs',
+              'Assets/Starter Assets/Runtime/FirstPersonController/Scripts/FirstPersonController.cs',
+            ],
           },
         ],
         projectScripts: [],
@@ -418,11 +438,21 @@ describe('ProjectAnalyzer setup grounding', () => {
     const summary = await new ProjectAnalyzer(llm).analyze(context);
 
     expect(summary.platform).toBe('unity');
+    expect(receivedPrompt).toContain('player controls, combat actions, a boss, or a minimap');
+    expect(receivedPrompt).toContain('AltitudeZero');
+    expect(receivedPrompt).toContain('Serialized UI labels: BOSS, LOCAL');
+    expect(receivedPrompt).not.toContain('BuildingInstallation.fbx');
+    expect(summary.name).toBe('AltitudeZero');
+    expect(summary.description).toContain('game scene');
+    expect(summary.description).toContain('first-person');
+    expect(summary.features[0].description).toContain('boss indicator');
+    expect(summary.targetAudience).not.toBe('City planners');
+    expect(summary.keyValueProps).toContain('Map with player and boss indicators');
     expect(summary.setupSteps).toEqual([]);
     expect(summary.features).toEqual([
       expect.objectContaining({
         id: 'Assets/Main.unity',
-        title: 'Main',
+        title: 'First-person city game scene',
         demoable: true,
       }),
     ]);

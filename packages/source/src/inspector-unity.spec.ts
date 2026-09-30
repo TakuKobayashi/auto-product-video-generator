@@ -29,7 +29,7 @@ describe('Unity source inspection', () => {
       ),
       writeFile(
         join(root, 'Assets', 'Game', 'Title.unity'),
-        'GameObject:\n  m_Name: Start Game\nMonoBehaviour:\n  m_Script: {fileID: 11500000, guid: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, type: 3}\n'
+        'GameObject:\n  m_Name: Start Game\nMonoBehaviour:\n  m_Text: "BOSS"\n  m_text: Play\n  m_Script: {fileID: 11500000, guid: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, type: 3}\n'
       ),
       writeFile(join(root, 'Assets', 'Game', 'Title.cs'), 'class Title { void StartGame() {} }'),
       writeFile(
@@ -50,6 +50,7 @@ describe('Unity source inspection', () => {
     expect(context.unity?.enabledScenes[0]).toMatchObject({
       path: 'Assets/Game/Title.unity',
       objectNames: ['Start Game'],
+      uiTexts: ['BOSS', 'Play'],
       referencedScripts: ['Assets/Game/Title.cs'],
     });
     expect(context.unity?.projectScripts.map((script) => script.path)).toContain(
@@ -86,7 +87,10 @@ describe('Unity source inspection', () => {
         ),
       ]),
       writeFile(join(root, 'ProjectSettings', 'EditorBuildSettings.asset'), 'm_Scenes: []\n'),
-      writeFile(join(root, 'ProjectSettings', 'ProjectVersion.txt'), 'm_EditorVersion: 6000.3.6f1\n'),
+      writeFile(
+        join(root, 'ProjectSettings', 'ProjectVersion.txt'),
+        'm_EditorVersion: 6000.3.6f1\n'
+      ),
       writeFile(join(root, 'Packages', 'manifest.json'), '{"dependencies":{}}'),
     ]);
 
@@ -112,10 +116,16 @@ describe('Unity source inspection', () => {
         join(root, 'ProjectSettings', 'EditorBuildSettings.asset'),
         'm_Scenes:\n- enabled: 1\n  path: Assets/Scenes/Main.unity\n'
       ),
-      writeFile(join(root, 'ProjectSettings', 'ProjectVersion.txt'), 'm_EditorVersion: 6000.3.6f1\n'),
+      writeFile(
+        join(root, 'ProjectSettings', 'ProjectVersion.txt'),
+        'm_EditorVersion: 6000.3.6f1\n'
+      ),
       writeFile(join(root, 'Packages', 'manifest.json'), '{"dependencies":{}}'),
       writeFile(join(root, 'Assets', 'Scenes', 'Main.unity'), 'GameObject:\n  m_Name: Main\n'),
-      writeFile(join(root, 'Assets', 'Scenes', 'Credits.unity'), 'GameObject:\n  m_Name: Credits\n'),
+      writeFile(
+        join(root, 'Assets', 'Scenes', 'Credits.unity'),
+        'GameObject:\n  m_Name: Credits\n'
+      ),
     ]);
 
     const context = await inspectProject(root, [], ['Assets/Scenes/Credits.unity']);

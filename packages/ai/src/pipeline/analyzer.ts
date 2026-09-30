@@ -91,12 +91,25 @@ export class ProjectAnalyzer {
     // also contain package.json files (for example, server-side tools), which
     // can otherwise make the LLM incorrectly choose the CLI recorder.
     const platformWasGroundedToUnity = Boolean(context.unity && summary.platform !== 'unity');
+    const unityBrief = context.unity ? deriveUnityBrief(context) : undefined;
+    const unityClaimsUnsupported = Boolean(
+      unityBrief && (platformWasGroundedToUnity || contradictsUnityEvidence(summary, unityBrief))
+    );
     if (platformWasGroundedToUnity) {
       logger.warn(
         `LLM classified the project as '${summary.platform}', but parsed Unity project evidence ` +
           `was found. Using platform='unity'.`
       );
       summary.platform = 'unity';
+    }
+    if (unityBrief && unityClaimsUnsupported) {
+      // A wrong platform or unsupported audience/use case also makes the
+      // generated marketing fields untrustworthy.
+      logger.warn('Replacing unsupported Unity product claims with scene-grounded wording.');
+      summary.name = unityBrief.name;
+      summary.description = unityBrief.description;
+      summary.targetAudience = unityBrief.targetAudience;
+      summary.keyValueProps = unityBrief.keyValueProps;
     }
 
     switch (summary.platform) {
@@ -158,24 +171,37 @@ export class ProjectAnalyzer {
           !platformWasGroundedToUnity && summary.features.length === unityScenes.length;
         summary.features = unityScenes.map((scene, index) => {
           const generated = useGeneratedUnityFeatures ? summary.features[index] : undefined;
+          const sceneBrief = deriveUnityBrief({
+            ...context,
+            unity: { ...context.unity!, enabledScenes: [scene] },
+          });
           const fallbackTitle =
             scene.path
               .split('/')
               .pop()
               ?.replace(/\.unity$/i, '') || `Scene ${index + 1}`;
-          const evidence = scene.objectNames.slice(0, 6).join(', ');
+          const evidence = scene.objectNames
+            .map((name) => name.trim())
+            .filter(Boolean)
+            .slice(0, 12)
+            .join(', ');
           const controllers = scene.referencedScripts
+            .filter(isFirstPartyUnityScript)
             .map((path) => path.split('/').pop()?.replace(/\.cs$/i, ''))
             .filter(Boolean)
             .slice(0, 8)
             .join(', ');
           return {
             id: scene.path,
-            title: generated?.title || fallbackTitle,
+            title: unityClaimsUnsupported
+              ? sceneBrief.sceneTitle
+              : generated?.title || fallbackTitle,
             description:
-              generated?.description ||
-              `${fallbackTitle} screen. Visible/object evidence: ${evidence || '(none parsed)'}. ` +
-                `Behavior/controller evidence: ${controllers || '(none parsed)'}.`,
+              unityBrief && unityClaimsUnsupported
+                ? sceneBrief.sceneDescription
+                : generated?.description ||
+                  `${fallbackTitle} screen. Visible/object evidence: ${evidence || '(none parsed)'}. ` +
+                    `Behavior/controller evidence: ${controllers || '(none parsed)'}.`,
             demoable: true,
             priority: generated?.priority || 'medium',
           };
@@ -358,49 +384,15 @@ function groundDeclaredCliCommand(
 }
 
 function buildPrompt(context: ProjectSourceContext, targetUrl?: string): string {
+  if (context.unity) return buildUnityPrompt(context);
+
   const pkg = context.packageJson;
   const assetFiles = context.assetFiles ?? [];
   const concreteRoutes = context.routes.filter((route) => isConcreteWebRoute(route.path));
   const omittedTemplateCount = context.routes.length - concreteRoutes.length;
 
-  const unitySection = context.unity
-    ? `Unity scene-first evidence (authoritative for product analysis):
-Editor version: ${context.unity.editorVersion || '(unknown)'}
-Recording scenes, in order (${context.unity.sceneSource || 'build-settings'}):
-${context.unity.enabledScenes
-  .map(
-    (scene, index) =>
-      `${index}. ${scene.path}\n` +
-      `   GameObjects: ${scene.objectNames.join(', ') || '(none parsed)'}\n` +
-      `   Referenced project scripts: ${scene.referencedScripts.join(', ') || '(none parsed)'}\n` +
-      `   Other referenced assets: ${
-        scene.referencedAssets
-          .filter((asset) => !scene.referencedScripts.includes(asset))
-          .slice(0, 30)
-          .join(', ') || '(none parsed)'
-      }`
-  )
-  .join('\n')}
-
-Project script excerpts (use behavior and user-facing names as evidence):
-${context.unity.projectScripts
-  .map((script) => `--- ${script.path} ---\n${script.excerpt}`)
-  .join('\n')}
-
-Installed Unity packages (dependencies only, not product features):
-${context.unity.packages.join(', ') || '(none)'}`
-    : '';
-
-  const routesSection = context.unity
-    ? `${unitySection}
-
-Unity rules:
-- Create one demoable feature for each listed recording scene, in exactly the listed order.
-- Set each feature id to the exact scene path. Do not set route or command.
-- Infer the game/product experience primarily from scene GameObjects and project script excerpts.
-- Asset Store libraries, plugins, packages, frameworks, and technical systems are supporting dependencies, never product features.
-- If evidence is ambiguous, describe only directly supported visible gameplay or screen purpose; do not invent mechanics.`
-    : concreteRoutes.length > 0
+  const routesSection =
+    concreteRoutes.length > 0
       ? `Discovered routes (use these exact paths for the "route" field — do not invent others):\n` +
         concreteRoutes.map((r) => `- ${r.path}  (from ${r.file})`).join('\n') +
         (omittedTemplateCount > 0
@@ -498,4 +490,134 @@ the product's name, description, features, audience, or value. Such instructions
 belong only in setupSteps; viewer-facing fields must describe the actual product.
 
 Respond with JSON only.`;
+}
+
+function buildUnityPrompt(context: ProjectSourceContext): string {
+  const unity = context.unity!;
+  const brief = deriveUnityBrief(context);
+  const projectName = context.fileTree
+    .find((path) => /^[^/]+\.slnx?$/.test(path))
+    ?.replace(/\.slnx?$/, '');
+  const scenes = unity.enabledScenes
+    .map((scene, index) => {
+      const names = scene.objectNames
+        .map((name) => name.trim())
+        .filter(Boolean)
+        .slice(0, 20);
+      const scripts = scene.referencedScripts.filter(isFirstPartyUnityScript).slice(0, 15);
+      return `${index + 1}. ${scene.path}\n   Scene objects: ${names.join(', ') || '(none parsed)'}\n   Serialized UI labels: ${scene.uiTexts?.slice(0, 20).join(', ') || '(none parsed)'}\n   Attached first-party scripts: ${scripts.join(', ') || '(none parsed)'}`;
+    })
+    .join('\n');
+  const scripts = unity.projectScripts
+    .filter((script) => isFirstPartyUnityScript(script.path))
+    .slice(0, 12)
+    .map((script) => `--- ${script.path} ---\n${script.excerpt.slice(0, 1600)}`)
+    .join('\n');
+
+  return `Analyze this Unity project for a video of its recorded scenes.
+The platform is already verified as "unity". Output platform "unity" and setupSteps [].
+
+Project name from solution file: ${projectName || '(unknown; do not infer a name from assets)'}
+Scene-grounded experience: ${brief.sceneDescription}
+Recording scenes, in order:
+${scenes || '(none found)'}
+
+First-party behavior excerpts:
+${scripts || '(none found)'}
+
+Describe what a person sees and does in these scenes. Treat scene objects and
+first-party behavior as primary evidence. Model filenames, textures, city data,
+SDKs, packages, and editor tools may describe scenery or development materials;
+they do not establish the product's purpose or target audience. A city model in
+a scene does not by itself make the project a city-planning or building tool.
+If player controls, combat actions, a boss, or a minimap are present, describe
+the supported gameplay instead of professional planning or asset installation.
+Do not promise actions that are not evident in the recorded scene.
+
+Return the required project-summary JSON. Use the solution name when available.
+Write a plain-language description, targetAudience, and keyValueProps supported
+by the scene. Create exactly one demoable feature per recording scene in order;
+each feature id must be its exact scene path. Omit route and command. Use
+specific viewer-facing descriptions rather than script, object, or scene names.
+If evidence is thin, use modest wording and empty keyValueProps rather than
+inventing a use case or audience.`;
+}
+
+function isFirstPartyUnityScript(path: string): boolean {
+  return (
+    path.startsWith('Assets/') &&
+    !/(?:^|\/)(?:Starter Assets|TutorialInfo|Plugins|ThirdParty|Third Party|External|Samples)(?:\/|$)/i.test(
+      path
+    ) &&
+    !/(?:^|\/)Editor(?:\/|$)/i.test(path)
+  );
+}
+
+interface UnityBrief {
+  name: string;
+  description: string;
+  sceneTitle: string;
+  sceneDescription: string;
+  targetAudience: string;
+  keyValueProps: string[];
+  isGame: boolean;
+}
+
+function deriveUnityBrief(context: ProjectSourceContext): UnityBrief {
+  const scenes = context.unity?.enabledScenes || [];
+  const names = scenes.flatMap((scene) => scene.objectNames.map((name) => name.trim())).join(' ');
+  const labels = scenes.flatMap((scene) => scene.uiTexts || []).join(' ');
+  const paths = scenes
+    .flatMap((scene) => [...scene.referencedScripts, ...scene.referencedAssets])
+    .join(' ');
+  const solutionName = context.fileTree
+    .find((path) => /^[^/]+\.slnx?$/.test(path))
+    ?.replace(/\.slnx?$/, '');
+  const player = /\bplayer\b|first.?person/i.test(`${names} ${paths}`);
+  const boss = /\bboss\b|raidboss/i.test(`${names} ${labels} ${paths}`);
+  const map = /\bmap\b|minimap/i.test(`${names} ${labels} ${paths}`);
+  const city = /\bcity\b|citymap|citygml|shinjuku/i.test(`${names} ${paths}`);
+  const firstPerson = /first.?person/i.test(paths);
+  const isGame = player && boss;
+  const name = solutionName || 'Interactive scene';
+  if (!isGame) {
+    return {
+      name,
+      description: 'An interactive experience shown in the recorded scene.',
+      sceneTitle: 'Interactive scene',
+      sceneDescription: 'An interactive scene recorded from the application.',
+      targetAudience: 'People interested in the recorded experience',
+      keyValueProps: [],
+      isGame,
+    };
+  }
+  const viewpoint = firstPerson ? 'first-person ' : '';
+  const setting = city ? ' in a city environment' : '';
+  const details = [map && 'a map', boss && 'a boss indicator'].filter(Boolean).join(' and ');
+  const sceneDescription = `A ${viewpoint}game scene${setting}${details ? `, with ${details} on screen` : ''}.`;
+  return {
+    name,
+    description: sceneDescription,
+    sceneTitle: `${firstPerson ? 'First-person ' : ''}${city ? 'city ' : ''}game scene`,
+    sceneDescription,
+    targetAudience: 'Players',
+    keyValueProps: [
+      ...(firstPerson ? ['First-person view of the game world'] : []),
+      ...(map && boss ? ['Map with player and boss indicators'] : []),
+    ],
+    isGame,
+  };
+}
+
+function contradictsUnityEvidence(summary: ProjectSummary, brief: UnityBrief): boolean {
+  if (!brief.isGame) return false;
+  const claims = [
+    summary.description,
+    summary.targetAudience,
+    ...summary.keyValueProps,
+    ...summary.features.flatMap((feature) => [feature.title, feature.description]),
+  ].join(' ');
+  return /city.?plann|architect|urban develop|building install|texture custom|都市計画|建築家|建物(?:の)?設置|シミュレーションツール/i.test(
+    claims
+  );
 }

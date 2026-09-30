@@ -69,6 +69,8 @@ export interface ProjectSourceContext {
 export interface UnitySceneContext {
   path: string;
   objectNames: string[];
+  /** Literal UI labels serialized in the scene; visibility still depends on runtime state. */
+  uiTexts?: string[];
   referencedAssets: string[];
   referencedScripts: string[];
 }
@@ -309,6 +311,9 @@ async function inspectUnityProject(
   for (const path of scenePaths.slice(0, 40)) {
     const content = await readTextIfPresent(join(rootDir, ...path.split('/')));
     const objectNames = uniqueMatches(content, /^[ \t]*m_Name:[ \t]*(.+)$/gm, 40);
+    const uiTexts = uniqueMatches(content, /^[ \t]*m_(?:Text|text):[ \t]*(.+)$/gm, 30)
+      .map((text) => text.replace(/^['"]|['"]$/g, '').trim())
+      .filter((text) => text.length > 0 && text.length <= 100 && !text.startsWith('{'));
     const referencedAssets = (await resolveUnityReferenceClosure(rootDir, content, guidPaths))
       .map((guid) => guidPaths.get(guid))
       .filter((value): value is string => Boolean(value));
@@ -319,6 +324,7 @@ async function inspectUnityProject(
     enabledScenes.push({
       path,
       objectNames,
+      ...(uiTexts.length > 0 ? { uiTexts } : {}),
       referencedAssets: referencedAssets.slice(0, 80),
       referencedScripts,
     });
@@ -375,7 +381,9 @@ function validateConfiguredUnityScenePaths(rootDir: string, paths: string[]): st
 function discoverUnityScenePaths(assetPaths: string[]): string[] {
   return assetPaths
     .filter((path) => path.endsWith('.unity') && !isExcludedUnityScene(path))
-    .sort((left, right) => unitySceneScore(right) - unitySceneScore(left) || left.localeCompare(right))
+    .sort(
+      (left, right) => unitySceneScore(right) - unitySceneScore(left) || left.localeCompare(right)
+    )
     .slice(0, 40);
 }
 
@@ -473,7 +481,10 @@ async function readTextIfPresent(path: string): Promise<string> {
   }
 }
 
-async function readRouteSourceExcerpt(rootDir: string, files: string[]): Promise<string | undefined> {
+async function readRouteSourceExcerpt(
+  rootDir: string,
+  files: string[]
+): Promise<string | undefined> {
   const candidates = files
     .filter((file) =>
       /(?:^|\/)(?:routes?|router|routing|urls|pages?)(?:\/|\.|-)|(?:^|\/)config\/routes\.rb$|(?:^|\/)app\/[^/]+\/page\.[^.]+$/i.test(
