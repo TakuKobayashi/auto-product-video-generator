@@ -210,7 +210,7 @@ describe('ScenarioGenerator Unity grounding', () => {
         receivedPrompt = prompt;
         return {
           meta: {
-            title: attempts === 1 ? 'City Building Installation Demo' : 'Game',
+            title: 'Game',
             description: 'Demo',
             type: 'demo',
             duration: 10,
@@ -220,10 +220,7 @@ describe('ScenarioGenerator Unity grounding', () => {
             {
               id: 'title',
               title: 'Title',
-              narration:
-                attempts === 1
-                  ? 'このビデオではUnityプロジェクトを紹介します。'
-                  : 'ゲームを始めます。',
+              narration: attempts === 1 ? 'このビデオでは作品を紹介します。' : 'ゲームを始めます。',
               actions: [{ type: 'launch_app' }],
             },
           ],
@@ -265,10 +262,10 @@ describe('ScenarioGenerator Unity grounding', () => {
     expect(receivedPrompt).toContain(
       'Create exactly one scenario scene for each listed Unity Scene'
     );
-    expect(receivedPrompt).toContain('Lead with the strongest concrete detail');
-    expect(receivedPrompt).toContain('Avoid generic introductions, professional audience claims');
+    expect(receivedPrompt).toContain('Begin with a concrete detail supported by that scene');
+    expect(receivedPrompt).toContain('Review this draft against the project summary');
     expect(receivedPrompt).toContain('Assets/Scenes/Title.unity');
-    expect(attempts).toBe(2);
+    expect(attempts).toBe(3);
     expect(scenario.scenes[0].actions).toEqual([{ type: 'wait', ms: 1000 }]);
   });
 });

@@ -368,29 +368,36 @@ describe('ProjectAnalyzer setup grounding', () => {
     ]);
   });
 
-  it('uses parsed Unity evidence instead of an incorrect LLM CLI classification', async () => {
+  it('reviews a mistaken Unity interpretation against scene evidence', async () => {
     let receivedPrompt = '';
+    let attempts = 0;
     const llm: LlmProvider = {
       generate: async () => '',
       generateJson: async <T>(prompt) => {
+        attempts++;
         receivedPrompt = prompt;
         return {
-          name: 'Mixed Unity project',
-          description: 'Example game with server-side tooling',
-          platform: 'cli',
-          setupSteps: [{ name: 'Install dependencies', command: 'npm install', background: false }],
+          name: attempts === 1 ? 'City Building Installation' : 'AltitudeZero',
+          description:
+            attempts === 1
+              ? 'A city planning and building installation tool.'
+              : 'A first-person game scene set in a city.',
+          platform: attempts === 1 ? 'cli' : 'unity',
+          setupSteps: [],
           features: [
             {
-              id: 'help',
-              title: 'CLI help',
-              description: 'Show CLI help',
-              command: 'example --help',
+              id: 'Assets/Main.unity',
+              title: attempts === 1 ? 'Building installation' : 'City scene',
+              description:
+                attempts === 1
+                  ? 'Install buildings in the city.'
+                  : 'A first-person view with a map and boss marker.',
               demoable: true,
               priority: 'high',
             },
           ],
-          targetAudience: 'City planners',
-          keyValueProps: ['Building installation'],
+          targetAudience: attempts === 1 ? 'City planners' : 'Players',
+          keyValueProps: attempts === 1 ? ['Building installation'] : ['City scene with map'],
           suggestedVideoTypes: ['demo'],
         } as T;
       },
@@ -438,24 +445,87 @@ describe('ProjectAnalyzer setup grounding', () => {
     const summary = await new ProjectAnalyzer(llm).analyze(context);
 
     expect(summary.platform).toBe('unity');
-    expect(receivedPrompt).toContain('player controls, combat actions, a boss, or a minimap');
+    expect(attempts).toBe(2);
     expect(receivedPrompt).toContain('AltitudeZero');
     expect(receivedPrompt).toContain('Serialized UI labels: BOSS, LOCAL');
     expect(receivedPrompt).not.toContain('BuildingInstallation.fbx');
+    expect(receivedPrompt).toContain('First draft:');
+    expect(receivedPrompt).not.toContain('supported gameplay');
     expect(summary.name).toBe('AltitudeZero');
     expect(summary.description).toContain('game scene');
     expect(summary.description).toContain('first-person');
-    expect(summary.features[0].description).toContain('boss indicator');
+    expect(summary.features[0].description).toContain('boss marker');
     expect(summary.targetAudience).not.toBe('City planners');
-    expect(summary.keyValueProps).toContain('Map with player and boss indicators');
+    expect(summary.keyValueProps).toContain('City scene with map');
     expect(summary.setupSteps).toEqual([]);
     expect(summary.features).toEqual([
       expect.objectContaining({
         id: 'Assets/Main.unity',
-        title: 'First-person city game scene',
+        title: 'City scene',
         demoable: true,
       }),
     ]);
     expect(summary.features[0].command).toBeUndefined();
+  });
+
+  it('preserves a non-game Unity experience without category-specific rules', async () => {
+    let attempts = 0;
+    const llm: LlmProvider = {
+      generate: async () => '',
+      generateJson: async <T>() => {
+        attempts++;
+        return {
+          name: 'Gallery Walk',
+          description: 'Explore exhibits in a virtual gallery.',
+          platform: 'unity',
+          setupSteps: [],
+          features: [
+            {
+              id: 'Assets/Scenes/Gallery.unity',
+              title: 'Gallery',
+              description: 'View exhibits and their information panels.',
+              demoable: true,
+              priority: 'high',
+            },
+          ],
+          targetAudience: 'Museum visitors',
+          keyValueProps: ['Explore exhibits'],
+          suggestedVideoTypes: ['demo'],
+        } as T;
+      },
+    };
+    const context = {
+      rootDir: '/repo',
+      repositoryRoot: '/repo',
+      projectPath: '.',
+      packageManager: 'npm',
+      packageJson: null,
+      readme: null,
+      framework: 'unknown',
+      routes: [],
+      fileTree: ['GalleryWalk.slnx'],
+      platformHints: ['Unity project'],
+      assetFiles: [],
+      unity: {
+        enabledScenes: [
+          {
+            path: 'Assets/Scenes/Gallery.unity',
+            objectNames: ['Exhibit Panel', 'Information Board'],
+            uiTexts: ['Exhibit details'],
+            referencedAssets: [],
+            referencedScripts: ['Assets/Scripts/ExhibitInfo.cs'],
+          },
+        ],
+        projectScripts: [
+          { path: 'Assets/Scripts/ExhibitInfo.cs', excerpt: 'Show exhibit details on selection.' },
+        ],
+        packages: [],
+      },
+    } as ProjectSourceContext;
+
+    const summary = await new ProjectAnalyzer(llm).analyze(context);
+    expect(attempts).toBe(2);
+    expect(summary.description).toBe('Explore exhibits in a virtual gallery.');
+    expect(summary.features[0].title).toBe('Gallery');
   });
 });
