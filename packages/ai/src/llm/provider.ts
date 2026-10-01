@@ -44,7 +44,8 @@ export class GeminiProvider implements LlmProvider {
 export class OllamaProvider implements LlmProvider {
   constructor(
     private model: string,
-    private host: string = 'http://localhost:11434'
+    private host: string = 'http://localhost:11434',
+    private contextLength: number = 16384
   ) {}
 
   async generate(prompt: string, systemPrompt?: string): Promise<string> {
@@ -83,7 +84,7 @@ export class OllamaProvider implements LlmProvider {
       // Structured extraction should be deterministic. Together with a JSON
       // Schema in `format`, this prevents missing required keys rather than
       // trying to repair malformed output afterwards.
-      options: { temperature: 0 },
+      options: { temperature: 0, num_ctx: this.contextLength },
     };
     if (format) body.format = format;
 
@@ -110,11 +111,19 @@ export class OllamaProvider implements LlmProvider {
       );
     }
 
-    return readOllamaStream(res);
+    return readOllamaStream(res, (inputTokens, outputTokens) => {
+      logger.info(
+        `[ollama] model=${this.model}, context=${this.contextLength}, ` +
+          `input tokens=${inputTokens}, output tokens=${outputTokens}`
+      );
+    });
   }
 }
 
-async function readOllamaStream(res: Response): Promise<string> {
+async function readOllamaStream(
+  res: Response,
+  onComplete: (inputTokens: number, outputTokens: number) => void
+): Promise<string> {
   if (!res.body) throw new Error('Ollama returned an empty response body.');
 
   const reader = res.body.getReader();
@@ -124,9 +133,18 @@ async function readOllamaStream(res: Response): Promise<string> {
 
   const consumeLine = (line: string) => {
     if (!line.trim()) return;
-    const chunk = JSON.parse(line) as { response?: string; error?: string };
+    const chunk = JSON.parse(line) as {
+      response?: string;
+      error?: string;
+      done?: boolean;
+      prompt_eval_count?: number;
+      eval_count?: number;
+    };
     if (chunk.error) throw new Error(`Ollama generation failed: ${chunk.error}`);
     output += chunk.response || '';
+    if (chunk.done && typeof chunk.prompt_eval_count === 'number') {
+      onComplete(chunk.prompt_eval_count, chunk.eval_count || 0);
+    }
   };
 
   while (true) {
@@ -247,7 +265,8 @@ function buildSingleProvider(
   provider: LlmProviderName,
   model: string,
   apiKeyEnv: string | undefined,
-  ollamaHost: string
+  ollamaHost: string,
+  ollamaContextLength: number
 ): LlmProvider {
   const getKey = (envName: string) => {
     const key = process.env[envName];
@@ -265,7 +284,7 @@ function buildSingleProvider(
     case 'groq':
       return new GroqProvider(model, getKey(apiKeyEnv || 'GROQ_API_KEY'));
     case 'ollama':
-      return new OllamaProvider(model, process.env.OLLAMA_HOST || ollamaHost);
+      return new OllamaProvider(model, process.env.OLLAMA_HOST || ollamaHost, ollamaContextLength);
     default:
       throw new Error(`Unknown LLM provider: ${provider satisfies never}`);
   }
@@ -276,7 +295,8 @@ export function createLlmProvider(config: LlmConfig): LlmProvider {
     config.provider,
     config.model,
     config.apiKeyEnv,
-    config.ollamaHost
+    config.ollamaHost,
+    config.ollamaContextLength
   );
 
   if (!config.fallbackProvider) {
@@ -307,7 +327,8 @@ export function createLlmProvider(config: LlmConfig): LlmProvider {
       config.fallbackProvider!,
       fallbackModel,
       config.fallbackApiKeyEnv,
-      config.ollamaHost
+      config.ollamaHost,
+      config.ollamaContextLength
     );
 
   return new FallbackLlmProvider(

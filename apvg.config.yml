@@ -29,6 +29,7 @@ llm:
   provider: ollama
   model: qwen2.5:7b-instruct
   ollamaHost: http://127.0.0.1:11434
+  ollamaContextLength: 16384
 voice:
   # Every string in this YAML supports ${ANY_ENV_KEY}. A .env beside this file
   # is loaded automatically. Set envFile to use another file as well.

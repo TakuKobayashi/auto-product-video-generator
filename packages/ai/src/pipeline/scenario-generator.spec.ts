@@ -199,73 +199,86 @@ describe('ScenarioGenerator CLI grounding', () => {
   });
 });
 
-describe('ScenarioGenerator Unity grounding', () => {
-  it('asks for scene-ordered narration and retains only wait actions', async () => {
-    let receivedPrompt = '';
-    let attempts = 0;
-    const llm = {
-      generate: async () => '',
-      generateJson: async <T>(prompt: string) => {
-        attempts++;
-        receivedPrompt = prompt;
-        return {
-          meta: {
-            title: 'Game',
-            description: 'Demo',
-            type: 'demo',
-            duration: 10,
-            language: 'ja',
-          },
-          scenes: [
-            {
-              id: 'title',
-              title: 'Title',
-              narration: attempts === 1 ? 'このビデオでは作品を紹介します。' : 'ゲームを始めます。',
-              actions: [{ type: 'launch_app' }],
-            },
-          ],
-        } as T;
+describe('ScenarioGenerator Unity narration preservation', () => {
+  it('keeps every source-grounded capability without another text rewrite', async () => {
+    const llm: LlmProvider = {
+      generate: async () => {
+        throw new Error('Unexpected rewrite');
+      },
+      generateJson: async () => {
+        throw new Error('Unexpected rewrite');
       },
     };
+    const narration = 'A map shows positions. Movement and selection controls are available.';
     const summary = {
-      name: 'Game',
-      description: 'A game',
+      name: 'Example',
+      description: 'View and controls',
       platform: 'unity',
       setupSteps: [],
       features: [
         {
-          id: 'Assets/Scenes/Title.unity',
-          title: 'Title',
-          description: 'Start screen',
+          id: 'Assets/Scenes/Main.unity',
+          title: 'View',
+          description: narration,
           demoable: true,
           priority: 'high',
         },
       ],
-      targetAudience: 'players',
-      keyValueProps: ['fun'],
+      targetAudience: 'Users',
+      keyValueProps: [],
       suggestedVideoTypes: ['demo'],
-    } as const;
-    const config = {
-      type: 'demo',
-      language: 'ja',
-      resolution: '1920x1080',
-      fps: 30,
-      sceneGapSeconds: 0.5,
     } as any;
-
-    const { scenario } = await new ScenarioGenerator(llm).generate(
-      summary as any,
+    const config = { type: 'demo', language: 'en', sceneGapSeconds: 1 } as any;
+    const { scenario, script } = await new ScenarioGenerator(llm).generate(
+      summary,
       config,
       'http://localhost'
     );
-
-    expect(receivedPrompt).toContain(
-      'Create exactly one scenario scene for each listed Unity Scene'
-    );
-    expect(receivedPrompt).toContain('Begin with a concrete detail supported by that scene');
-    expect(receivedPrompt).toContain('Review this draft against the project summary');
-    expect(receivedPrompt).toContain('Assets/Scenes/Title.unity');
-    expect(attempts).toBe(3);
+    expect(scenario.scenes[0].id).toBe('Main');
     expect(scenario.scenes[0].actions).toEqual([{ type: 'wait', ms: 1000 }]);
+    expect(scenario.scenes[0].narration).toBe(narration);
+    expect(scenario.meta.language).toBe('en');
+    expect(scenario.meta.platform).toBe('unity');
+    expect(scenario.meta.duration).toBe(script.scenes[0].endTime);
+    expect(script.scenes[0].narration).toBe(narration);
+  });
+  it('analyzes emotion without changing the grounded narration', async () => {
+    let calls = 0;
+    const llm: LlmProvider = {
+      generate: async () => '',
+      generateJson: async <T>() => {
+        calls++;
+        return { emotions: [{ j: calls === 1 ? 1 : 0.3, s: 0.2, a: 0 }] } as T;
+      },
+    };
+    const summary = {
+      name: 'Gallery',
+      description: 'Browse exhibits',
+      platform: 'unity',
+      setupSteps: [],
+      features: [
+        {
+          id: 'Assets/Gallery.unity',
+          title: 'Exhibits',
+          description: 'Select an exhibit to read its details.',
+          demoable: true,
+          priority: 'high',
+        },
+      ],
+      targetAudience: 'Visitors',
+      keyValueProps: [],
+      suggestedVideoTypes: ['demo'],
+    } as any;
+    const config = { type: 'demo', language: 'en', duration: 20, sceneGapSeconds: 1 } as any;
+    const { scenario, script } = await new ScenarioGenerator(llm).generate(
+      summary,
+      config,
+      'http://localhost',
+      true
+    );
+    expect(calls).toBe(2);
+    expect(scenario.scenes[0].narration).toBe(summary.features[0].description);
+    expect(script.scenes[0].emotion).toEqual({ j: 0.3, s: 0.2, a: 0 });
+    expect(scenario.meta.duration).toBe(20);
   });
 });

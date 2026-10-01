@@ -87,7 +87,12 @@ export async function runAnalyze(options: AnalyzeOptions): Promise<void> {
   // AI: turn the deterministic source context into a feature summary.
   const llm = createLlmProviderForTask(config.llm, 'analyze');
   const analyzer = new ProjectAnalyzer(llm);
-  const summary = await analyzer.analyze(sourceContext, targetUrl);
+  const summary = await analyzer.analyze(
+    sourceContext,
+    targetUrl,
+    config.video.language,
+    config.video.scenarioPrompt
+  );
 
   applyInferredTargetUrl(config, summary);
 

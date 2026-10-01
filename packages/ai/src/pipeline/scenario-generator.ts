@@ -9,6 +9,7 @@ import {
   logger,
   withHeartbeat,
 } from '@auto-product-video-generator/core';
+import { z } from 'zod';
 import { LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
 import { buildScriptFromScenario } from './script-builder.js';
@@ -110,6 +111,87 @@ or guess a URL.
 export class ScenarioGenerator {
   constructor(private llm: LlmProvider) {}
 
+  private async generateUnityScenario(
+    summary: ProjectSummary,
+    config: VideoConfig,
+    generateEmotion: boolean
+  ): Promise<{ scenario: Scenario; script: Script }> {
+    // The source-grounded analysis already writes viewer-facing narration in
+    // the requested language. Rewriting it with the same small model dropped
+    // supported controls and introduced mistranslated terms in real replays.
+    const features = summary.features.filter((feature) => feature.demoable);
+    const scenario = ScenarioSchema.parse({
+      meta: {
+        title: summary.name,
+        description: summary.description,
+        type: config.type,
+        duration: config.duration ?? 1,
+        language: config.language,
+        platform: 'unity',
+      },
+      setup: summary.setupSteps,
+      scenes: features.map((feature) => ({
+        id: feature.id,
+        title: feature.title,
+        narration: feature.description,
+        actions: [{ type: 'wait', ms: 1000 }],
+      })),
+    });
+    groundUnityScenarioActions(scenario, summary);
+    if (generateEmotion && scenario.scenes.length > 0) {
+      const emotion = z
+        .object({
+          j: z.number().min(0).max(1),
+          s: z.number().min(0).max(1),
+          a: z.number().min(0).max(1),
+        })
+        .refine((e) => e.j + e.s + e.a <= 1, 'Emotion values must total at most 1');
+      const emotionSchema = z.object({ emotions: z.array(emotion).length(scenario.scenes.length) });
+      const number = { type: 'number', minimum: 0, maximum: 1 };
+      const result = await withHeartbeat(
+        'narration emotion analysis',
+        generateValidatedJson(
+          this.llm,
+          emotionSchema,
+          JSON.stringify(scenario.scenes.map((scene) => scene.narration)),
+          'Analyze the performance of each supplied narration in order. Return emotions only. ' +
+            'j is joy, s is sadness, a is anger; each is 0 to 1 and their total is at most 1. ' +
+            'Use zeros for neutral speech. Do not rewrite narration.',
+          {
+            label: 'scenario-emotion',
+            jsonSchema: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['emotions'],
+              properties: {
+                emotions: {
+                  type: 'array',
+                  minItems: scenario.scenes.length,
+                  maxItems: scenario.scenes.length,
+                  items: {
+                    type: 'object',
+                    additionalProperties: false,
+                    required: ['j', 's', 'a'],
+                    properties: { j: number, s: number, a: number },
+                  },
+                },
+              },
+            },
+          }
+        )
+      );
+      scenario.scenes.forEach((scene, index) => {
+        scene.emotion = result.emotions[index];
+      });
+    }
+    const script = buildScriptFromScenario(scenario, config.sceneGapSeconds);
+    scenario.meta.duration = config.duration ?? script.scenes.at(-1)?.endTime ?? 1;
+    logger.success(
+      `Unity scenario derived from ${scenario.scenes.length} source-grounded scene description(s).`
+    );
+    return { scenario, script };
+  }
+
   async generate(
     summary: ProjectSummary,
     config: VideoConfig,
@@ -118,20 +200,18 @@ export class ScenarioGenerator {
   ): Promise<{ scenario: Scenario; script: Script }> {
     logger.step('scenario', `Generating ${config.type} scenario via LLM...`);
 
+    if (summary.platform === 'unity') {
+      return this.generateUnityScenario(summary, config, generateEmotion);
+    }
+
     const baseUrl = targetUrl.replace(/\/$/, '');
     const isCli = summary.platform === 'cli';
-    const isUnity = summary.platform === 'unity';
     const demoableFeatures = summary.features
-      .filter(
-        (f) =>
-          f.demoable && (isCli ? Boolean(f.command) : isUnity ? true : isConcreteWebRoute(f.route))
-      )
+      .filter((f) => f.demoable && (isCli ? Boolean(f.command) : isConcreteWebRoute(f.route)))
       .map((f) =>
         isCli
           ? `- ${f.title}: ${f.description}\n  Command: ${f.command}`
-          : isUnity
-            ? `- Scene ${f.id}: ${f.title}: ${f.description}`
-            : `- ${f.title}: ${f.description}\n  URL: ${resolveFeatureUrl(baseUrl, f.route)}`
+          : `- ${f.title}: ${f.description}\n  URL: ${resolveFeatureUrl(baseUrl, f.route)}`
       )
       .join('\n');
     const prompt = `Create a ${config.type} promotional video scenario.
@@ -142,14 +222,12 @@ Target audience: ${summary.targetAudience}
 Key value props:
 ${summary.keyValueProps.map((v) => `- ${v}`).join('\n')}
 
-Features to demonstrate${isCli || isUnity ? '' : ' (each with its supplied URL — use only these URLs for goto actions)'}:
+Features to demonstrate${isCli ? '' : ' (each with its supplied URL — use only these URLs for goto actions)'}:
 ${
   demoableFeatures ||
   (isCli
     ? '- (no documented CLI commands were identified; use a safe --help command)'
-    : isUnity
-      ? '- (no enabled Unity scenes were identified)'
-      : `- (no demoable features identified; use ${baseUrl} as a general intro)`)
+    : `- (no demoable features identified; use ${baseUrl} as a general intro)`)
 }
 
 App base URL: ${baseUrl}
@@ -189,9 +267,7 @@ ${
 ${
   isCli
     ? 'This is a CLI project. Create a separate scene for each useful command listed above and use only those exact commands. Show real safe workflows ending in --dry-run when provided; otherwise show the relevant subcommand --help. Do not repeat root --help in every scene. Never publish, authenticate, expose secrets/environment variables, modify files, or start a server/watcher. Do not use goto, click, type, scroll, hover, or mobile actions.'
-    : isUnity
-      ? `This is a Unity recording that opens the listed scenes in order. Create exactly one scenario scene for each listed Unity Scene, preserving that order. The scene feature description is evidence, not text to recite verbatim. Write a short narration in the requested language, as natural speech about the scene. Begin with a concrete detail supported by that scene. Do not introduce the video or the software framework. Do not turn a setting, asset name, or controller name into an unsupported product purpose. Mention an interaction only when the feature supports it, and do not claim it appears in the recording merely because source code implements it. The title and description must likewise describe the recorded experience. Use only wait actions for pacing; do not use goto, launch_app, tap, click, type, scroll, screenshot, or run_command.`
-      : `The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
+    : `The FIRST scene's first action must be a "goto" to ${baseUrl}. Subsequent scenes that
 demonstrate a specific feature should "goto" that feature's URL from the list above.`
 }
 ${
@@ -206,29 +282,9 @@ Respond with JSON only — just the scenario object, no "script" field, no other
       `  Calling ${describeProvider(this.llm)}... this can take a while, especially on local models.`
     );
 
-    const scenarioSchema = isUnity
-      ? PromotionalScenarioSchema.superRefine((candidate, ctx) => {
-          const texts = [
-            { path: ['meta', 'title'], value: candidate.meta.title },
-            { path: ['meta', 'description'], value: candidate.meta.description },
-            ...candidate.scenes.flatMap((scene, index) => [
-              { path: ['scenes', index, 'title'], value: scene.title },
-              { path: ['scenes', index, 'narration'], value: scene.narration },
-            ]),
-          ];
-          for (const { path, value } of texts) {
-            if (VIDEO_META_LANGUAGE.test(value)) {
-              ctx.addIssue({
-                code: 'custom',
-                path,
-                message: 'Describe the scene itself, not the video or implementation.',
-              });
-            }
-          }
-        })
-      : PromotionalScenarioSchema;
+    const scenarioSchema = PromotionalScenarioSchema;
 
-    let scenario = await withHeartbeat(
+    const scenario = await withHeartbeat(
       'scenario generation',
       generateValidatedJson<Scenario>(this.llm, scenarioSchema, prompt, SYSTEM_PROMPT, {
         label: 'scenario',
@@ -236,30 +292,6 @@ Respond with JSON only — just the scenario object, no "script" field, no other
         jsonSchema: SCENARIO_OUTPUT_SCHEMA,
       })
     );
-
-    if (isUnity) {
-      const reviewPrompt = `${prompt}
-
-Review this draft against the project summary and each scene feature above.
-The draft may have inferred a product category, audience, or use case from a
-setting or asset name. Check every title, description, and narration claim
-against the supplied evidence. Rewrite unsupported claims in concrete,
-modest language. Keep exactly one scene per listed recording scene, in order.
-Do not assume the draft's interpretation is correct.
-
-Draft scenario:
-${JSON.stringify(scenario)}
-
-Return the complete corrected scenario JSON only.`;
-      scenario = await withHeartbeat(
-        'scenario review',
-        generateValidatedJson<Scenario>(this.llm, scenarioSchema, reviewPrompt, SYSTEM_PROMPT, {
-          label: 'scenario-review',
-          maxRetries: 2,
-          jsonSchema: SCENARIO_OUTPUT_SCHEMA,
-        })
-      );
-    }
 
     // The platform and setup plan were already determined,
     // deterministically-grounded, in `analyze` (see platform-classifier.ts
@@ -274,9 +306,6 @@ Return the complete corrected scenario JSON only.`;
         break;
       case 'cli':
         groundCliScenarioActions(scenario, summary);
-        break;
-      case 'unity':
-        groundUnityScenarioActions(scenario, summary);
         break;
       default:
         groundDeviceScenarioActions(scenario);
@@ -365,8 +394,6 @@ function groundDeviceScenarioActions(scenario: Scenario): void {
 
 const TECHNICAL_TERMS =
   /\b(?:Next\.js|App Router|TypeScript|JavaScript|React|Cloudflare|Workers?|Hono|API(?:s| routes?)?|serverless|front-?end|back-?end|runtime|framework|deployment|database|architecture|static generation)\b|技術仕様|実装|フレームワーク|プログラミング言語|サーバーレス|アーキテクチャ|静的生成/iu;
-
-const VIDEO_META_LANGUAGE = /this video|このビデオでは|この動画では|本動画では/iu;
 
 const PromotionalScenarioSchema = ScenarioSchema.superRefine((scenario, ctx) => {
   scenario.scenes.forEach((scene, index) => {

@@ -368,14 +368,16 @@ describe('ProjectAnalyzer setup grounding', () => {
     ]);
   });
 
-  it('reviews a mistaken Unity interpretation against scene evidence', async () => {
+  it('validates Unity platform and recording scene ids against source evidence', async () => {
     let receivedPrompt = '';
+    let receivedSchema: unknown;
     let attempts = 0;
     const llm: LlmProvider = {
       generate: async () => '',
-      generateJson: async <T>(prompt) => {
+      generateJson: async <T>(prompt, _system, schema) => {
         attempts++;
         receivedPrompt = prompt;
+        receivedSchema = schema;
         return {
           name: attempts === 1 ? 'City Building Installation' : 'AltitudeZero',
           description:
@@ -449,7 +451,17 @@ describe('ProjectAnalyzer setup grounding', () => {
     expect(receivedPrompt).toContain('AltitudeZero');
     expect(receivedPrompt).toContain('Serialized UI labels: BOSS, LOCAL');
     expect(receivedPrompt).not.toContain('BuildingInstallation.fbx');
-    expect(receivedPrompt).toContain('First draft:');
+    expect(receivedPrompt).toContain('failed JSON schema validation');
+    expect(receivedPrompt).toContain("Combine the scene's supported activities");
+    expect(receivedSchema).toMatchObject({
+      properties: {
+        features: {
+          minItems: 1,
+          maxItems: 1,
+          items: { properties: { id: { enum: ['Assets/Main.unity'] } } },
+        },
+      },
+    });
     expect(receivedPrompt).not.toContain('supported gameplay');
     expect(summary.name).toBe('AltitudeZero');
     expect(summary.description).toContain('game scene');
@@ -472,8 +484,20 @@ describe('ProjectAnalyzer setup grounding', () => {
     let attempts = 0;
     const llm: LlmProvider = {
       generate: async () => '',
-      generateJson: async <T>() => {
+      generateJson: async <T>(prompt) => {
         attempts++;
+        if (prompt.startsWith('Return one concise behavior')) {
+          return {
+            observations: [
+              {
+                path: 'Assets/Scripts/ExhibitInfo.cs',
+                behavior: 'Show exhibit details on selection.',
+              },
+            ],
+          } as T;
+        }
+        expect(prompt).toContain('ExhibitInfo.cs: Show exhibit details on selection.');
+        expect(prompt).not.toContain('supported gameplay');
         return {
           name: 'Gallery Walk',
           description: 'Explore exhibits in a virtual gallery.',

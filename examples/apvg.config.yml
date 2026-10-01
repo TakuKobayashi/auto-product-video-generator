@@ -118,6 +118,7 @@ llm:
   #   provider: "ollama"
   #   model: "qwen2.5:7b-instruct"   # see Taskfile.yml's vars: block
   #   ollamaHost: "http://localhost:11434"
+  #   ollamaContextLength: 16384 # runtime input/output window; larger values use more memory
   #
   # Option C — use both together: try Ollama first, fall back to Gemini
   # automatically if Ollama is unreachable / the model isn't pulled yet /

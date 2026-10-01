@@ -7,10 +7,11 @@ import {
   withHeartbeat,
 } from '@auto-product-video-generator/core';
 import { detectStartCommand, ProjectSourceContext } from '@auto-product-video-generator/source';
+import { z } from 'zod';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, relative, resolve, win32 } from 'node:path';
-import { LlmProvider } from '../llm/provider.js';
+import { JsonSchema, LlmProvider } from '../llm/provider.js';
 import { generateValidatedJson } from '../utils/validated-json.js';
 import { buildPlatformClassificationPrompt } from './platform-classifier.js';
 import { buildSetupPlanningPrompt } from './setup-planner.js';
@@ -66,66 +67,153 @@ Hard rules:
 - A background web-server step has readyUrl as a real URL string.
 - No markdown, comments, trailing commas, or explanation. JSON only.`;
 
+const UNITY_SYSTEM_PROMPT = `You read source code to identify the actual user experience.
+Infer the application's purpose from the combination of scene objects, UI,
+input handlers, and behavior code. Do not assume a category from one asset or
+effect. Distinguish the end user's activities from development helpers.
+The description must identify the kind of application and its main activity
+in plain, precise language. Do not replace concrete activities with generic
+promotional adjectives. TargetAudience means the end users, not the authors
+of scripts or assets. Features are recording-scene overviews: describe the
+initial scene and its supported controls together, without inventing events
+or claiming that user-triggered behaviors happen automatically.
+Output the complete project-summary JSON required by the supplied schema.
+Use exactly the verified scene paths as feature ids, platform unity, and
+setupSteps []. Return JSON only.`;
+
 export class ProjectAnalyzer {
   constructor(private llm: LlmProvider) {}
 
-  async analyze(context: ProjectSourceContext, targetUrl?: string): Promise<ProjectSummary> {
+  private async readUnityBehaviors(context: ProjectSourceContext): Promise<string> {
+    const scripts = context
+      .unity!.projectScripts.filter((script) => isFirstPartyUnityScript(script.path))
+      .slice(0, 12)
+      .map((script) => ({ path: script.path, excerpt: script.excerpt.slice(0, 3000) }));
+    if (scripts.length === 0) return '(no behavior excerpts available)';
+    const schema = z
+      .object({
+        observations: z
+          .array(z.object({ path: z.string(), behavior: z.string().min(1).max(240) }))
+          .length(scripts.length),
+      })
+      .superRefine((value, ctx) => {
+        scripts.forEach((script, index) => {
+          if (value.observations[index]?.path !== script.path) {
+            ctx.addIssue({
+              code: 'custom',
+              path: ['observations', index, 'path'],
+              message: `Preserve the exact source path and order: ${script.path}`,
+            });
+          }
+        });
+      });
+    const evidence = await withHeartbeat(
+      'source behavior extraction',
+      generateValidatedJson(
+        this.llm,
+        schema,
+        'Return one concise behavior observation per source excerpt, preserving the exact path and order. ' +
+          'Say no behavior implemented when the shown methods are empty. Excerpts may be incomplete; ' +
+          'do not invent omitted behavior. Report only what the excerpt establishes.\n' +
+          JSON.stringify(scripts),
+        'Read executable source code and report only behaviors implemented by the shown statements. ' +
+          'Empty lifecycle methods implement no behavior. Names are not evidence of actions. ' +
+          'Do not infer a product category or promote it. Return JSON only.',
+        {
+          label: 'source-behaviors',
+          jsonSchema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['observations'],
+            properties: {
+              observations: {
+                type: 'array',
+                minItems: scripts.length,
+                maxItems: scripts.length,
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['path', 'behavior'],
+                  properties: {
+                    path: { type: 'string', enum: scripts.map((script) => script.path) },
+                    behavior: { type: 'string', minLength: 1, maxLength: 240 },
+                  },
+                },
+              },
+            },
+          },
+        }
+      )
+    );
+    for (const item of evidence.observations) {
+      logger.info(`[source-behaviors] ${item.path}: ${item.behavior}`);
+    }
+    return evidence.observations.map((item) => `${item.path}: ${item.behavior}`).join('\n');
+  }
+
+  async analyze(
+    context: ProjectSourceContext,
+    targetUrl?: string,
+    language = 'en',
+    narrationDirection?: string
+  ): Promise<ProjectSummary> {
     logger.step('analyze', 'Calling LLM to analyze project source...');
     logger.info(
       '  This can take a while, especially on local models — progress prints every few seconds.'
     );
 
-    const prompt = buildPrompt(context, targetUrl);
+    const observations = context.unity ? await this.readUnityBehaviors(context) : undefined;
+    const prompt = context.unity
+      ? buildUnityPrompt(context, observations) +
+        (narrationDirection
+          ? `\nNarration style direction (must preserve supported facts): ${narrationDirection}`
+          : '')
+      : buildPrompt(context, targetUrl);
+    const systemPrompt = context.unity
+      ? UNITY_SYSTEM_PROMPT +
+        (language.startsWith('ja')
+          ? '\n説明・特徴・対象利用者・利点はすべて自然な日本語で書いてください。専門用語の音写ではなく、利用者が何をできるかを一般的な言葉で説明してください。'
+          : `\nWrite viewer-facing descriptions in language ${language}.`)
+      : SYSTEM_PROMPT;
+    const outputSchema = context.unity
+      ? buildUnitySummaryOutputSchema(context)
+      : PROJECT_SUMMARY_OUTPUT_SCHEMA;
 
-    let summary = await withHeartbeat(
+    const summarySchema = context.unity
+      ? ProjectSummarySchema.superRefine((candidate, ctx) => {
+          if (candidate.platform !== 'unity') {
+            ctx.addIssue({
+              code: 'custom',
+              path: ['platform'],
+              message: 'The source inspector verified this as a Unity project.',
+            });
+          }
+          const scenes = context.unity!.enabledScenes;
+          if (candidate.features.length !== scenes.length) {
+            ctx.addIssue({
+              code: 'custom',
+              path: ['features'],
+              message: `Group all supported capabilities into one scene overview for each of the ${scenes.length} recording scenes. Preserve the supported capabilities in each overview's description.`,
+            });
+          }
+          scenes.forEach((scene, index) => {
+            if (candidate.features[index]?.id !== scene.path) {
+              ctx.addIssue({
+                code: 'custom',
+                path: ['features', index, 'id'],
+                message: `Use the exact recording scene path: ${scene.path}`,
+              });
+            }
+          });
+        })
+      : ProjectSummarySchema;
+    const summary = await withHeartbeat(
       'project analysis',
-      generateValidatedJson<ProjectSummary>(this.llm, ProjectSummarySchema, prompt, SYSTEM_PROMPT, {
+      generateValidatedJson<ProjectSummary>(this.llm, summarySchema, prompt, systemPrompt, {
         label: 'analyze',
-        jsonSchema: PROJECT_SUMMARY_OUTPUT_SCHEMA,
+        jsonSchema: outputSchema,
       })
     );
-
-    // Unity inspection is stronger evidence than an LLM classification.
-    // The focused review above asks the model to correct its own product
-    // claims and requires the already verified platform.
-    if (context.unity) {
-      const reviewPrompt = buildUnityReviewPrompt(context, summary);
-      summary = await withHeartbeat(
-        'project analysis review',
-        generateValidatedJson<ProjectSummary>(
-          this.llm,
-          ProjectSummarySchema.superRefine((candidate, ctx) => {
-            if (candidate.platform !== 'unity') {
-              ctx.addIssue({
-                code: 'custom',
-                path: ['platform'],
-                message: 'The source inspector verified this as a Unity project.',
-              });
-            }
-            const scenes = context.unity!.enabledScenes;
-            if (candidate.features.length !== scenes.length) {
-              ctx.addIssue({
-                code: 'custom',
-                path: ['features'],
-                message: `Return exactly one feature for each of the ${scenes.length} recording scenes.`,
-              });
-            }
-            scenes.forEach((scene, index) => {
-              if (candidate.features[index]?.id !== scene.path) {
-                ctx.addIssue({
-                  code: 'custom',
-                  path: ['features', index, 'id'],
-                  message: `Use the exact recording scene path: ${scene.path}`,
-                });
-              }
-            });
-          }),
-          reviewPrompt,
-          SYSTEM_PROMPT,
-          { label: 'analyze-review', jsonSchema: PROJECT_SUMMARY_OUTPUT_SCHEMA }
-        )
-      );
-    }
     switch (summary.platform) {
       case 'cli':
         // CLI applications do not need a background development server.
@@ -497,7 +585,7 @@ belong only in setupSteps; viewer-facing fields must describe the actual product
 Respond with JSON only.`;
 }
 
-function buildUnityPrompt(context: ProjectSourceContext): string {
+function buildUnityPrompt(context: ProjectSourceContext, observations?: string): string {
   const unity = context.unity!;
   const projectName = context.fileTree
     .find((path) => /^[^/]+\.slnx?$/.test(path))
@@ -512,11 +600,13 @@ function buildUnityPrompt(context: ProjectSourceContext): string {
       return `${index + 1}. ${scene.path}\n   Scene objects: ${names.join(', ') || '(none parsed)'}\n   Serialized UI labels: ${scene.uiTexts?.slice(0, 20).join(', ') || '(none parsed)'}\n   Referenced scripts: ${scripts.join(', ') || '(none parsed)'}`;
     })
     .join('\n');
-  const scripts = unity.projectScripts
-    .filter((script) => isFirstPartyUnityScript(script.path))
-    .slice(0, 12)
-    .map((script) => `--- ${script.path} ---\n${script.excerpt.slice(0, 3000)}`)
-    .join('\n');
+  const scripts =
+    observations ??
+    unity.projectScripts
+      .filter((script) => isFirstPartyUnityScript(script.path))
+      .slice(0, 12)
+      .map((script) => `--- ${script.path} ---\n${script.excerpt.slice(0, 3000)}`)
+      .join('\n');
 
   return `Analyze this Unity project for a video of its recorded scenes.
 The platform is already verified as "unity". Output platform "unity" and setupSteps [].
@@ -525,10 +615,15 @@ Project name from solution file: ${projectName || '(unknown; do not infer a name
 Recording scenes, in order:
 ${scenes || '(none found)'}
 
-First-party behavior excerpts:
+First-party behavior observations (limited to the supplied excerpts; not proof of unshown code):
 ${scripts || '(none found)'}
 
 Infer the project's purpose and audience from the scene content and behavior.
+Identify the primary participant activity using the scene roles and the input
+handling observations together. Never add a behavior absent from the observations.
+An empty handler or controller name does not establish any action. Say what kind of experience this is and what a person
+can concretely do. Generic phrases such as "dynamic environment", "immersive
+experience", or "interactive elements" are not substitutes for this analysis.
 Use the object hierarchy and serialized UI text as clues, then check what the
 attached scripts actually do. UI text may be hidden at runtime. A filename for
 an imported model or texture tells you what an asset is, not what the whole
@@ -542,25 +637,45 @@ Write a plain-language description, targetAudience, and keyValueProps supported
 by the scene. Create exactly one demoable feature per recording scene in order;
 each feature id must be its exact scene path. Omit route and command. Use
 specific viewer-facing descriptions rather than script, object, or scene names.
+Here a feature is a recording-scene overview, not one individual mechanic.
+Combine the scene's supported activities in its description. Describe the
+overall experience before its individual parts; do not reduce the entire
+project to a single effect, UI widget, or helper component.
+The feature description must name the concrete supported activities. Separate
+the scene's initial view and UI from behaviors requiring user input. Do not
+invent events, progression, objectives, or automatic actions from a controller
+name. This description is the evidence available to the scenario writer.
 If evidence is thin, use modest wording and empty keyValueProps rather than
 inventing a use case or audience.`;
 }
 
-function buildUnityReviewPrompt(context: ProjectSourceContext, candidate: ProjectSummary): string {
-  return `${buildUnityPrompt(context)}
-
-Review this first draft against the source evidence above. It may contain an
-incorrect product category, audience, benefit, or interpretation of asset names.
-For each viewer-facing field, ask whether the scene hierarchy, UI text, or
-behavior code actually supports it. Correct unsupported claims and preserve
-useful details that are supported. Infer the product category yourself from the
-evidence; do not assume the first draft's category is correct.
-
-First draft:
-${JSON.stringify(candidate)}
-
-Return a complete corrected project-summary JSON object with platform "unity",
-setupSteps [], and one feature per recording scene in the listed order. JSON only.`;
+function buildUnitySummaryOutputSchema(context: ProjectSourceContext): JsonSchema {
+  const properties = PROJECT_SUMMARY_OUTPUT_SCHEMA.properties as Record<string, JsonSchema>;
+  const feature = properties.features.items as JsonSchema;
+  const scenes = context.unity!.enabledScenes;
+  return {
+    ...PROJECT_SUMMARY_OUTPUT_SCHEMA,
+    properties: {
+      ...properties,
+      platform: { type: 'string', const: 'unity' },
+      setupSteps: { ...properties.setupSteps, maxItems: 0 },
+      features: {
+        ...properties.features,
+        minItems: scenes.length,
+        maxItems: scenes.length,
+        items: {
+          ...feature,
+          properties: {
+            ...(feature.properties as Record<string, JsonSchema>),
+            id:
+              scenes.length > 0
+                ? { type: 'string', enum: scenes.map((scene) => scene.path) }
+                : { type: 'string' },
+          },
+        },
+      },
+    },
+  };
 }
 
 function isFirstPartyUnityScript(path: string): boolean {

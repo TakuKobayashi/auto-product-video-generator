@@ -144,7 +144,9 @@ export async function runBuild(options: BuildOptions): Promise<void> {
       const analyzer = new ProjectAnalyzer(analyzeLlm);
       summary = await analyzer.analyze(
         sourceContext,
-        config.target.autoDetectUrl ? undefined : config.target.url
+        config.target.autoDetectUrl ? undefined : config.target.url,
+        config.video.language,
+        config.video.scenarioPrompt
       );
       applyInferredTargetUrl(config, summary);
       switch (summary.platform) {

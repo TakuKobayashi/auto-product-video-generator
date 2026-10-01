@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { OllamaProvider } from './provider.js';
+import { LlmConfigSchema } from '@auto-product-video-generator/core';
+import { createLlmProviderForTask, OllamaProvider } from './provider.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -30,6 +31,26 @@ describe('OllamaProvider structured output', () => {
 
     expect(result).toEqual({ description: 'Demo' });
     expect(requestBody?.format).toEqual(schema);
-    expect(requestBody?.options).toEqual({ temperature: 0 });
+    expect(requestBody?.options).toEqual({ temperature: 0, num_ctx: 16384 });
+  });
+
+  it('keeps a configured context length when selecting a task model', async () => {
+    let requestBody: Record<string, unknown> | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        requestBody = JSON.parse(String(init?.body));
+        return new Response('{"response":"{}","done":true}\n');
+      })
+    );
+    const config = LlmConfigSchema.parse({
+      provider: 'ollama',
+      model: 'default-model',
+      ollamaContextLength: 8192,
+      tasks: { analyze: { model: 'analysis-model' } },
+    });
+    await createLlmProviderForTask(config, 'analyze').generateJson('prompt');
+    expect(requestBody?.model).toBe('analysis-model');
+    expect(requestBody?.options).toEqual({ temperature: 0, num_ctx: 8192 });
   });
 });

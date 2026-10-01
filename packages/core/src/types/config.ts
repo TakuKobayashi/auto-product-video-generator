@@ -234,6 +234,9 @@ export const LlmConfigSchema = z.object({
   // Ollama-specific connection settings (used when provider === 'ollama',
   // or as the fallback target when fallbackProvider === 'ollama').
   ollamaHost: z.string().url().default('http://localhost:11434'),
+  // Source analysis can exceed Ollama's hardware-dependent 4K default.
+  // This is the runtime context window, not the model's advertised maximum.
+  ollamaContextLength: z.number().int().positive().default(16384),
 
   // Optional fallback provider: if the primary provider's call fails
   // (network error, missing API key, rate limit, model not pulled, etc.)

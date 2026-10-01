@@ -170,7 +170,9 @@ jobs:
         run: node .github/automation/configure-ci-apvg.mjs
 
       - name: Analyze current repository
-        run: pnpm apvg project analyze
+        run: |
+          pnpm apvg project analyze
+          node .github/automation/guard-ollama-context.mjs
 
       - name: Read analyzed project type
         id: analyzed-project
@@ -264,7 +266,9 @@ jobs:
         run: bash .github/automation/guard-recording-routes.sh --summary
 
       - name: Generate scenario
-        run: pnpm apvg video scenario generate
+        run: |
+          pnpm apvg video scenario generate
+          node .github/automation/guard-ollama-context.mjs
 
       - name: Verify recording routes
         if: steps.analyzed-project.outputs.platform == 'web'
@@ -323,3 +327,12 @@ jobs:
           bash .github/automation/guard-recording-routes.sh --stop || true
           docker rm -f "$VOICEVOX_CONTAINER" >/dev/null 2>&1 || true
           ollama stop "$OLLAMA_MODEL" >/dev/null 2>&1 || true
+
+      - name: Upload Ollama diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ollama-log-${{ github.run_number }}
+          path: ollama.log
+          if-no-files-found: warn
+          retention-days: 14
