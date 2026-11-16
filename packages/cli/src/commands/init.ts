@@ -8,7 +8,7 @@ export function initCommand(): Command {
     .argument('[directory]', 'target directory for apvg.config.yml', '.')
     .option(
       '--repo <url>',
-      'git repository URL to clone and analyze (e.g. https://github.com/user/repo.git)'
+      'git repository URL to clone and analyze (.git suffix optional, e.g. https://github.com/user/repo)'
     )
     .option('--source <path>', 'path to an existing local git project to analyze')
     .option(

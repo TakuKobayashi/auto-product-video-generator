@@ -20,9 +20,15 @@ Run APVG in a directory where it can create `apvg.config.yml`, `.apvg/`, and
 mkdir my-product-video
 cd my-product-video
 apvg serve
-apvg project init --repo https://github.com/you/your-app.git
+apvg project init --repo https://github.com/you/your-app
 apvg video generate
 ```
+
+The `.git` suffix is optional for HTTPS and SSH repository URLs, including
+GitHub, GitLab (also self-hosted), and other Git servers using this convention.
+APVG adds `.git` before cloning and retries the original URL if that fails,
+so servers with other URL conventions remain supported. Use the repository
+root URL, rather than a file, branch, or issue page.
 
 For an existing local git checkout, initialize with
 `apvg project init --source ../your-app` instead. Run `apvg --help` or

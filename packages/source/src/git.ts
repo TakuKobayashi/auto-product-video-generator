@@ -4,6 +4,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { SourceConfig, logger } from '@auto-product-video-generator/core';
 import { selectProjectRoot } from './workspace-selector.js';
+import { normalizeRepositoryUrl } from './repository-url.js';
 
 export interface ResolveSourceOptions {
   source: SourceConfig;
@@ -83,6 +84,8 @@ async function cloneOrUpdate(
     }
   }
 
+  const originalRepository = repository.trim();
+  repository = normalizeRepositoryUrl(repository);
   logger.step(
     'source',
     `Cloning ${repository}${ref ? ` (ref: ${ref})` : ''} into ${absCloneDir}...`
@@ -94,10 +97,27 @@ async function cloneOrUpdate(
   try {
     await git(args);
   } catch (err) {
-    throw new Error(
-      `git clone failed: ${(err as Error).message}\n` +
-        `Check that '${repository}' is reachable and, if private, that your git credentials are configured.`
-    );
+    // Not every Git server uses a .git suffix (e.g. custom HTTP endpoints).
+    // Git removes a newly created clone directory when cloning fails.
+    if (repository !== originalRepository) {
+      logger.warn('Clone with the normalized URL failed; retrying the original repository URL.');
+      const fallbackArgs = [...args];
+      fallbackArgs[fallbackArgs.length - 2] = originalRepository;
+      try {
+        await git(fallbackArgs);
+      } catch (retryError) {
+        throw new Error(
+          `git clone failed for normalized URL '${repository}': ${(err as Error).message}\n` +
+            `Retry with original URL '${originalRepository}' failed: ${(retryError as Error).message}\n` +
+            'Check that the repository is reachable and, if private, that your git credentials are configured.'
+        );
+      }
+    } else {
+      throw new Error(
+        `git clone failed: ${(err as Error).message}\n` +
+          `Check that '${repository}' is reachable and, if private, that your git credentials are configured.`
+      );
+    }
   }
 
   logger.success(`Cloned into ${absCloneDir}`);
