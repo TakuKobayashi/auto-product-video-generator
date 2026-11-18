@@ -313,6 +313,70 @@ task doctor
 Developers who prefer pnpm can pass `PACKAGE_MANAGER=pnpm`, for example
 `task build PACKAGE_MANAGER=pnpm`.
 
+## Releases
+
+Push a version tag to run `.github/workflows/publish-npm.yml`. It runs test CI,
+sets the CLI package version from the tag, builds and publishes to npm, and
+creates a GitHub Release. No local version change, build, or `npm publish` is
+required.
+
+The example below releases `1.0.3`; replace it with the next unused version.
+Run these commands from the repository root after committing the changes you
+want to release.
+
+1. Prepare the release commit on `main`:
+
+   ```bash
+   git switch main
+   git pull --ff-only origin main
+   git push origin main
+   git status --short
+   ```
+
+   Check that the working tree is clean and `HEAD` is the commit to release.
+
+2. Create and push the new version tag:
+
+   ```bash
+   git tag -a v1.0.3 -m "Release v1.0.3"
+   git push origin refs/tags/v1.0.3
+   ```
+
+3. Wait for the **Publish CLI to npm** workflow for `v1.0.3` to succeed in
+   [GitHub Actions](https://github.com/TakuKobayashi/auto-product-video-generator/actions).
+   If it fails, fix the failure before updating `v1`. Verify the npm version:
+
+   ```bash
+   npm view auto-product-video-generator@1.0.3 version
+   ```
+
+4. After the release succeeds, update `v1` to the same release commit so
+   GitHub Actions users of `auto-product-video-generator@v1` get this version:
+
+   ```bash
+   git tag -f -a v1 'v1.0.3^{commit}' -m "Update v1 to v1.0.3"
+   git push --force origin refs/tags/v1:refs/tags/v1
+   ```
+
+   The workflow does not update `v1` automatically. The force push updates only
+   this moving tag. Pushing `v1` runs CI and the GitHub Release creation step,
+   but skips npm publishing.
+
+Publishing uses npm trusted publishing (GitHub OIDC). The npm package must
+authorize this repository's `publish-npm.yml` workflow as a trusted publisher;
+`NODE_AUTH_TOKEN` must not be set for this workflow. No separate local
+`npm publish` or manual GitHub Release creation is needed.
+
+For a prerelease, use a tag such as `v1.0.3-beta.1` in steps 2 and 3 and do not
+update the stable `v1` tag. Stable versions publish to the npm `latest`
+dist-tag; prerelease versions publish to `next`. Update `v1` only for stable
+`1.x` releases. Use a new version for each npm release; the workflow skips
+npm publishing if that version already exists.
+
+If only the release notes need to be regenerated, run **Generate release
+note** manually in GitHub Actions with the existing tag. It creates or updates
+the GitHub Release without publishing another npm version.
+
 ## License
 
 MIT

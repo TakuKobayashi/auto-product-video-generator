@@ -299,6 +299,62 @@ task doctor
 
 pnpmを使用する場合は`task build PACKAGE_MANAGER=pnpm`のように指定できます。
 
+## リリース
+
+バージョンタグを push すると、`.github/workflows/publish-npm.yml` がテスト、
+タグに合わせた CLI のバージョン設定、ビルド、npm 公開、GitHub Release 作成を実行します。
+ローカルでのバージョン変更、ビルド、`npm publish` は不要です。
+
+以下は `1.0.3` をリリースする例です。次の未使用バージョンに読み替えてください。
+リリースする変更をコミットしてから、リポジトリのルートで順に実行します。
+
+1. `main` を更新し、リリースするコミットを push します。
+
+   ```bash
+   git switch main
+   git pull --ff-only origin main
+   git push origin main
+   git status --short
+   ```
+
+   未コミットの変更がなく、`HEAD` がリリース対象のコミットであることを確認します。
+
+2. 新バージョンのタグを作成して push します。
+
+   ```bash
+   git tag -a v1.0.3 -m "Release v1.0.3"
+   git push origin refs/tags/v1.0.3
+   ```
+
+3. [GitHub Actions](https://github.com/TakuKobayashi/auto-product-video-generator/actions) で
+   `v1.0.3` の **Publish CLI to npm** が成功するまで待ちます。
+   失敗した場合は、`v1` を更新する前に原因を修正してください。npm 公開も確認します。
+
+   ```bash
+   npm view auto-product-video-generator@1.0.3 version
+   ```
+
+4. 公開成功後、GitHub Actions 利用者の `auto-product-video-generator@v1` が
+   今回のリリースを参照するよう、`v1` を同じコミットへ更新します。
+
+   ```bash
+   git tag -f -a v1 'v1.0.3^{commit}' -m "Update v1 to v1.0.3"
+   git push --force origin refs/tags/v1:refs/tags/v1
+   ```
+
+   workflow は `v1` を自動更新しないため、この操作も必要です。
+   この force push が更新するのは `v1` タグだけです。`v1` の push でもテストと
+   GitHub Release 作成処理が実行されますが、npm 公開はスキップされます。
+
+npm 公開には Trusted Publishing（GitHub OIDC）を使用します。npm 側でこのリポジトリの
+`publish-npm.yml` を Trusted Publisher に設定しておく必要があります。
+この workflow に `NODE_AUTH_TOKEN` を設定しないでください。
+
+プレリリースの場合は手順 2、3 のタグを `v1.0.3-beta.1` などに置き換え、
+安定版の `v1` は更新しません。安定版は npm の `latest`、プレリリースは `next` に公開されます。
+`v1` を更新するのは `1.x` の安定版リリース時だけです。
+npm 公開には毎回未使用バージョンを使用してください。公開済みのバージョンは再公開されません。
+
 ## ライセンス
 
 MIT
