@@ -35,14 +35,20 @@ voice:
   # is loaded automatically. Set envFile to use another file as well.
   # envFile: ./.env.local
   profiles:
-    - name: narrator-1
-      type: voicevox
-      url: http://localhost:50021
-      speakerId: 1
-    - name: narrator-2
-      type: voicevox
-      url: http://localhost:50021
-      speakerId: 2
+#    - name: narrator-1
+#      type: voicevox
+#      url: http://localhost:50021
+#      speakerId: 1
+#    - name: narrator-2
+#      type: voicevox
+#      url: http://localhost:50021
+#      speakerId: 2
+    - name: narrator-aitalk-1
+      type: aitalk
+      speakerName: aoi_emo
+    - name: narrator-aitalk-2
+      type: aitalk
+      speakerName: akane_west_emo
     # AITalk 5 WebAPI can be mixed with VOICEVOX. Credentials are read from
     # AITALK_USERNAME and AITALK_PASSWORD by default.
     # - name: narrator-aitalk
