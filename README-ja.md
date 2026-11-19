@@ -87,7 +87,7 @@ apvg video render
 | `apvg project analyze`         | `.apvg/source-context.json`、`project-summary.json`、`resolved-config.json` |
 | `apvg video scenario generate` | `.apvg/scenario.yml`、`script.yml`、`subtitles.srt`                         |
 | `apvg video voice`             | `.apvg/voice/*.wav`と実音声に基づく時間情報                                 |
-| `apvg video record`            | `.apvg/recordings/*.mp4`、`.apvg/screenshots/scene-*.png`                  |
+| `apvg video record`            | `.apvg/recordings/*.mp4`、`.apvg/screenshots/scene-*.png`                   |
 | `apvg video render`            | `output/final.mp4`と`output/artifacts/`                                     |
 
 `apvg.config.yml`は利用者が管理する設定ファイルです。解析処理はconfigを書き換えません。
@@ -156,6 +156,29 @@ YAML内のすべての文字列で`${ENVIRONMENT_KEY}`を使用できます。co
 秘密値や展開結果を`apvg.config.yml`へ書き戻しません。
 
 ### AI Talk
+
+最小構成は次のとおりです。`url` や `options`、認証情報の環境変数名は省略できます。
+
+```yaml
+voice:
+  profiles:
+    - type: aitalk
+      speakerName: nozomi
+```
+
+`apvg.config.yml` と同じフォルダの `.env` に、AI Talk Web API の**契約情報**の
+ユーザー名とパスワードを設定します。管理画面へのログイン用パスワードや API キーとは異なります。
+
+```dotenv
+AITALK_USERNAME=契約情報のユーザー名
+AITALK_PASSWORD=契約情報のパスワード
+```
+
+`401` / `1101` は AI Talk 側の認証拒否です。上記の契約情報を確認してください。
+profile に直接設定した `username` / `password` と、起動元の環境変数は `.env` より優先されます。
+認証情報を変更したらコマンドを再実行してください。
+
+速度や感情などを調整する場合だけ、次の設定を追加します。
 
 ```yaml
 voice:

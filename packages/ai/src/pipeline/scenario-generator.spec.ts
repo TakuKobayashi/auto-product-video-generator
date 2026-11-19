@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ProjectSummary, VideoConfig } from '@auto-product-video-generator/core';
+import { ScenarioSchema } from '@auto-product-video-generator/core';
+import { dump, load } from 'js-yaml';
 import type { LlmProvider } from '../llm/provider.js';
 import { ScenarioGenerator } from './scenario-generator.js';
 
@@ -209,7 +211,7 @@ describe('ScenarioGenerator Unity narration preservation', () => {
         throw new Error('Unexpected rewrite');
       },
     };
-    const narration = 'A map shows positions. Movement and selection controls are available.';
+    const narration = 'A map shows positions. Movement and selection controls are available here.';
     const summary = {
       name: 'Example',
       description: 'View and controls',
@@ -240,6 +242,9 @@ describe('ScenarioGenerator Unity narration preservation', () => {
     expect(scenario.meta.language).toBe('en');
     expect(scenario.meta.platform).toBe('unity');
     expect(scenario.meta.duration).toBe(script.scenes[0].endTime);
+    expect(Number.isInteger(scenario.meta.duration)).toBe(false);
+    // The recording step reloads scenario.yml in a separate CLI process.
+    expect(ScenarioSchema.parse(load(dump(scenario))).meta.duration).toBe(scenario.meta.duration);
     expect(script.scenes[0].narration).toBe(narration);
   });
   it('analyzes emotion without changing the grounded narration', async () => {

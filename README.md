@@ -159,6 +159,32 @@ expanded only in memory and are never written back to `apvg.config.yml`.
 
 ### AI Talk
 
+The minimal configuration is:
+
+```yaml
+voice:
+  profiles:
+    - type: aitalk
+      speakerName: nozomi
+```
+
+Set the username and password from your **AITalk Web API contract information**
+in `.env` next to `apvg.config.yml`. These are not the management-console login
+password or an API key.
+
+```dotenv
+AITALK_USERNAME=your-contract-username
+AITALK_PASSWORD=your-contract-password
+```
+
+HTTP `401` / API code `1101` means AITalk rejected the credentials. Check the
+contract information. Explicit profile `username` / `password` values and
+existing process environment variables take precedence over `.env`. Run the
+command again after changing credentials.
+
+The URL, credential environment-variable names, and all `options` can be
+omitted. Add the following settings only when you need to customize them:
+
 ```yaml
 voice:
   profiles:

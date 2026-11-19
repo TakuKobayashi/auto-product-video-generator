@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { ActionSchema, SceneSchema } from './scenario.js';
+import { ActionSchema, SceneSchema, ScenarioMetaSchema } from './scenario.js';
+
+describe('scenario duration', () => {
+  const meta = { title: 'Unity demo', type: 'demo', platform: 'unity' };
+
+  it.each([0.5, 4.4, 30])('preserves a positive duration of %s seconds', (duration) => {
+    expect(ScenarioMetaSchema.parse({ ...meta, duration }).duration).toBe(duration);
+  });
+
+  it.each([0, -1, NaN, Infinity])('rejects an invalid duration of %s', (duration) => {
+    expect(ScenarioMetaSchema.safeParse({ ...meta, duration }).success).toBe(false);
+  });
+});
 
 describe('narration emotion', () => {
   it('accepts a valid AI Talk style and rejects a total over 1', () => {

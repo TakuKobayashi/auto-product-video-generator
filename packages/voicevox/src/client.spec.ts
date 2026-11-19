@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { buildAitalkRequestBody, resolveCredential, resolveVoiceProfiles } from './client.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  buildAitalkRequestBody,
+  resolveCredential,
+  resolveVoiceProfiles,
+  VoicevoxClient,
+} from './client.js';
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('buildAitalkRequestBody', () => {
   it('maps every configured ttsget option to the API parameter', () => {
@@ -75,6 +82,10 @@ describe('buildAitalkRequestBody', () => {
 });
 
 describe('resolveCredential', () => {
+  it('rejects empty credentials before sending an API request', () => {
+    expect(() => resolveCredential('', 'AITALK_PASSWORD')).toThrow('credential is empty');
+    expect(() => resolveCredential('   ', 'AITALK_PASSWORD')).toThrow('credential is empty');
+  });
   it('expands dotenv-style placeholders without changing literal credentials', () => {
     process.env.AITALK_TEST_USER = 'api-user';
     expect(resolveCredential('${AITALK_TEST_USER}', 'UNUSED')).toBe('api-user');
@@ -87,6 +98,45 @@ describe('resolveCredential', () => {
     expect(resolveCredential(undefined, 'AITALK_TEST_PASSWORD')).toBe('api-password');
     delete process.env.AITALK_TEST_PASSWORD;
   });
+});
+
+describe('AITalk API errors', () => {
+  it.each([401, 200])(
+    'explains authentication errors in HTTP %s without exposing secrets',
+    async (status) => {
+      const profile = {
+        type: 'aitalk' as const,
+        url: 'https://webapi.aitalk.jp/webapi/v5/ttsget.php',
+        speakerName: 'nozomi',
+        username: 'private-user',
+        password: 'private-password',
+        usernameEnv: 'AITALK_USERNAME',
+        passwordEnv: 'AITALK_PASSWORD',
+        options: { ext: 'wav' as const },
+      };
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              '<webapi><code>1101</code><message>failed authentication private-password</message></webapi>',
+              { status, headers: { 'Content-Type': 'application/xml' } }
+            )
+          )
+      );
+      const error = await new VoicevoxClient([profile])
+        .synthesizeWithProfile('test', profile, 'unused.wav', false)
+        .catch((value: Error) => value);
+      expect(error).toBeInstanceOf(Error);
+      const message = (error as Error).message;
+      expect(message).toContain('API code 1101');
+      expect(message).toContain('contract information');
+      expect(message).toContain('AITALK_PASSWORD');
+      expect(message).not.toContain('private-user');
+      expect(message).not.toContain('private-password');
+    }
+  );
 });
 
 describe('resolveVoiceProfiles', () => {

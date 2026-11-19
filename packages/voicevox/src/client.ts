@@ -18,11 +18,18 @@ export interface SynthesizeOptions {
 
 export function resolveCredential(value: string | undefined, envName: string): string {
   const source = value ?? `\${${envName}}`;
-  return source.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_placeholder, name: string) => {
-    const resolved = process.env[name];
-    if (resolved === undefined) throw new Error(`Environment variable ${name} is not set.`);
-    return resolved;
-  });
+  const credential = source.replace(
+    /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g,
+    (_placeholder, name: string) => {
+      const resolved = process.env[name];
+      if (resolved === undefined) throw new Error(`Environment variable ${name} is not set.`);
+      return resolved;
+    }
+  );
+  if (!credential.trim()) {
+    throw new Error(`AITalk credential is empty. Check the profile value or ${envName}.`);
+  }
+  return credential;
 }
 
 export function buildAitalkRequestBody(
@@ -160,12 +167,20 @@ export class VoicevoxClient {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
       body,
     });
-    if (!response.ok) {
-      throw new Error(`AITalk synthesis failed (${response.status}): ${await response.text()}`);
-    }
     const contentType = response.headers.get('content-type') ?? '';
-    if (!contentType.toLowerCase().includes('audio/')) {
-      throw new Error(`AITalk returned an unexpected content type: ${contentType}`);
+    if (!response.ok || !contentType.toLowerCase().includes('audio/')) {
+      const errorBody = await response.text();
+      const apiCode = errorBody.match(/<code>\s*(\d+)\s*<\/code>/)?.[1];
+      const failure = `AITalk synthesis failed (HTTP ${response.status}${apiCode ? `, API code ${apiCode}` : ''}).`;
+      if (response.status === 401 || apiCode === '1101' || apiCode === '1002') {
+        throw new Error(
+          `${failure} Authentication was rejected. Use the username and password from your ` +
+            `AITalk Web API contract information, not the management-console login password or an API key. ` +
+            `Check ${profile.usernameEnv} and ${profile.passwordEnv} in the .env next to apvg.config.yml. ` +
+            `Explicit profile username/password values and existing process environment variables take precedence over .env.`
+        );
+      }
+      throw new Error(`${failure} Expected audio, received ${contentType || 'no Content-Type'}.`);
     }
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, Buffer.from(await response.arrayBuffer()));

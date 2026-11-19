@@ -123,7 +123,7 @@ export const SCENARIO_OUTPUT_SCHEMA: JsonSchema = {
         title: { type: 'string', minLength: 1 },
         description: { type: 'string' },
         type: { type: 'string', enum: ['teaser', 'shorts', 'demo', 'tutorial'] },
-        duration: { type: 'integer', minimum: 1 },
+        duration: { type: 'number', exclusiveMinimum: 0 },
         language: { type: 'string', minLength: 1 },
       },
     },

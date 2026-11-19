@@ -186,7 +186,8 @@ export const ScenarioMetaSchema = z.object({
   // What kind of project this recording plan is for (web/ios/android/...).
   // Selects the recording driver. Defaults to web for older scenarios.
   platform: ProjectPlatformSchema.default('web'),
-  duration: z.number().int().positive(),
+  // Generated narration timing can contain fractional seconds.
+  duration: z.number().finite().positive(),
   language: z.string().default('ja'),
   createdAt: z.string().default(() => new Date().toISOString()),
 });
