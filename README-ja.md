@@ -276,7 +276,7 @@ npm run dev
 ```yaml
 jobs:
   video:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v6
@@ -300,6 +300,9 @@ Composite Actionは解析、シナリオ、音声、録画、レンダー、任�
 実行します。解析結果がUnityの場合だけ対応Editorを導入・認証し、Xvfbを起動して、
 ディスプレイとFFmpegを確認してから録画します。Unity以外ではUnity関連処理をすべてスキップします。
 Ubuntu/Linux runner、Docker、`sudo`が必要です。
+Unity の録画には、上記のように `ubuntu-24.04` を指定してください。
+Unity 6.3 の対応 OS は Ubuntu 22.04/24.04 です。`ubuntu-latest` は対応外の OS に
+切り替わり、`libxml2.so.2` など Editor に必要なライブラリが見つからなくなる場合があります。
 
 主なinputは`repository`、`ref`、`project-path`、`target-url`、`video-type`、
 `ollama-model`、`voicevox-speaker`、`output-directory`、`preview`、

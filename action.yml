@@ -300,7 +300,7 @@ runs:
       run: |
         packages=(ffmpeg)
         if [[ "$PROJECT_PLATFORM" == unity ]]; then
-          packages+=(xvfb x11-utils libgl1-mesa-dri libglu1-mesa)
+          packages+=(xvfb x11-utils libgl1-mesa-dri libglu1-mesa libxml2)
         fi
         sudo apt-get update
         sudo apt-get install --yes "${packages[@]}"

@@ -286,7 +286,7 @@ non-empty destination.
 ```yaml
 jobs:
   video:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v6
@@ -311,6 +311,9 @@ rendering, and optional Remotion export as separate steps. After analysis, Unity
 projects conditionally install and activate the matching Editor, start Xvfb, and
 record its selected scenes. Other platforms skip all Unity setup. The action
 requires an Ubuntu/Linux runner with Docker and `sudo`.
+For Unity recording, use `ubuntu-24.04` as shown above. Unity 6.3 supports
+Ubuntu 22.04/24.04; `ubuntu-latest` can select an unsupported release where
+Editor libraries such as `libxml2.so.2` are unavailable.
 
 Key inputs are `repository`, `ref`, `project-path`, `target-url`, `video-type`,
 `ollama-model`, `voicevox-speaker`, `output-directory`, `preview`, and

@@ -52,7 +52,8 @@ concurrency:
 jobs:
   generate:
     name: Build selected source and generate repository video
-    runs-on: ubuntu-latest
+    # Unity 6.3 supports Ubuntu 22.04/24.04; ubuntu-latest can move to 26.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 360
     env:
       OLLAMA_HOST: http://127.0.0.1:11434
@@ -228,7 +229,7 @@ jobs:
         run: |
           packages=(ffmpeg)
           if [[ "$PROJECT_PLATFORM" == unity ]]; then
-            packages+=(xvfb libgl1-mesa-dri libglu1-mesa)
+            packages+=(xvfb libgl1-mesa-dri libglu1-mesa libxml2)
           fi
           sudo apt-get update
           sudo apt-get install --yes "${packages[@]}"
